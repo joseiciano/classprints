@@ -1,7 +1,9 @@
-# Production deploy caller (TASK-014) — every merge to `main` (the evergreen
-# promotion PR) auto-deploys the production Cloudflare account (REQ-003).
-# The `production` GitHub Environment's required reviewers gate this job
-# after merge (SEC-003).
+# Production deploy caller (TASK-014) — every merge to `main` (i.e. the
+# evergreen `staging` -> `main` promotion PR) deploys the production
+# Cloudflare account (REQ-003). Branch protection on `main` + the
+# `production` environment's required-reviewer rule enforce REQ-004/SEC-003:
+# the only way for a commit to reach `main` is the promotion PR, and the
+# deploy job pauses for reviewer approval before running.
 
 name: Deploy Production
 
@@ -12,6 +14,7 @@ on:
 
 jobs:
   deploy:
+    name: Deploy to production
     uses: ./.github/workflows/deploy.yml
     with:
       environment: production
