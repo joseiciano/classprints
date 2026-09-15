@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "strictNullChecks": true,
+    "types": ["vite/client"]
+  },
+  "include": ["vite.config.mts", "src"],
+  "exclude": ["**/*.stories.ts"]
+}

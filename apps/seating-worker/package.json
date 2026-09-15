@@ -1,0 +1,23 @@
+{
+  "name": "@classprints/optimizer-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy src/index.ts --name classprints-optimizer --compatibility-date 2026-09-14 --dry-run --outdir dist",
+    "test": "vitest run",
+    "lint": "eslint 'src/**/*.ts'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@classprints/seating-shared": "workspace:*",
+    "@classprints/server": "workspace:^",
+    "postgres": "3.4.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260702.1",
+    "typescript": "~5.9.3",
+    "vitest": "4.0.14",
+    "wrangler": "4.57.0"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM"],
+    "moduleResolution": "Bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@classprints/shared": ["packages/shared/src/index.ts"],
+      "@classprints/shared/*": ["packages/shared/src/*"],
+      "@classprints/seating-shared": ["packages/seating-shared/src/index.ts"],
+      "@classprints/seating-shared/*": ["packages/seating-shared/src/*"],
+      "@classprints/server": ["packages/server/src/index.ts"],
+      "@classprints/server/*": ["packages/server/src/*"]
+    }
+  }
+}

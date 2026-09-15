@@ -1,0 +1,62 @@
+{
+  "name": "@classprints/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./auth": {
+      "types": "./src/auth/index.ts",
+      "import": "./dist/auth/index.js",
+      "require": "./dist/auth/index.js",
+      "default": "./dist/auth/index.js"
+    },
+    "./email": {
+      "types": "./src/email/index.ts",
+      "import": "./dist/email/index.js",
+      "require": "./dist/email/index.js",
+      "default": "./dist/email/index.js"
+    },
+    "./billing": {
+      "types": "./src/billing/index.ts",
+      "import": "./dist/billing/index.js",
+      "require": "./dist/billing/index.js",
+      "default": "./dist/billing/index.js"
+    },
+    "./http": {
+      "types": "./src/http/index.ts",
+      "import": "./dist/http/index.js",
+      "require": "./dist/http/index.js",
+      "default": "./dist/http/index.js"
+    },
+    "./middleware": {
+      "types": "./src/middleware/index.ts",
+      "import": "./dist/middleware/index.js",
+      "require": "./dist/middleware/index.js",
+      "default": "./dist/middleware/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "4.20260702.1",
+    "@hono-rate-limiter/cloudflare": "^0.2.2",
+    "@classprints/shared": "workspace:*",
+    "better-auth": "^1.7.5",
+    "hono": "^4.6.12",
+    "kysely": "^0.29.5",
+    "kysely-postgres-js": "^4.0.0",
+    "postgres": "3.4.7",
+    "stripe": "^14.25.0",
+    "zod": "^3.23.8"
+  }
+}

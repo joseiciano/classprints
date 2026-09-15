@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <base href="/" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Seating Console</title>
+    <script>
+      (function () {
+        try {
+          const stored = localStorage.getItem('theme');
+          if (stored === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else if (stored === 'light') {
+            document.documentElement.classList.remove('dark');
+          } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (error) {
+          console.warn('Unable to read theme preference', error);
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

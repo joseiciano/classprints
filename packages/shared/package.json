@@ -1,0 +1,88 @@
+{
+  "name": "@classprints/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./auth": {
+      "types": "./src/auth/index.ts",
+      "import": "./dist/auth/index.js",
+      "require": "./dist/auth/index.js",
+      "default": "./dist/auth/index.js"
+    },
+    "./errors": {
+      "types": "./src/errors.ts",
+      "import": "./dist/errors.js",
+      "require": "./dist/errors.js",
+      "default": "./dist/errors.js"
+    },
+    "./runtime-env": {
+      "types": "./src/runtime-env.ts",
+      "import": "./dist/runtime-env.js",
+      "require": "./dist/runtime-env.js",
+      "default": "./dist/runtime-env.js"
+    },
+    "./http/config": {
+      "types": "./src/http/config.ts",
+      "import": "./dist/http/config.js",
+      "require": "./dist/http/config.js",
+      "default": "./dist/http/config.js"
+    },
+    "./http/session-client": {
+      "types": "./src/http/session-client.ts",
+      "import": "./dist/http/session-client.js",
+      "require": "./dist/http/session-client.js",
+      "default": "./dist/http/session-client.js"
+    },
+    "./http/worker-client": {
+      "types": "./src/http/worker-client.ts",
+      "import": "./dist/http/worker-client.js",
+      "require": "./dist/http/worker-client.js",
+      "default": "./dist/http/worker-client.js"
+    },
+    "./types/billing": {
+      "types": "./src/types/billing.ts",
+      "import": "./dist/types/billing.js",
+      "require": "./dist/types/billing.js",
+      "default": "./dist/types/billing.js"
+    },
+    "./ui/header-bar": {
+      "types": "./src/ui/header-bar.tsx",
+      "import": "./dist/ui/header-bar.js",
+      "require": "./dist/ui/header-bar.js",
+      "default": "./dist/ui/header-bar.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.90.11",
+    "zod": "3.24.4"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.90.11",
+    "react": "^18.3.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.4",
+    "@types/react-dom": "19.0.2",
+    "react": "19.0.0"
+  }
+}

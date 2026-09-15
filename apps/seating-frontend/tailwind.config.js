@@ -1,0 +1,93 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  darkMode: 'class',
+  content: [
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
+    '../../packages/shared/src/**/*.{js,ts,jsx,tsx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: 'hsl(var(--primary))',
+        'primary-foreground': 'hsl(var(--primary-foreground))',
+        secondary: 'hsl(var(--secondary))',
+        'secondary-foreground': 'hsl(var(--secondary-foreground))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        card: 'hsl(var(--card))',
+        'card-foreground': 'hsl(var(--card-foreground))',
+        popover: 'hsl(var(--popover))',
+        'popover-foreground': 'hsl(var(--popover-foreground))',
+        muted: 'hsl(var(--muted))',
+        'muted-foreground': 'hsl(var(--muted-foreground))',
+        accent: 'hsl(var(--accent))',
+        'accent-foreground': 'hsl(var(--accent-foreground))',
+        tertiary: 'hsl(var(--tertiary))',
+        'tertiary-foreground': 'hsl(var(--tertiary-foreground))',
+        success: 'hsl(var(--success))',
+        'success-foreground': 'hsl(var(--success-foreground))',
+        warning: 'hsl(var(--warning))',
+        'warning-foreground': 'hsl(var(--warning-foreground))',
+        info: 'hsl(var(--info))',
+        'info-foreground': 'hsl(var(--info-foreground))',
+        destructive: 'hsl(var(--destructive))',
+        'destructive-foreground': 'hsl(var(--destructive-foreground))',
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        'sidebar-background': 'hsl(var(--sidebar-background))',
+        'sidebar-foreground': 'hsl(var(--sidebar-foreground))',
+        'sidebar-primary': 'hsl(var(--sidebar-primary))',
+        'sidebar-primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
+        'sidebar-accent': 'hsl(var(--sidebar-accent))',
+        'sidebar-accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
+        'sidebar-border': 'hsl(var(--sidebar-border))',
+        'sidebar-ring': 'hsl(var(--sidebar-ring))',
+      },
+      borderRadius: {
+        DEFAULT: 'var(--radius)',
+      },
+      boxShadow: {
+        soft: 'var(--shadow-soft)',
+        card: 'var(--shadow-card)',
+        'card-hover': 'var(--shadow-card-hover)',
+      },
+      spacing: {
+        18: '4.5rem',
+        88: '22rem',
+        128: '32rem',
+        144: '36rem',
+      },
+      maxWidth: {
+        1280: '1280px',
+      },
+      fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+        display: ['Nunito', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+      },
+      keyframes: {
+        'fade-in': {
+          '0%': { opacity: '0', transform: 'translateY(12px)' },
+          '60%': { opacity: '1' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'bounce-gentle': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-8px)' },
+        },
+        wiggle: {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '25%': { transform: 'rotate(-3deg)' },
+          '75%': { transform: 'rotate(3deg)' },
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 0.7s ease-out both',
+        'bounce-gentle': 'bounce-gentle 2s ease-in-out infinite',
+        wiggle: 'wiggle 0.5s ease-in-out',
+      },
+    },
+  },
+  plugins: [],
+};

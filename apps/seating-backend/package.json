@@ -1,0 +1,26 @@
+{
+  "name": "@classprints/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy src/index.ts --name classprints-api --compatibility-date 2026-09-14 --dry-run --outdir dist",
+    "test": "vitest run",
+    "lint": "eslint 'src/**/*.ts'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@hono-rate-limiter/cloudflare": "^0.2.2",
+    "@classprints/seating-shared": "workspace:*",
+    "@classprints/server": "workspace:*",
+    "@classprints/shared": "workspace:*",
+    "hono": "^4.6.12",
+    "postgres": "3.4.7",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260702.1",
+    "typescript": "~5.9.3",
+    "wrangler": "4.57.0"
+  }
+}
