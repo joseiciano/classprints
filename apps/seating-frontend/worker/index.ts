@@ -2,7 +2,7 @@
 // The asset binding handles all requests; this entrypoint exists so wrangler
 // can deploy the SPA alongside the other Workers with one mechanism.
 export default {
-  async fetch(request, env) {
+  async fetch(request: Request, env: { ASSETS: { fetch: (req: Request) => Promise<Response> } }) {
     return env.ASSETS.fetch(request);
   },
 };
