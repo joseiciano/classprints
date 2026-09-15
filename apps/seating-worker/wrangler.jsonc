@@ -1,0 +1,97 @@
+{
+  // ClassPrints optimizer worker — consumes seating jobs, runs the genetic algorithm
+  // and LLM arrangements (via OpenRouter), then forwards eligible jobs to the email queue.
+  // Top-level = staging (default), env.production = production overrides.
+  // Secrets (LLM_API_KEY) are set per account via `wrangler secret put` (SEC-002).
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "classprints-optimizer",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "EMAIL_RESULTS_ENABLED": "true"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "<STAGING_HYPERDRIVE_ID>"
+    }
+  ],
+  "queues": {
+    "consumers": [
+      {
+        "queue": "seating-jobs",
+        "max_batch_size": 5,
+        "max_batch_timeout": 15,
+        "max_retries": 3,
+        "dead_letter_queue": "seating-jobs-dlq"
+      },
+      {
+        "queue": "seating-jobs-dlq",
+        "max_batch_size": 5,
+        "max_batch_timeout": 15,
+        "max_retries": 3
+      }
+    ],
+    "producers": [
+      {
+        "binding": "EMAIL_JOBS",
+        "queue": "email-jobs"
+      }
+    ]
+  },
+  "analytics_engine_datasets": [
+    {
+      "binding": "ANALYTICS",
+      "dataset": "classprints_optimizer_staging"
+    }
+  ],
+  "env": {
+    "production": {
+      "name": "classprints-optimizer",
+      "workers_dev": false,
+      "vars": {
+        "EMAIL_RESULTS_ENABLED": "true"
+      },
+      "hyperdrive": [
+        {
+          "binding": "HYPERDRIVE",
+          "id": "<PRODUCTION_HYPERDRIVE_ID>"
+        }
+      ],
+      "queues": {
+        "consumers": [
+          {
+            "queue": "seating-jobs",
+            "max_batch_size": 5,
+            "max_batch_timeout": 15,
+            "max_retries": 3,
+            "dead_letter_queue": "seating-jobs-dlq"
+          },
+          {
+            "queue": "seating-jobs-dlq",
+            "max_batch_size": 5,
+            "max_batch_timeout": 15,
+            "max_retries": 3
+          }
+        ],
+        "producers": [
+          {
+            "binding": "EMAIL_JOBS",
+            "queue": "email-jobs"
+          }
+        ]
+      },
+      "analytics_engine_datasets": [
+        {
+          "binding": "ANALYTICS",
+          "dataset": "classprints_optimizer_production"
+        }
+      ]
+    }
+  }
+}

@@ -5,6 +5,6 @@
     "strictNullChecks": true,
     "types": ["vite/client"]
   },
-  "include": ["vite.config.mts", "src"],
+  "include": ["vite.config.mts", "src", "worker"],
   "exclude": ["**/*.stories.ts"]
 }

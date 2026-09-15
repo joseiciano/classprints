@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
+    "build:check": "wrangler deploy --dry-run --outdir dist-check",
     "preview": "vite preview",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -30,6 +31,8 @@
     "typescript": "~5.9.3",
     "vite": "7.2.4",
     "vite-tsconfig-paths": "^6.1.0",
-    "vitest": "4.0.14"
+    "vitest": "4.0.14",
+    "@cloudflare/workers-types": "4.20260702.1",
+    "wrangler": "4.57.0"
   }
 }

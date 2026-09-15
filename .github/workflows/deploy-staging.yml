@@ -1,0 +1,16 @@
+# Staging deploy caller (TASK-014) — every merge to `staging` auto-deploys
+# the staging Cloudflare account and runs migrations against the staging DB (REQ-002).
+
+name: Deploy Staging
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+    secrets: inherit

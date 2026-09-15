@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "wrangler deploy src/index.ts --name classprints-email --compatibility-date 2026-09-14 --dry-run --outdir dist",
+    "build": "wrangler deploy --dry-run --outdir dist",
     "test": "vitest run",
     "lint": "eslint 'src/**/*.ts'",
     "typecheck": "tsc -p tsconfig.json --noEmit"

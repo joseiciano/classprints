@@ -1,0 +1,18 @@
+# Production deploy caller (TASK-014) — every merge to `main` (the evergreen
+# promotion PR) auto-deploys the production Cloudflare account (REQ-003).
+# The `production` GitHub Environment's required reviewers gate this job
+# after merge (SEC-003).
+
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+    secrets: inherit

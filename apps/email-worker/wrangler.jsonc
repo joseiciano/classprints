@@ -1,0 +1,70 @@
+{
+  // ClassPrints email worker — consumes completed email jobs and sends result emails.
+  // Top-level = staging (default), env.production = production overrides.
+  // Secrets (RESEND_API_KEY) are set per account via `wrangler secret put` (SEC-002).
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "classprints-email",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "RESEND_FROM_EMAIL": "ClassPrints <noreply@staging.classprints.email>"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "<STAGING_HYPERDRIVE_ID>"
+    }
+  ],
+  "queues": {
+    "consumers": [
+      {
+        "queue": "email-jobs",
+        "max_batch_size": 10,
+        "max_batch_timeout": 30,
+        "max_retries": 3
+      }
+    ]
+  },
+  "analytics_engine_datasets": [
+    {
+      "binding": "ANALYTICS",
+      "dataset": "classprints_email_staging"
+    }
+  ],
+  "env": {
+    "production": {
+      "name": "classprints-email",
+      "workers_dev": false,
+      "vars": {
+        "RESEND_FROM_EMAIL": "ClassPrints <noreply@classprints.app>"
+      },
+      "hyperdrive": [
+        {
+          "binding": "HYPERDRIVE",
+          "id": "<PRODUCTION_HYPERDRIVE_ID>"
+        }
+      ],
+      "queues": {
+        "consumers": [
+          {
+            "queue": "email-jobs",
+            "max_batch_size": 10,
+            "max_batch_timeout": 30,
+            "max_retries": 3
+          }
+        ]
+      },
+      "analytics_engine_datasets": [
+        {
+          "binding": "ANALYTICS",
+          "dataset": "classprints_email_production"
+        }
+      ]
+    }
+  }
+}

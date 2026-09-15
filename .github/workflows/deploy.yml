@@ -1,0 +1,86 @@
+# Reusable deploy workflow (TASK-013) — parameterized by `environment`.
+# staging caller: deploy-staging.yml (push to `staging`)
+# production caller: deploy-production.yml (push to `main`)
+#
+# Deploy-target mapping (REQ-007: top-level config = staging):
+#   environment=staging    -> bare `wrangler deploy` (top-level = staging)
+#   environment=production -> `wrangler deploy --env production`
+#
+# Required GitHub Environment secrets (TASK-015):
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, DATABASE_URL
+# Required GitHub Environment variables:
+#   VITE_SEATING_API_URL (frontend API origin, baked at build time)
+
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target environment: staging or production"
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      DEPLOY_ENV_FLAG: ${{ inputs.environment == 'production' && '--env production' || '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Apply schema migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: sh scripts/migrate.sh
+
+      - name: Deploy classprints-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm --filter @classprints/api exec wrangler deploy $DEPLOY_ENV_FLAG
+
+      - name: Deploy classprints-email
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm --filter @classprints/email-worker exec wrangler deploy $DEPLOY_ENV_FLAG
+
+      - name: Deploy classprints-optimizer
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm --filter @classprints/optimizer-worker exec wrangler deploy $DEPLOY_ENV_FLAG
+
+      - name: Build + deploy classprints-web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VITE_SEATING_API_URL: ${{ vars.VITE_SEATING_API_URL }}
+        run: |
+          pnpm --filter @classprints/web run build
+          pnpm --filter @classprints/web exec wrangler deploy $DEPLOY_ENV_FLAG
