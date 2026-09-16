@@ -1,13 +1,12 @@
 #!/bin/sh
-# scripts/sync-secrets.sh — push GitHub Environment secret values into the
-# matching Cloudflare account via `wrangler secret put` (TASK-016, SEC-002).
-#
-# Reads secret VALUES from the local environment (export them from a trusted
-# source, e.g. `gh secret list`/your password manager) — never from files in
-# the repo. Values are piped to wrangler via stdin, never as CLI arguments.
-#
+# scripts/sync-secrets.sh — push secret values into the matching Cloudflare
+# account's Workers via `wrangler secret put` (TASK-016, SEC-002).
 # Usage:
-#   scripts/sync-secrets.sh staging|production [app ...]
+#   scripts/sync-secrets.sh staging|production [--file <path>] [app ...]
+#
+# Loads values from a gitignored env file when present:
+#   .env.<environment> (default) or the path given to --file.
+# Values are piped to wrangler via stdin, never as CLI arguments.
 #
 # Required env (values only; the script never echoes them):
 #   CLOUDFLARE_API_TOKEN   deploy token for the target account
@@ -21,7 +20,15 @@
 set -eu
 
 ENVIRONMENT="${1:-}"
-shift || true
+APP_ARGS=""
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "--file" ]; then ENV_FILE_ARG="$arg"; prev=""; continue; fi
+  case "$arg" in
+    --file) prev="--file" ;;
+    *) APP_ARGS="$APP_ARGS $arg" ;;
+  esac
+done
 
 case "$ENVIRONMENT" in
   staging|production) ;;
@@ -32,10 +39,25 @@ case "$ENVIRONMENT" in
     ;;
 esac
 
-: "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN must be set}"
-: "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID must be set}"
-
 REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+if [ -n "${ENV_FILE_ARG:-}" ]; then
+  ENV_FILE="$ENV_FILE_ARG"
+else
+  ENV_FILE="$REPO_ROOT/.env.$ENVIRONMENT"
+fi
+
+# Load the gitignored env file if present. Shell-exported variables take
+# precedence because sourcing happens after the export.
+if [ -f "$ENV_FILE" ]; then
+  echo "==> loading secrets from $ENV_FILE"
+  set -a
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  set +a
+fi
+
+: "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN must be set (env or $ENV_FILE)}"
 
 put_secret() {
   # put_secret <APP_DIR> <VAR_NAME> — reads the value from the environment.
@@ -51,10 +73,9 @@ put_secret() {
     || { echo "  $var_name: FAILED" >&2; return 1; }
 }
 
-APPS="${*:-seating-backend email-worker seating-worker}"
+APPS="${APP_ARGS:- seating-backend email-worker seating-worker}"
 
 for app in $APPS; do
-  echo "==> $app ($ENVIRONMENT)"
   case "$app" in
     seating-backend)
       put_secret "$app" BETTER_AUTH_SECRET
