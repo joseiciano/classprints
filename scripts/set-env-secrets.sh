@@ -74,8 +74,7 @@ done
 
 # VITE_SEATING_API_URL is public build-time config -> GitHub Environment VARIABLE.
 if [ -n "${VITE_SEATING_API_URL:-}" ]; then
-  if gh api -X PUT "repos/$REPO/environments/$ENVIRONMENT/variables" \
-    -f name=VITE_SEATING_API_URL -f value="$VITE_SEATING_API_URL" >/dev/null 2>&1; then
+  if gh variable set VITE_SEATING_API_URL --env "$ENVIRONMENT" --body "$VITE_SEATING_API_URL" >/dev/null 2>&1; then
     echo "  VITE_SEATING_API_URL: set (variable)"
   else
     echo "  VITE_SEATING_API_URL: FAILED" >&2
