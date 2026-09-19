@@ -11,20 +11,13 @@ import {
   type AuthDeps,
 } from '@classprints/server/auth';
 import { registerBillingRoutes, type BillingServiceConfig } from '@classprints/server/billing';
-import { getCsrfHeaderName, configureAuthSession } from '@classprints/shared';
+import { getCsrfHeaderName } from '@classprints/shared';
 import { createDb } from './lib/db';
 import { EmailSender, renderVerificationTemplate } from '@classprints/server/email';
 import { isHttpError } from '@classprints/server/http';
 import { createRateLimitMiddleware } from '@classprints/server/middleware';
 import type { ExecutionContext } from '@cloudflare/workers-types';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-const ALLOWED_ORIGINS_FALLBACK = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://127.0.0.1:5173',
-  'http://127.0.0.1:5174',
-];
-
 
 type HonoEnv = SeatingHonoEnv;
 

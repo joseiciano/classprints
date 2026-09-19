@@ -54,9 +54,14 @@ per-app `wrangler.jsonc` files — CI never auto-provisions resources.
 2. **Databases:** provision two Neon projects (or branches) — one per
    environment; their pooled connection strings become the `DATABASE_URL`
    secrets. The first deploy applies `database/migrations/*.sql` automatically.
-3. **Secrets:** set per-account Worker secrets via `scripts/sync-secrets.sh`
-   (or manually with `wrangler secret put <KEY>`); store the same values as
-   GitHub Environment secrets (`staging` / `production` environments).
+3. **Secrets:** copy `.env.<env>.example` to `.env.<env>` (gitignored), fill in
+   values, then:
+   - `scripts/set-env-secrets.sh staging|production` — pushes the values into
+     the matching GitHub Environment (secrets + the `VITE_SEATING_API_URL`
+     variable).
+   - `scripts/sync-secrets.sh staging|production` — mirrors the same values
+     into that Cloudflare account's Worker secrets (`wrangler secret put`).
+   Values never live in the repo or in shell history.
 4. **GitHub settings:** protect `main` and `staging` (require PR + status
    checks, no force pushes), enable required reviewers on the `production`
    environment only, restrict environments to their branches

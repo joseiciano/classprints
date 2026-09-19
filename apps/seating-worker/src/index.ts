@@ -34,7 +34,6 @@ export default {
     const isDeadLetterQueue = queueName === DEAD_LETTER_QUEUE_NAME;
 
     for (const message of batch.messages) {
-      const start = Date.now();
       if (isDeadLetterQueue) {
         try {
           await handleDeadLetterMessage(message.body, store, metrics);
@@ -47,7 +46,7 @@ export default {
       }
 
       try {
-        const generation = await processJobMessage(message.body, store, env, metrics, sql);
+        await processJobMessage(message.body, store, env, metrics, sql);
         message.ack();
       } catch (error) {
         console.error('Seating worker failed', message.body, error);
