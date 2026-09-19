@@ -61,13 +61,7 @@
   "env": {
     "production": {
       "name": "classprints-api",
-      "workers_dev": false,
-      "routes": [
-        {
-          "pattern": "api.classprints.app",
-          "custom_domain": true
-        }
-      ],
+      "workers_dev": true,
       "vars": {
         "ENVIRONMENT": "production",
         "APPLICATION_NAME": "seating-backend",
