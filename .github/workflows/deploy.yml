@@ -8,8 +8,6 @@
 #
 # Required GitHub Environment secrets (TASK-015):
 #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, DATABASE_URL
-# Required GitHub Environment variables:
-#   VITE_SEATING_API_URL (frontend API origin, baked at build time)
 
 name: Deploy
 
@@ -94,11 +92,13 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: pnpm --filter @classprints/optimizer-worker exec wrangler deploy $DEPLOY_ENV_FLAG
 
+      # No VITE_SEATING_API_URL: the frontend reaches the API same-origin via a
+      # service binding, so auth cookies are first-party and sessions survive a
+      # page refresh. A baked cross-origin API URL would log users out on reload.
       - name: Build + deploy classprints-web
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          VITE_SEATING_API_URL: ${{ vars.VITE_SEATING_API_URL }}
         run: |
           pnpm --filter @classprints/web run build
           pnpm --filter @classprints/web exec wrangler deploy $DEPLOY_ENV_FLAG

@@ -57,8 +57,7 @@ per-app `wrangler.jsonc` files — CI never auto-provisions resources.
 3. **Secrets:** copy `.env.<env>.example` to `.env.<env>` (gitignored), fill in
    values, then:
    - `scripts/set-env-secrets.sh staging|production` — pushes the values into
-     the matching GitHub Environment (secrets + the `VITE_SEATING_API_URL`
-     variable).
+     the matching GitHub Environment.
    - `scripts/sync-secrets.sh staging|production` — mirrors the same values
      into that Cloudflare account's Worker secrets (`wrangler secret put`).
    Values never live in the repo or in shell history.

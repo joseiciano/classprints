@@ -1,5 +1,5 @@
 import { ApiError, type FetcherErrorPayload } from '../errors';
-import { readEnv, isLocalHost } from '../runtime-env';
+import { readEnv } from '../runtime-env';
 import { getWorkerClientConfig } from './config';
 
 const trimTrailingSlash = (value: string) => value.replace(/\/$/, '');
@@ -99,7 +99,7 @@ export const resolveWorkerBaseUrl = (override?: string): string => {
     return trimTrailingSlash(override);
   }
 
-  const { baseUrlEnvKeys, localDevPort } = getWorkerClientConfig();
+  const { baseUrlEnvKeys } = getWorkerClientConfig();
 
   for (const key of baseUrlEnvKeys) {
     const envBase = readEnv(key);
@@ -109,11 +109,14 @@ export const resolveWorkerBaseUrl = (override?: string): string => {
     }
   }
 
-  if (isLocalHost()) {
-    const hostname = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
-    const protocol = typeof window !== 'undefined' ? window.location.protocol : 'http:';
-    const normalizedProtocol = protocol === 'https:' ? 'https' : 'http';
-    return `${normalizedProtocol}://${hostname}:${localDevPort}`;
+  // Browser: the API worker is reached same-origin. In dev and preview the
+  // Vite `/api` proxy forwards to the local worker; deployed, the frontend
+  // asset worker forwards `/api/*` to classprints-api via a service binding.
+  // Auth cookies are first-party only in this mode — a cross-origin API URL
+  // (e.g. `classprints-api.<sub>.workers.dev`) issues cookies on the wrong
+  // origin and logs the user out on every page refresh.
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
   }
 
   throw new ApiError('CONFIG_ERROR', 'Worker base URL is not configured');

@@ -129,11 +129,10 @@ Production-only prerequisites (a deploy fails without these — see the
      classprints-api / classprints-optimizer / classprints-email must go:
        wrangler queues consumer remove <queue> <old-name>
 
-  6. GitHub Environment "production" needs the same secrets/variables as
-     staging (set-env-secrets.sh production handles both):
+  6. GitHub Environment "production" needs the same secrets as staging
+     (set-env-secrets.sh production handles this):
        CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, DATABASE_URL,
        BETTER_AUTH_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
        RESEND_API_KEY, LLM_API_KEY          (secrets)
-       VITE_SEATING_API_URL                 (variable)
 EOF
 fi
