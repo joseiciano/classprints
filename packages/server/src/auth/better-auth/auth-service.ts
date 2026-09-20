@@ -1,4 +1,3 @@
-import { APIError } from 'better-auth/api';
 import { HttpError } from '../../http';
 import type { Sql } from '../../db/sql';
 import type { Auth } from './auth';
@@ -11,10 +10,35 @@ export interface AuthUserProfile {
 }
 
 const toHttpError = (error: unknown): HttpError => {
-  if (error instanceof APIError) {
-    return new HttpError(error.status as 400, error.message);
+  // Structural match instead of `instanceof APIError`: Better Auth's error
+  // class arrives via two package copies, so instanceof fails in the bundle.
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof error.status === 'number' &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return new HttpError(error.status, error.message);
   }
   return new HttpError(500, 'Authentication service error');
+};
+
+/** With `asResponse: true`, Better Auth reports failures as a non-ok Response
+ * rather than a thrown error; translate it so routes keep their status codes. */
+const throwIfFailed = async (response: Response): Promise<Response> => {
+  if (response.ok) {
+    return response;
+  }
+  let message = 'Authentication request failed';
+  try {
+    const payload = (await response.json()) as { message?: string; code?: string };
+    message = payload.message ?? payload.code ?? message;
+  } catch {
+    // Keep the default message for non-JSON error bodies.
+  }
+  throw new HttpError(response.status, message);
 };
 
 /**
@@ -26,51 +50,64 @@ export class AuthService {
     private readonly auth: Auth,
     private readonly sql: Sql,
   ) {}
+  /** Raw Better Auth response; callers must forward its Set-Cookie headers.
+   * `callbackUrl` is where the verification-email link redirects after the
+   * user verifies (must be a trusted origin). */
   async signUpEmail(input: {
     email: string;
     password: string;
     name: string;
     displayName?: string;
+    callbackUrl?: string;
     headers?: Headers;
-  }): Promise<void> {
+  }): Promise<Response> {
     try {
-      await this.auth.api.signUpEmail({
-        body: {
-          email: input.email,
-          password: input.password,
-          name: input.name,
-          displayName: input.displayName,
-        },
-        headers: input.headers,
-      });
+      return await throwIfFailed(
+        await this.auth.api.signUpEmail({
+          body: {
+            email: input.email,
+            password: input.password,
+            name: input.name,
+            displayName: input.displayName,
+            callbackURL: input.callbackUrl,
+          },
+          headers: input.headers,
+          asResponse: true,
+        }),
+      );
     } catch (error) {
       throw toHttpError(error);
     }
   }
 
+  /** Raw Better Auth response; callers must forward its Set-Cookie headers. */
   async signInEmail(input: {
     email: string;
     password: string;
     remember?: boolean;
     headers?: Headers;
-  }): Promise<void> {
+  }): Promise<Response> {
     try {
-      await this.auth.api.signInEmail({
-        body: {
-          email: input.email,
-          password: input.password,
-          rememberMe: input.remember ?? true,
-        },
-        headers: input.headers,
-      });
+      return await throwIfFailed(
+        await this.auth.api.signInEmail({
+          body: {
+            email: input.email,
+            password: input.password,
+            rememberMe: input.remember ?? true,
+          },
+          headers: input.headers,
+          asResponse: true,
+        }),
+      );
     } catch (error) {
       throw toHttpError(error);
     }
   }
 
-  async signOut(headers: Headers): Promise<void> {
+  /** Raw Better Auth response; callers must forward its Set-Cookie headers. */
+  async signOut(headers: Headers): Promise<Response> {
     try {
-      await this.auth.api.signOut({ headers });
+      return await this.auth.api.signOut({ headers, asResponse: true });
     } catch (error) {
       throw toHttpError(error);
     }
@@ -78,7 +115,9 @@ export class AuthService {
 
   async getSession(
     headers: Headers,
-  ): Promise<{ user: { id: string; email: string | null; displayName: string | null; emailVerified: boolean } } | null> {
+  ): Promise<{
+    user: { id: string; email: string | null; displayName: string | null; emailVerified: boolean };
+  } | null> {
     try {
       const session = await this.auth.api.getSession({ headers });
       if (!session) {
@@ -88,7 +127,7 @@ export class AuthService {
         user: {
           id: session.user.id,
           email: session.user.email,
-          displayName: (session.user as { displayName?: string | null }).displayName ?? null,
+          displayName: session.user.displayName ?? null,
           emailVerified: session.user.emailVerified,
         },
       };
@@ -112,9 +151,9 @@ export class AuthService {
     }
   }
 
-  async resendVerificationEmail(email: string): Promise<void> {
+  async resendVerificationEmail(email: string, callbackUrl = '/'): Promise<void> {
     try {
-      await this.auth.api.sendVerificationEmail({ body: { email, callbackURL: '/' } });
+      await this.auth.api.sendVerificationEmail({ body: { email, callbackURL: callbackUrl } });
     } catch (error) {
       throw toHttpError(error);
     }
@@ -157,10 +196,7 @@ export class AuthService {
     };
   }
 
-  async updateProfileEmailNotifications(
-    userId: string,
-    enabled: boolean,
-  ): Promise<string | null> {
+  async updateProfileEmailNotifications(userId: string, enabled: boolean): Promise<string | null> {
     const value = enabled ? new Date().toISOString() : null;
     const rows = await this.sql`
       update user_profiles

@@ -30,29 +30,38 @@ export const buildApp = (options: AppOptions = {}) => {
 
   const authDeps: AuthDeps<SeatingWorkerBindings> = {
     sqlFactory,
-    createBetterAuthConfig: (env: SeatingWorkerBindings) => {
+    createBetterAuthConfig: (env: SeatingWorkerBindings, requestOrigin: string, waitUntil) => {
       const allowedOrigins = (env.ALLOWED_ORIGINS || '')
         .split(',')
         .map((origin) => origin.trim())
         .filter(Boolean);
 
-      const sendVerificationEmail = env.RESEND_API_KEY
-        ? (input: { user: { email: string }; url: string }) => {
-            const sender = new EmailSender(env.RESEND_API_KEY, env.RESEND_FROM_EMAIL ?? 'ClassPrints <noreply@classprints.app>');
-            void sender
-              .send({
-                to: input.user.email,
-                subject: 'Verify Your Email - ClassPrints',
-                html: renderVerificationTemplate({ verificationLink: input.url }),
-              })
-              .catch((error) => console.error('[auth] Failed to send verification email:', error));
-          }
-        : undefined;
+      const sendVerificationEmail = (input: { user: { email: string }; url: string }) => {
+        const sender = new EmailSender(env.EMAIL, env.EMAIL_FROM_ADDRESS, env.EMAIL_FROM_NAME);
+        const send = sender
+          .send({
+            to: input.user.email,
+            subject: 'Verify Your Email - ClassPrints',
+            html: renderVerificationTemplate({ verificationLink: input.url }),
+            text: `Verify your ClassPrints email address: ${input.url}`,
+          })
+          .catch((error) => console.error('[auth] Failed to send verification email:', error));
+
+        if (waitUntil) {
+          waitUntil(send);
+        } else {
+          void send;
+        }
+      };
 
       return {
         secret: env.BETTER_AUTH_SECRET,
-        frontendUrl: env.FRONTEND_URL,
-        allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : [env.FRONTEND_URL],
+        baseUrl: requestOrigin,
+        // Must equal the path `registerAuthController` mounts the Better Auth
+        // handler at (`app.route('/api/v1', authApp)` + `/auth/better-auth/*`)
+        // so email links resolve to the mounted handler.
+        basePath: `${env.BASE_PATH ?? ''}/api/v1/auth/better-auth`,
+        trustedOrigins: allowedOrigins.length > 0 ? allowedOrigins : [env.FRONTEND_URL],
         logger: console,
         sendVerificationEmail,
       };
@@ -143,8 +152,8 @@ export const buildApp = (options: AppOptions = {}) => {
 
   // Apply app-level rate limiting only when the binding exists.
   // Zone-level rate limiting can still protect routes when this binding is absent.
-  const authServiceOf = (env: SeatingWorkerBindings): AuthService =>
-    createAuthServiceFor(authDeps, env);
+  const authServiceOf = (env: SeatingWorkerBindings, requestOrigin: string): AuthService =>
+    createAuthServiceFor(authDeps, env, requestOrigin);
 
   const authApp = new Hono<HonoEnv>();
   registerAuthController(authApp, authDeps, rateLimit);

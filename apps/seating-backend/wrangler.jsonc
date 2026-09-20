@@ -11,7 +11,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "observability": {
-    "enabled": true
+    "enabled": true,
   },
   // Staging (default) — replace <...> placeholders with real values after bootstrap
   // (scripts/bootstrap.sh prints the IDs; see plan TASK-006).
@@ -26,21 +26,28 @@
     "STRIPE_CHECKOUT_SUCCESS_URL": "https://classprints-web.icianojn.workers.dev/billing/success",
     "STRIPE_CHECKOUT_CANCEL_URL": "https://classprints-web.icianojn.workers.dev/billing/cancel",
     "STRIPE_PORTAL_RETURN_URL": "https://classprints-web.icianojn.workers.dev/billing/portal-return",
-    "RESEND_FROM_EMAIL": "ClassPrints <noreply@staging.classprints.email>"
+    "EMAIL_FROM_ADDRESS": "noreply@staging.myclassprints.com",
+    "EMAIL_FROM_NAME": "ClassPrints",
   },
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_sender_addresses": ["noreply@staging.myclassprints.com"],
+    },
+  ],
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "00c42d1a16da45f0a7e9d9ef1d2aa99c"
-    }
+      "id": "00c42d1a16da45f0a7e9d9ef1d2aa99c",
+    },
   ],
   "queues": {
     "producers": [
       {
         "binding": "SEATING_JOBS",
-        "queue": "seating-jobs"
-      }
-    ]
+        "queue": "seating-jobs",
+      },
+    ],
   },
   "ratelimits": [
     {
@@ -48,15 +55,15 @@
       "namespace_id": "1001",
       "simple": {
         "limit": 100,
-        "period": 60
-      }
-    }
+        "period": 60,
+      },
+    },
   ],
   "analytics_engine_datasets": [
     {
       "binding": "ANALYTICS",
-      "dataset": "classprints_api_staging"
-    }
+      "dataset": "classprints_api_staging",
+    },
   ],
   "env": {
     "production": {
@@ -73,21 +80,28 @@
         "STRIPE_CHECKOUT_SUCCESS_URL": "https://classprints.app/billing/success",
         "STRIPE_CHECKOUT_CANCEL_URL": "https://classprints.app/billing/cancel",
         "STRIPE_PORTAL_RETURN_URL": "https://classprints.app/billing/portal-return",
-        "RESEND_FROM_EMAIL": "ClassPrints <noreply@classprints.app>"
+        "EMAIL_FROM_ADDRESS": "noreply@classprints.app",
+        "EMAIL_FROM_NAME": "ClassPrints",
       },
+      "send_email": [
+        {
+          "name": "EMAIL",
+          "allowed_sender_addresses": ["noreply@classprints.app"],
+        },
+      ],
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",
-          "id": "<PRODUCTION_HYPERDRIVE_ID>"
-        }
+          "id": "<PRODUCTION_HYPERDRIVE_ID>",
+        },
       ],
       "queues": {
         "producers": [
           {
             "binding": "SEATING_JOBS",
-            "queue": "seating-jobs"
-          }
-        ]
+            "queue": "seating-jobs",
+          },
+        ],
       },
       "ratelimits": [
         {
@@ -95,16 +109,16 @@
           "namespace_id": "1001",
           "simple": {
             "limit": 100,
-            "period": 60
-          }
-        }
+            "period": 60,
+          },
+        },
       ],
       "analytics_engine_datasets": [
         {
           "binding": "ANALYTICS",
-          "dataset": "classprints_api_production"
-        }
-      ]
-    }
-  }
+          "dataset": "classprints_api_production",
+        },
+      ],
+    },
+  },
 }
