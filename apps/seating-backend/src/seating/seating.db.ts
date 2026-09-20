@@ -176,38 +176,45 @@ const mapConfigRow = (row: SeatingConfigRow): SeatingConfig => ({
   updatedAt: parseNumber(row.updated_at) ?? 0,
 });
 
-const jobColumns =
-  'id, external_id, user_id, email, students, conflicts, works_well_with, works_well_with_strong, seat_contenders, seating_grid, max_results, algorithm, idempotency_key, status, error_message, results_count, status_metadata, email_sent_at, created_at, updated_at';
-
-export const createSeatingRepository = (sql: Sql): SeatingRepository => ({
-  async findJobById(jobId) {
-    const rows = await sql`
-      select ${sql(jobColumns)} from jobs where id = ${jobId} limit 1
+export const createSeatingRepository = (sql: Sql): SeatingRepository => {
+  // Column list as a composable fragment. Do NOT pass a string to `sql(...)`
+  // here: the helper form quotes its argument as a single identifier, so the
+  // whole list would be read as one column name (42703 on every jobs query).
+  const jobColumns = sql`
+    id, external_id, user_id, email, students, conflicts,
+    works_well_with, works_well_with_strong, seat_contenders, seating_grid,
+    max_results, algorithm, idempotency_key, status, error_message,
+    results_count, status_metadata, email_sent_at, created_at, updated_at
+  `;
+  return {
+    async findJobById(jobId) {
+      const rows = await sql`
+      select ${jobColumns} from jobs where id = ${jobId} limit 1
     `;
-    const row = rows[0] as SeatingJobRow | undefined;
-    return row ? mapJobRow(row) : null;
-  },
+      const row = rows[0] as SeatingJobRow | undefined;
+      return row ? mapJobRow(row) : null;
+    },
 
-  async findJobByExternalId(externalId) {
-    const rows = await sql`
-      select ${sql(jobColumns)} from jobs where external_id = ${externalId} limit 1
+    async findJobByExternalId(externalId) {
+      const rows = await sql`
+      select ${jobColumns} from jobs where external_id = ${externalId} limit 1
     `;
-    const row = rows[0] as SeatingJobRow | undefined;
-    return row ? mapJobRow(row) : null;
-  },
+      const row = rows[0] as SeatingJobRow | undefined;
+      return row ? mapJobRow(row) : null;
+    },
 
-  async findJobByIdempotency(userId, idempotencyKey) {
-    const rows = await sql`
-      select ${sql(jobColumns)} from jobs
+    async findJobByIdempotency(userId, idempotencyKey) {
+      const rows = await sql`
+      select ${jobColumns} from jobs
       where user_id = ${userId} and idempotency_key = ${idempotencyKey}
       limit 1
     `;
-    const row = rows[0] as SeatingJobRow | undefined;
-    return row ? mapJobRow(row) : null;
-  },
+      const row = rows[0] as SeatingJobRow | undefined;
+      return row ? mapJobRow(row) : null;
+    },
 
-  async insertJob(job) {
-    const rows = await sql`
+    async insertJob(job) {
+      const rows = await sql`
       insert into jobs (
         id, external_id, user_id, email, students, conflicts,
         works_well_with, works_well_with_strong, seat_contenders, seating_grid,
@@ -222,55 +229,55 @@ export const createSeatingRepository = (sql: Sql): SeatingRepository => ({
         ${job.errorMessage}, ${job.resultsCount}, ${job.statusMetadata === null ? null : sql.json(job.statusMetadata)},
         ${job.emailSentAt}, ${job.createdAt}, ${job.updatedAt}
       )
-      returning ${sql(jobColumns)}
+      returning ${jobColumns}
     `;
-    const row = rows[0] as SeatingJobRow | undefined;
-    if (!row) {
-      throw new Error('Unable to create job');
-    }
-    return mapJobRow(row);
-  },
+      const row = rows[0] as SeatingJobRow | undefined;
+      if (!row) {
+        throw new Error('Unable to create job');
+      }
+      return mapJobRow(row);
+    },
 
-  async listResults(jobId) {
-    const rows = await sql`
+    async listResults(jobId) {
+      const rows = await sql`
       select id, job_id, arrangement, fitness_score, arrangement_hash, created_at
       from seating_results where job_id = ${jobId}
       order by created_at desc
     `;
-    return (rows as unknown as SeatingResultRow[]).map(mapResultRow);
-  },
+      return (rows as unknown as SeatingResultRow[]).map(mapResultRow);
+    },
 
-  async listJobs(userId, limit) {
-    const rows = await sql`
-      select ${sql(jobColumns)} from jobs
+    async listJobs(userId, limit) {
+      const rows = await sql`
+      select ${jobColumns} from jobs
       where user_id = ${userId}
       order by created_at desc
       limit ${limit}
     `;
-    return (rows as unknown as SeatingJobRow[]).map(mapJobRow);
-  },
+      return (rows as unknown as SeatingJobRow[]).map(mapJobRow);
+    },
 
-  async countJobsSince(userId, since) {
-    const rows = await sql`
+    async countJobsSince(userId, since) {
+      const rows = await sql`
       select count(*)::int as total from jobs
       where user_id = ${userId} and created_at >= ${since}
     `;
-    const row = rows[0] as { total: number } | undefined;
-    return row?.total ?? 0;
-  },
+      const row = rows[0] as { total: number } | undefined;
+      return row?.total ?? 0;
+    },
 
-  async findConfigById(id) {
-    const rows = await sql`
+    async findConfigById(id) {
+      const rows = await sql`
       select id, user_id, name, students, conflicts, works_well_with_soft,
              works_well_with_strong, seat_contenders, seating_grid, created_at, updated_at
       from seating_configs where id = ${id} limit 1
     `;
-    const row = rows[0] as SeatingConfigRow | undefined;
-    return row ? mapConfigRow(row) : null;
-  },
+      const row = rows[0] as SeatingConfigRow | undefined;
+      return row ? mapConfigRow(row) : null;
+    },
 
-  async findConfigsByUserId(userId, limit) {
-    const rows = await sql`
+    async findConfigsByUserId(userId, limit) {
+      const rows = await sql`
       select id, user_id, name, students, conflicts, works_well_with_soft,
              works_well_with_strong, seat_contenders, seating_grid, created_at, updated_at
       from seating_configs
@@ -278,11 +285,11 @@ export const createSeatingRepository = (sql: Sql): SeatingRepository => ({
       order by created_at desc
       limit ${limit}
     `;
-    return (rows as unknown as SeatingConfigRow[]).map(mapConfigRow);
-  },
+      return (rows as unknown as SeatingConfigRow[]).map(mapConfigRow);
+    },
 
-  async insertConfig(config) {
-    const rows = await sql`
+    async insertConfig(config) {
+      const rows = await sql`
       insert into seating_configs (
         id, user_id, name, students, conflicts, works_well_with_soft,
         works_well_with_strong, seat_contenders, seating_grid, created_at, updated_at
@@ -296,42 +303,43 @@ export const createSeatingRepository = (sql: Sql): SeatingRepository => ({
       returning id, user_id, name, students, conflicts, works_well_with_soft,
                 works_well_with_strong, seat_contenders, seating_grid, created_at, updated_at
     `;
-    const row = rows[0] as SeatingConfigRow | undefined;
-    if (!row) {
-      throw new Error('Unable to create config');
-    }
-    return mapConfigRow(row);
-  },
+      const row = rows[0] as SeatingConfigRow | undefined;
+      if (!row) {
+        throw new Error('Unable to create config');
+      }
+      return mapConfigRow(row);
+    },
 
-  async updateConfig(id, config) {
-    const updateData: Record<string, unknown> = {
-      updated_at: Date.now(),
-    };
-    if (config.name !== undefined) updateData.name = config.name;
-    if (config.students !== undefined) updateData.students = sql.json(config.students);
-    if (config.conflicts !== undefined) updateData.conflicts = sql.json(config.conflicts);
-    if (config.worksWellWithSoft !== undefined)
-      updateData.works_well_with_soft = sql.json(config.worksWellWithSoft);
-    if (config.worksWellWithStrong !== undefined)
-      updateData.works_well_with_strong = sql.json(config.worksWellWithStrong);
-    if (config.seatContenders !== undefined)
-      updateData.seat_contenders = sql.json(config.seatContenders);
-    if (config.seatingGrid !== undefined) updateData.seating_grid = sql.json(config.seatingGrid);
+    async updateConfig(id, config) {
+      const updateData: Record<string, unknown> = {
+        updated_at: Date.now(),
+      };
+      if (config.name !== undefined) updateData.name = config.name;
+      if (config.students !== undefined) updateData.students = sql.json(config.students);
+      if (config.conflicts !== undefined) updateData.conflicts = sql.json(config.conflicts);
+      if (config.worksWellWithSoft !== undefined)
+        updateData.works_well_with_soft = sql.json(config.worksWellWithSoft);
+      if (config.worksWellWithStrong !== undefined)
+        updateData.works_well_with_strong = sql.json(config.worksWellWithStrong);
+      if (config.seatContenders !== undefined)
+        updateData.seat_contenders = sql.json(config.seatContenders);
+      if (config.seatingGrid !== undefined) updateData.seating_grid = sql.json(config.seatingGrid);
 
-    const rows = await sql`
+      const rows = await sql`
       update seating_configs set ${sql(updateData)} where id = ${id}
       returning id, user_id, name, students, conflicts, works_well_with_soft,
                 works_well_with_strong, seat_contenders, seating_grid, created_at, updated_at
     `;
-    const row = rows[0] as SeatingConfigRow | undefined;
-    return row ? mapConfigRow(row) : null;
-  },
+      const row = rows[0] as SeatingConfigRow | undefined;
+      return row ? mapConfigRow(row) : null;
+    },
 
-  async deleteConfig(id) {
-    await sql`delete from seating_configs where id = ${id}`;
-    return true;
-  },
-});
+    async deleteConfig(id) {
+      await sql`delete from seating_configs where id = ${id}`;
+      return true;
+    },
+  };
+};
 
 export const normalizeRequest = (request: SeatingRequest) => ({
   ...request,
