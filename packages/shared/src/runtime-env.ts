@@ -124,11 +124,3 @@ export const readEnv = (key: string): string | undefined => {
   return undefined;
 };
 
-const localHosts = new Set(['localhost', '127.0.0.1', '0.0.0.0']);
-
-export const isLocalHost = (): boolean => {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  return localHosts.has(window.location.hostname);
-};

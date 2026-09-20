@@ -15,15 +15,11 @@ configureAuthSession({
   csrfCookie: 'seating_csrf_token',
 });
 
+// No base-URL env keys: the API is reached same-origin (the frontend asset
+// worker forwards `/api/*` to classprints-api via a service binding). Session
+// cookies are only first-party in that mode, which is what lets the session
+// survive a page refresh.
 configureWorkerClient({
-  baseUrlEnvKeys: [
-    'VITE_WORKER_BASE_URL',
-    'VITE_SEATING_API_URL',
-    'SEATING_API_URL',
-    'VITE_API_BASE_URL',
-    'API_BASE_URL',
-  ],
-  localDevPort: 8787,
   apiPrefix: '/api/v1',
 });
 
