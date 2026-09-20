@@ -85,6 +85,10 @@ const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sign-in',
   component: SignInPage,
+  validateSearch: (search: Record<string, unknown>): { redirect?: string; verified?: boolean } => ({
+    redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
+    verified: search.verified === true || search.verified === 'true' ? true : undefined,
+  }),
 });
 
 const signUpRoute = createRoute({

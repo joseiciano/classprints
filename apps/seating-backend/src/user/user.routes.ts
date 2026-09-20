@@ -60,8 +60,16 @@ export const registerUserRoutes = (app: Hono<SeatingHonoEnv>): void => {
     }
 
     const authService = createAuthServiceFor(
-      { sqlFactory: (env) => createDb(env), createBetterAuthConfig: () => ({ secret: c.env.BETTER_AUTH_SECRET, frontendUrl: c.env.FRONTEND_URL, logger: console }) },
+      {
+        sqlFactory: (env) => createDb(env),
+        createBetterAuthConfig: (env, requestOrigin) => ({
+          secret: env.BETTER_AUTH_SECRET,
+          baseUrl: requestOrigin,
+          logger: console,
+        }),
+      },
       c.env,
+      new URL(c.req.url).origin,
     );
 
     const profile = await authService.getProfile(user.id);
@@ -111,8 +119,16 @@ export const registerUserRoutes = (app: Hono<SeatingHonoEnv>): void => {
     }
 
     const authService = createAuthServiceFor(
-      { sqlFactory: (env) => createDb(env), createBetterAuthConfig: () => ({ secret: c.env.BETTER_AUTH_SECRET, frontendUrl: c.env.FRONTEND_URL, logger: console }) },
+      {
+        sqlFactory: (env) => createDb(env),
+        createBetterAuthConfig: (env, requestOrigin) => ({
+          secret: env.BETTER_AUTH_SECRET,
+          baseUrl: requestOrigin,
+          logger: console,
+        }),
+      },
       c.env,
+      new URL(c.req.url).origin,
     );
 
     const emailNotificationsEnabledAt = await authService.updateProfileEmailNotifications(
@@ -150,8 +166,16 @@ export const registerUserRoutes = (app: Hono<SeatingHonoEnv>): void => {
     const { newEmail } = parsed.data;
 
     const authService = createAuthServiceFor(
-      { sqlFactory: (env) => createDb(env), createBetterAuthConfig: () => ({ secret: c.env.BETTER_AUTH_SECRET, frontendUrl: c.env.FRONTEND_URL, logger: console }) },
+      {
+        sqlFactory: (env) => createDb(env),
+        createBetterAuthConfig: (env, requestOrigin) => ({
+          secret: env.BETTER_AUTH_SECRET,
+          baseUrl: requestOrigin,
+          logger: console,
+        }),
+      },
       c.env,
+      new URL(c.req.url).origin,
     );
 
     // Queue the email change; the account email updates on confirmation.
@@ -175,8 +199,16 @@ export const registerUserRoutes = (app: Hono<SeatingHonoEnv>): void => {
     }
 
     const authService = createAuthServiceFor(
-      { sqlFactory: (env) => createDb(env), createBetterAuthConfig: () => ({ secret: c.env.BETTER_AUTH_SECRET, frontendUrl: c.env.FRONTEND_URL, logger: console }) },
+      {
+        sqlFactory: (env) => createDb(env),
+        createBetterAuthConfig: (env, requestOrigin) => ({
+          secret: env.BETTER_AUTH_SECRET,
+          baseUrl: requestOrigin,
+          logger: console,
+        }),
+      },
       c.env,
+      new URL(c.req.url).origin,
     );
 
     // Check if user is already soft-deleted

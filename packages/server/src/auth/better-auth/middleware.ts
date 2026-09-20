@@ -39,7 +39,7 @@ export const requireAuth = <Bindings extends Record<string, unknown>>(
   deps: AuthDeps<Bindings>,
 ): MiddlewareHandler<{ Bindings: Bindings; Variables: { user: AuthenticatedUser } }> =>
   async (c, next) => {
-    const service = createAuthServiceFor(deps, c.env as Bindings);
+    const service = createAuthServiceFor(deps, c.env as Bindings, new URL(c.req.url).origin);
     const user = await authenticateRequest({ authService: service }, c.req.raw.headers);
     c.set('user', user);
     await next();
@@ -53,7 +53,7 @@ export const optionalAuth = <Bindings extends Record<string, unknown>>(
   deps: AuthDeps<Bindings>,
 ): MiddlewareHandler<{ Bindings: Bindings; Variables: { user: AuthenticatedUser | null } }> =>
   async (c, next) => {
-    const service = createAuthServiceFor(deps, c.env as Bindings);
+    const service = createAuthServiceFor(deps, c.env as Bindings, new URL(c.req.url).origin);
     const user = await optionalAuthenticateRequest({ authService: service }, c.req.raw.headers);
     c.set('user', user);
     await next();

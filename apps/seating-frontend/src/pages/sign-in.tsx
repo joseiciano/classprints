@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { SignInFlow, type SignInFlowHandlers } from '@classprints/shared/auth';
 import LogoUrl from '@classprints/seating-shared/assets/logos/Letter-Circle-2x.svg';
 import { APPLICATION_NAME } from '../lib/constants';
@@ -7,6 +7,7 @@ import { useAuth } from '../providers/auth-provider';
 
 export function SignInPage() {
   const navigate = useNavigate();
+  const search = useSearch({ from: '/sign-in' });
   const { signIn, user, initializing } = useAuth();
   const handleSignedIn = useCallback<NonNullable<SignInFlowHandlers['onSignedIn']>>(
     async ({ user }) => {
@@ -50,6 +51,7 @@ export function SignInPage() {
       title="Sign in"
       subtitle="Use your worker credentials to continue."
       eyebrow="Seating Console"
+      notice={search.verified ? 'Email verified. Sign in to continue.' : undefined}
       renderLogo={() => (
         <div className="mx-auto flex flex-col items-center gap-3">
           <img src={LogoUrl} alt="Logo" className="h-32 w-32 object-contain" />

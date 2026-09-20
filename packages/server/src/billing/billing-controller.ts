@@ -12,7 +12,7 @@ export interface BillingControllerOptions<
 > {
   sqlFactory: (bindings: Bindings) => Sql;
   /** Returns the AuthService used to resolve the request user. */
-  authServiceFactory?: (env: Bindings) => AuthService;
+  authServiceFactory?: (env: Bindings, requestOrigin: string) => AuthService;
   createService?: (sql: Sql, config: BillingServiceConfig) => BillingService;
   createBillingServiceConfig: (env: Bindings) => BillingServiceConfig;
   rateLimitMiddlewareFactory?: () => MiddlewareHandler<any>;
@@ -46,18 +46,18 @@ export const registerBillingRoutes = <
     }
   };
 
-  const authServiceOf = (env: Bindings): AuthService => {
+  const authServiceOf = (env: Bindings, requestOrigin: string): AuthService => {
     if (!options.authServiceFactory) {
       throw new HttpError(500, 'AuthService factory is not configured');
     }
-    return options.authServiceFactory(env);
+    return options.authServiceFactory(env, requestOrigin);
   };
 
   registerPost(
     '/billing/checkout',
     async (c: BillingContext<Bindings, Variables>) => {
       const user = await authenticate(
-        { authService: authServiceOf(c.env) },
+        { authService: authServiceOf(c.env, new URL(c.req.url).origin) },
         c.req.raw.headers,
       );
 
@@ -96,7 +96,7 @@ export const registerBillingRoutes = <
     '/billing/portal',
     async (c: BillingContext<Bindings, Variables>) => {
       const user = await authenticate(
-        { authService: authServiceOf(c.env) },
+        { authService: authServiceOf(c.env, new URL(c.req.url).origin) },
         c.req.raw.headers,
       );
 
@@ -130,7 +130,7 @@ export const registerBillingRoutes = <
 
   app.get('/billing/subscription', async (c: BillingContext<Bindings, Variables>) => {
     const user = await authenticate(
-      { authService: authServiceOf(c.env) },
+      { authService: authServiceOf(c.env, new URL(c.req.url).origin) },
       c.req.raw.headers,
     );
 

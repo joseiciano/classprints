@@ -16,11 +16,7 @@ describe('SignInFlow verification notice', () => {
     } as SignInFlowProps['signIn'];
 
     const markup = renderToStaticMarkup(
-      <SignInFlow
-        signIn={signIn}
-        user={null}
-        notice="Email verified. Sign in to continue."
-      />,
+      <SignInFlow signIn={signIn} user={null} notice="Email verified. Sign in to continue." />,
     );
 
     expect(markup).toContain('role="status"');

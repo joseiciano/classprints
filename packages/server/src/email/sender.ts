@@ -2,36 +2,35 @@ export interface SendEmailOptions {
   to: string;
   subject: string;
   html: string;
+  text: string;
 }
 
-/** Resend-backed transactional email sender. */
+interface EmailBindingMessage extends SendEmailOptions {
+  from: {
+    email: string;
+    name: string;
+  };
+}
+
+export interface EmailBinding {
+  send(message: EmailBindingMessage): Promise<unknown>;
+}
+
+/** Cloudflare Email Service-backed transactional email sender. */
 export class EmailSender {
   constructor(
-    private readonly apiKey: string | undefined,
+    private readonly binding: EmailBinding,
     private readonly fromEmail: string,
+    private readonly fromName: string,
   ) {}
 
   async send(options: SendEmailOptions): Promise<void> {
-    if (!this.apiKey) {
-      throw new Error('RESEND_API_KEY is not configured');
-    }
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: this.fromEmail,
-        to: [options.to],
-        subject: options.subject,
-        html: options.html,
-      }),
+    await this.binding.send({
+      from: { email: this.fromEmail, name: this.fromName },
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Resend API error: ${response.status} ${errorText}`);
-    }
   }
 }
