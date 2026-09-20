@@ -94,13 +94,18 @@ export function SettingsTabContent({
               className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-base shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="programmatic">Programmatic (Genetic Algorithm)</option>
-              {AI_GENERATION_ENABLED && <option value="ai">AI Powered (LLM)</option>}
+              {AI_GENERATION_ENABLED && isPlus && <option value="ai">AI Powered (LLM)</option>}
             </select>
             <p className="text-xs text-muted-foreground">
               {generationMethod === 'programmatic'
                 ? 'Fast, deterministic optimization for large groups.'
                 : 'Heuristic-based approach using large language models.'}
             </p>
+            {AI_GENERATION_ENABLED && !isPlus && (
+              <p className="text-xs text-primary font-medium">
+                AI Powered (LLM) generation is available on the Plus plan.
+              </p>
+            )}
           </fieldset>
         )}
 

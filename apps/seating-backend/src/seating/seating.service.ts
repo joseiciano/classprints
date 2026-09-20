@@ -87,6 +87,14 @@ export class SeatingService {
     const tier = subscription.tier as keyof typeof SUBSCRIPTION_LIMITS;
     const limits = SUBSCRIPTION_LIMITS[tier];
 
+    // Gate AI generation to Plus subscribers
+    if (normalized.algorithm === 'llm' && !limits.canUseAiGeneration) {
+      throw new HttpError(
+        403,
+        'Plan limit exceeded: AI Powered (LLM) generation is only available on the Plus tier.',
+      );
+    }
+
     // Limit results (arrangements per run)
     if (normalized.results > limits.maxResultsPerRun) {
       throw new HttpError(
