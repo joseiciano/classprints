@@ -1,0 +1,39 @@
+# PR validation (TASK-013 companion) — required status check for merges.
+# Deploy workflows intentionally do NOT run on pull requests: `Deploy Staging`
+# fires only on pushes to `staging` (post-merge), and a deploy of the merge
+# commit cannot precede the merge it would gate. This workflow provides the
+# pre-merge blocker: typecheck + tests on every PR.
+name: PR Checks
+
+on:
+  pull_request:
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
