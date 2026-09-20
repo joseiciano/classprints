@@ -31,7 +31,7 @@ import { GridSize, clamp } from '../lib/arrangement-utils';
 import {
   SeatingApiError,
   SeatingJobSummary,
-  // createSeatingAiJob,
+  createSeatingAiJob,
   createSeatingJob,
 } from '../lib/seating-api';
 
@@ -380,14 +380,12 @@ export function CreateArrangementPage() {
     onError: handleSubmitError,
   });
 
-  /*
   const createAiJobMutation = useMutation({
     mutationFn: createSeatingAiJob,
     onMutate: () => setSubmitError(null),
     onSuccess: handleSubmitSuccess,
     onError: handleSubmitError,
   });
-  */
 
   const handleMaxResultsChange = (event: ChangeEvent<HTMLInputElement>) => {
     const rawValue = event.target.value;
@@ -479,13 +477,12 @@ export function CreateArrangementPage() {
     });
   };
 
+  // Dispatches to the AI or programmatic pipeline based on the selected generation method.
   const handleSubmit = (event: FormEvent<HTMLFormElement>) =>
-    submitJob(event, createJobMutation.mutate);
-
-  /*
-  const handleAiSubmit = (event: FormEvent<HTMLFormElement>) =>
-    submitJob(event, createAiJobMutation.mutate);
-  */
+    submitJob(
+      event,
+      generationMethod === 'ai' ? createAiJobMutation.mutate : createJobMutation.mutate,
+    );
 
   useEffect(() => {
     if (!jobStatus) return;
@@ -674,14 +671,18 @@ export function CreateArrangementPage() {
             worksWellSummary={worksWellSummary}
             worksWellStrongSummary={worksWellStrongSummary}
             submitError={submitError}
-            isPending={createJobMutation.isPending}
+            isPending={
+              generationMethod === 'ai' ? createAiJobMutation.isPending : createJobMutation.isPending
+            }
             onSubmit={() => {
               const mockEvent = { preventDefault: () => {} } as FormEvent<HTMLFormElement>;
               handleSubmit(mockEvent);
             }}
             onGenerateRandom={generateRandomAssignments}
             onBackToSettings={() => setActiveTab('settings')}
-            isSubmitDisabled={createJobMutation.isPending}
+            isSubmitDisabled={
+              generationMethod === 'ai' ? createAiJobMutation.isPending : createJobMutation.isPending
+            }
           />
         )}
       </div>
