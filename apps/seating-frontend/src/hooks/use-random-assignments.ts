@@ -3,7 +3,7 @@ import type { SeatingGrid } from '@classprints/seating-shared';
 import { GridSize, createNameGrid, shuffleNames } from '../lib/arrangement-utils';
 
 type RandomAssignmentsOptions = {
-  layoutMode: 'custom' | 'ai' | 'random';
+  layoutMode: 'custom' | 'random';
   seatGrid: SeatingGrid;
   gridSize: GridSize;
   attendeeNames: string[];

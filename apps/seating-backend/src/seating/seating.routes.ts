@@ -11,7 +11,7 @@ import type { SeatingHonoEnv, SeatingWorkerBindings } from '../types/env';
 import type { AuthenticatedUser } from '@classprints/server/auth';
 import { BillingService, type BillingServiceConfig } from '@classprints/server/billing';
 
-const IS_LLM_ENABLED = false;
+const IS_LLM_ENABLED = true;
 
 const getUser = (c: Context<SeatingHonoEnv>): AuthenticatedUser => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

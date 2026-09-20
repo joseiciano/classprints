@@ -1,6 +1,7 @@
 import { ChangeEvent } from 'react';
 import type { SeatingGrid } from '@classprints/seating-shared';
 import { SUBSCRIPTION_LIMITS } from '@classprints/seating-shared';
+import { AI_GENERATION_ENABLED } from '../../lib/constants';
 import { GridSize } from '../../lib/arrangement-utils';
 import { GridSizeFields } from './grid-size-fields';
 import { SummaryPanel } from './summary-panel';
@@ -93,7 +94,7 @@ export function SettingsTabContent({
               className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-base shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="programmatic">Programmatic (Genetic Algorithm)</option>
-              {/* <option value="ai">AI Powered (LLM)</option> */}
+              {AI_GENERATION_ENABLED && <option value="ai">AI Powered (LLM)</option>}
             </select>
             <p className="text-xs text-muted-foreground">
               {generationMethod === 'programmatic'
