@@ -38,16 +38,16 @@ export function SeatMapPanel({
   seatContenders,
 }: SeatMapPanelProps) {
   return (
-    <section className="space-y-4 rounded-2xl border bg-card/80 p-6 shadow-card">
-      <div className="flex items-center justify-between">
+    <section aria-label="Seat map" className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Seat map</h2>
-          <p className="text-sm text-muted-foreground">Click or drag to mark seatable spots.</p>
+          <h2 className="text-base font-semibold">Seat map</h2>
+          <p className="text-xs text-muted-foreground">Click or drag to mark seatable spots.</p>
         </div>
         <button
           type="button"
-          className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
           onClick={onClearGrid}
+          className="rounded-full border border-line px-3 py-1 text-xs font-semibold text-muted-foreground transition hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Clear grid
         </button>
@@ -66,8 +66,8 @@ export function SeatMapPanel({
       />
 
       <p className="text-xs text-muted-foreground">
-        Seats sync with the backend when you submit. Keep at least as many seats as attendees to
-        avoid validation errors.
+        Wide maps scroll horizontally. Keep at least as many seats as attendees to avoid validation
+        errors.
       </p>
     </section>
   );

@@ -7,16 +7,15 @@ import { Button } from '../components/ui/button';
 import { Switch } from '../components/ui/switch';
 import { Dialog } from '../components/ui/dialog';
 import {
-  CreditCard,
-  Loader2,
-  CheckCircle2,
-  User,
-  Mail,
-  Settings as SettingsIcon,
-  Bell,
-  Edit2,
-  Trash2,
   AlertTriangle,
+  Bell,
+  CheckCircle2,
+  CreditCard,
+  Edit2,
+  Loader2,
+  Mail,
+  Trash2,
+  User,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -24,9 +23,15 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isPlus, openPortal, isOpeningPortal, isLoading } = useSubscription();
-  const { isEnabled, update, refresh } = useEmailNotifications();
+  const {
+    isEnabled,
+    isLoading: notificationsLoading,
+    isUpdating,
+    update,
+    refresh,
+  } = useEmailNotifications();
   const { deleteAccount, isDeleting, error: deleteError } = useDeleteAccount();
-  const search = useSearch({ from: '/settings' }) as { success?: boolean };
+  const search = useSearch({ strict: false }) as { success?: boolean };
   const [localToggle, setLocalToggle] = useState<boolean | null>(null);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
@@ -45,19 +50,19 @@ export function SettingsPage() {
     }
   }, [search.success, navigate]);
 
-  // Initialize local toggle from server state
   useEffect(() => {
-    if (isEnabled !== undefined && localToggle === null) {
+    if (!notificationsLoading && localToggle === null) {
       setLocalToggle(isEnabled);
     }
-  }, [isEnabled, localToggle]);
+  }, [isEnabled, localToggle, notificationsLoading]);
 
   const handleToggleChange = (checked: boolean) => {
+    const previousValue = localToggle ?? false;
     setLocalToggle(checked);
     update(checked, {
       onError: () => {
-        // Revert to server state on error
-        refresh();
+        setLocalToggle(previousValue);
+        void refresh();
       },
     });
   };
@@ -143,220 +148,311 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="space-y-10">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary/10 rounded-lg">
-          <SettingsIcon className="w-6 h-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-display font-bold">Settings</h1>
-          <p className="text-muted-foreground">Manage your account and subscription</p>
-        </div>
-      </div>
+    <div className="space-y-7">
+      <header className="border-b border-border pb-6">
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+          Account workspace
+        </p>
+        <h1 className="mt-2 font-display text-[32px] font-medium leading-tight text-foreground">
+          Settings
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+          Manage your sign-in details, plan, and classroom update preferences.
+        </p>
+      </header>
 
       {search.success === true && (
-        <div className="p-6 bg-green-500/10 border-2 border-green-500/30 rounded-[2rem] flex flex-col sm:flex-row items-center gap-4 text-green-700 animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-500 shadow-lg shadow-green-500/5">
-          <div className="p-3 bg-green-500/20 rounded-2xl">
-            <CheckCircle2 className="w-8 h-8" />
-          </div>
-          <div className="text-center sm:text-left">
-            <h3 className="text-lg font-display font-bold">Success!</h3>
-            <p className="font-medium opacity-90">
-              Your subscription has been updated. You now have access to all Plus features.
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex flex-col gap-4 rounded-[12px] border border-primary/30 bg-secondary px-5 py-4 text-secondary-foreground sm:flex-row sm:items-center"
+        >
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-foreground">Subscription updated</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Your Plus features are ready to use.
             </p>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => void navigate({ to: '/settings', replace: true })}
-            className="ml-auto text-green-700 hover:bg-green-500/20"
+            className="min-h-11 justify-center sm:min-h-0"
           >
             Dismiss
           </Button>
         </div>
       )}
 
-      <div className="grid gap-6">
-        {/* Profile Section */}
-        <section className="p-8 bg-card rounded-3xl border border-border shadow-soft">
-          <h2 className="text-xl font-display font-bold mb-6 flex items-center gap-2">
-            <User className="w-5 h-5 text-primary" />
-            Profile Information
-          </h2>
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-10">
-              <div className="w-32 flex items-center gap-2 text-muted-foreground text-sm font-medium">
-                <Mail className="w-4 h-4" />
-                Email
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
+        <div className="space-y-5">
+          <section
+            className="overflow-hidden rounded-[12px] border border-border bg-card shadow-sm"
+            aria-labelledby="profile-heading"
+          >
+            <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+              <div className="grid h-9 w-9 place-items-center rounded-[10px] border border-border bg-secondary text-primary">
+                <User className="h-4 w-4" aria-hidden="true" />
               </div>
-              <div className="text-foreground font-medium flex-1">{user.email}</div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleOpenEmailDialog}
-                className="shrink-0"
-              >
-                <Edit2 className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-10">
-              <div className="w-32 flex items-center gap-2 text-muted-foreground text-sm font-medium">
-                <CheckCircle2 className="w-4 h-4" />
-                Verified
-              </div>
-              <div className="text-foreground font-medium">{user.emailVerified ? 'Yes' : 'No'}</div>
-            </div>
-          </div>
-          <div className="mt-8 pt-6 border-t border-border">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-destructive flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Delete Account
+              <div>
+                <h2
+                  id="profile-heading"
+                  className="font-display text-lg font-medium text-foreground"
+                >
+                  Profile information
+                </h2>
+                <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                  Sign-in identity
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Note: One you delete your account, there is no going back. All data associated
-                  will be deleted.
+              </div>
+            </div>
+
+            <dl className="divide-y divide-border px-5">
+              <div className="grid gap-2 py-4 sm:grid-cols-[130px_minmax(0,1fr)_auto] sm:items-center">
+                <dt className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                  <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+                  Email
+                </dt>
+                <dd className="min-w-0 break-words text-sm font-medium text-foreground">
+                  {user.email}
+                </dd>
+                <dd>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenEmailDialog}
+                    className="min-h-11 w-full justify-center sm:min-h-0 sm:w-auto"
+                  >
+                    <Edit2 className="h-4 w-4" aria-hidden="true" />
+                    Change email
+                  </Button>
+                </dd>
+              </div>
+              <div className="grid gap-2 py-4 sm:grid-cols-[130px_minmax(0,1fr)] sm:items-center">
+                <dt className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                  Email status
+                </dt>
+                <dd>
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] ${
+                      user.emailVerified
+                        ? 'border-primary/25 bg-secondary text-secondary-foreground'
+                        : 'border-border bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                    {user.emailVerified ? 'Verified' : 'Not verified'}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          {isPlus && (
+            <section
+              className="overflow-hidden rounded-[12px] border border-border bg-card shadow-sm"
+              aria-labelledby="notifications-heading"
+            >
+              <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+                <div className="grid h-9 w-9 place-items-center rounded-[10px] border border-border bg-secondary text-primary">
+                  <Bell className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <h2
+                    id="notifications-heading"
+                    className="font-display text-lg font-medium text-foreground"
+                  >
+                    Email notifications
+                  </h2>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                    Plus preference
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="max-w-xl">
+                  <label htmlFor="email-notifications" className="font-medium text-foreground">
+                    Seating chart updates
+                  </label>
+                  <p
+                    id="email-notifications-description"
+                    className="mt-1 text-sm leading-6 text-muted-foreground"
+                  >
+                    Receive email when a seating arrangement changes and for important account
+                    announcements.
+                  </p>
+                  <p
+                    className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground"
+                    aria-live="polite"
+                  >
+                    {notificationsLoading
+                      ? 'Loading preference'
+                      : isUpdating
+                        ? 'Saving preference'
+                        : localToggle
+                          ? 'Notifications on'
+                          : 'Notifications off'}
+                  </p>
+                </div>
+                <Switch
+                  id="email-notifications"
+                  checked={localToggle ?? false}
+                  onCheckedChange={handleToggleChange}
+                  disabled={localToggle === null || isUpdating}
+                  aria-label="Email notifications"
+                  aria-describedby="email-notifications-description"
+                />
+              </div>
+            </section>
+          )}
+
+          <section
+            className="overflow-hidden rounded-[12px] border border-destructive/35 bg-card shadow-sm"
+            aria-labelledby="danger-heading"
+          >
+            <div className="flex items-center gap-3 border-b border-destructive/25 bg-destructive/10 px-5 py-4">
+              <AlertTriangle className="h-5 w-5 text-destructive" aria-hidden="true" />
+              <div>
+                <h2
+                  id="danger-heading"
+                  className="font-display text-lg font-medium text-foreground"
+                >
+                  Danger zone
+                </h2>
+                <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-destructive">
+                  Destructive action
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="max-w-xl">
+                <p className="font-medium text-foreground">Delete this account</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  This disables your account, signs you out, and cancels an active subscription.
+                  Some records may be retained under our data policies.
                 </p>
               </div>
               <Button
                 variant="destructive"
                 size="sm"
                 onClick={handleOpenDeleteDialog}
-                className="shrink-0"
+                className="min-h-11 shrink-0 justify-center"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Account
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                Delete account
               </Button>
             </div>
-          </div>
-        </section>
-
-        {/* Subscription Section */}
-        <section className="p-8 bg-card rounded-3xl border border-border shadow-soft">
-          <h2 className="text-xl font-display font-bold mb-6 flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-primary" />
-            Subscription Plan
-          </h2>
-
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 bg-accent/5 rounded-2xl border border-accent/10">
-            {isLoading ? (
-              <div className="flex items-center gap-4 w-full">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <div className="space-y-2 flex-1">
-                  <div className="h-4 bg-muted rounded animate-pulse w-32" />
-                  <div className="h-6 bg-muted rounded animate-pulse w-48" />
-                  <div className="h-4 bg-muted rounded animate-pulse w-96" />
-                </div>
-                <div className="h-10 bg-muted rounded animate-pulse w-32" />
-              </div>
-            ) : (
-              <>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                      Current Plan
-                    </p>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                        isPlus
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      {isPlus ? 'Plus' : 'Free'}
-                    </span>
-                  </div>
-                  <p className="text-2xl font-display font-bold">
-                    {isPlus ? 'Seating Chart Plus' : 'Seating Chart Free'}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2 max-w-md">
-                    {isPlus
-                      ? 'You have access to all premium features including increased arrangement limits and CSV exports.'
-                      : 'Upgrade to Plus for more arrangements, CSV exports, and saved profiles.'}
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  {isPlus ? (
-                    <Button
-                      variant="mint"
-                      onClick={() => openPortal(undefined)}
-                      disabled={isOpeningPortal || isLoading}
-                      className="w-full md:w-auto"
-                    >
-                      {isOpeningPortal ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Opening Portal...
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          Manage Billing
-                        </>
-                      )}
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="playful"
-                      onClick={() => navigate({ to: '/pricing' })}
-                      className="w-full md:w-auto"
-                    >
-                      Upgrade Now
-                    </Button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </section>
-
-        {/* Email Notifications Section - Plus members only */}
-        {isPlus && (
-          <section className="p-8 bg-card rounded-3xl border border-border shadow-soft">
-            <h2 className="text-xl font-display font-bold mb-6 flex items-center gap-2">
-              <Bell className="w-5 h-5 text-primary" />
-              Email Notifications
-            </h2>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-accent/5 rounded-2xl border border-accent/10">
-              <div className="flex-1">
-                <p className="text-base font-semibold text-foreground">
-                  Receive Email Notifications
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Get notified about seating arrangement updates and important announcements via
-                  email.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Switch
-                  checked={localToggle ?? false}
-                  onCheckedChange={handleToggleChange}
-                  disabled={localToggle === null}
-                />
-              </div>
-            </div>
           </section>
-        )}
+        </div>
+
+        <section
+          className="overflow-hidden rounded-[12px] border border-border bg-card shadow-sm lg:sticky lg:top-6"
+          aria-labelledby="subscription-heading"
+        >
+          <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+            <div className="grid h-9 w-9 place-items-center rounded-[10px] border border-border bg-secondary text-primary">
+              <CreditCard className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <div>
+              <h2
+                id="subscription-heading"
+                className="font-display text-lg font-medium text-foreground"
+              >
+                Subscription
+              </h2>
+              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                Billing and plan
+              </p>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div role="status" className="space-y-3 px-5 py-6" aria-live="polite">
+              <span className="sr-only">Loading subscription details</span>
+              <div className="h-3 w-20 rounded bg-muted motion-safe:animate-pulse" />
+              <div className="h-8 w-40 rounded bg-muted motion-safe:animate-pulse" />
+              <div className="h-4 w-full rounded bg-muted motion-safe:animate-pulse" />
+              <div className="h-10 w-full rounded bg-muted motion-safe:animate-pulse" />
+            </div>
+          ) : (
+            <div className="px-5 py-6">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                  Current plan
+                </p>
+                <span
+                  className={`rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] ${
+                    isPlus
+                      ? 'border-primary/25 bg-secondary text-secondary-foreground'
+                      : 'border-border bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {isPlus ? 'Plus' : 'Free'}
+                </span>
+              </div>
+              <p className="mt-4 font-display text-2xl font-medium text-foreground">
+                {isPlus ? 'ClassPrints Plus' : 'ClassPrints Free'}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {isPlus
+                  ? 'Your plan includes increased arrangement limits, reusable class profiles, and CSV exports.'
+                  : 'Upgrade for more arrangements, reusable class profiles, and CSV exports.'}
+              </p>
+
+              {isPlus ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openPortal(undefined)}
+                  disabled={isOpeningPortal}
+                  aria-busy={isOpeningPortal}
+                  className="mt-6 min-h-11 w-full justify-center"
+                >
+                  {isOpeningPortal ? (
+                    <>
+                      <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />
+                      Opening billing…
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="h-4 w-4" aria-hidden="true" />
+                      Manage billing
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => navigate({ to: '/pricing' })}
+                  className="mt-6 min-h-11 w-full justify-center"
+                >
+                  View Plus plans
+                </Button>
+              )}
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* Email Change Dialog */}
       <Dialog
         open={isEmailDialogOpen}
-        onOpenChange={setIsEmailDialogOpen}
-        title="Change Email"
-        description="Enter your new email address. You'll need to confirm it by clicking a link we'll send to your new inbox."
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCloseEmailDialog();
+          }
+        }}
+        title="Change email address"
+        description="Enter the new address you want to use to sign in. We’ll send a confirmation link to that inbox."
         footer={
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={handleCloseEmailDialog}
               disabled={isChangingEmail}
+              className="min-h-11 justify-center"
             >
               Cancel
             </Button>
@@ -364,76 +460,88 @@ export function SettingsPage() {
               variant="primary"
               size="sm"
               onClick={handleChangeEmail}
-              disabled={isChangingEmail || !newEmail || newEmail === user?.email}
+              disabled={isChangingEmail || !newEmail || newEmail === user.email}
+              aria-busy={isChangingEmail}
+              className="min-h-11 justify-center"
             >
               {isChangingEmail ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Updating...
+                  <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />
+                  Updating…
                 </>
               ) : (
-                'Update Email'
+                'Update email'
               )}
             </Button>
           </div>
         }
       >
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="new-email" className="block text-sm font-medium text-foreground mb-2">
-              New Email Address
-            </label>
-            <input
-              id="new-email"
-              type="email"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleChangeEmail();
-                }
-              }}
-              placeholder="Enter your new email"
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent"
-              disabled={isChangingEmail}
-              autoFocus
-            />
-            {emailChangeError && (
-              <p className="mt-2 text-sm text-destructive">{emailChangeError}</p>
-            )}
-            {emailChangeSuccess && (
-              <p className="mt-2 text-sm text-green-600 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" />
-                Email updated successfully! Please check your inbox to confirm.
-              </p>
-            )}
-          </div>
-        </div>
+        <label htmlFor="new-email" className="block text-sm font-medium text-foreground">
+          New email address
+        </label>
+        <input
+          id="new-email"
+          type="email"
+          value={newEmail}
+          onChange={(event) => setNewEmail(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              void handleChangeEmail();
+            }
+          }}
+          placeholder="teacher@school.org"
+          className="mt-2 min-h-11 w-full rounded-[10px] border border-border bg-background px-3 py-2.5 text-foreground outline-none transition placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+          disabled={isChangingEmail}
+          autoComplete="email"
+          autoFocus
+          aria-invalid={emailChangeError ? true : undefined}
+          aria-describedby={
+            emailChangeError
+              ? 'email-change-error'
+              : emailChangeSuccess
+                ? 'email-change-success'
+                : undefined
+          }
+        />
+        {emailChangeError && (
+          <p id="email-change-error" role="alert" className="mt-2 text-sm text-destructive">
+            {emailChangeError}
+          </p>
+        )}
+        {emailChangeSuccess && (
+          <p
+            id="email-change-success"
+            role="status"
+            className="mt-3 flex items-start gap-2 rounded-[10px] border border-primary/25 bg-secondary px-3 py-2.5 text-sm text-secondary-foreground"
+          >
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            Email updated. Check your inbox to confirm the new address.
+          </p>
+        )}
       </Dialog>
 
-      {/* Delete Account Dialog */}
       <Dialog
         open={isDeleteDialogOpen}
         onOpenChange={(open) => {
-          setIsDeleteDialogOpen(open);
           if (!open) {
-            setDeleteConfirmText('');
+            handleCloseDeleteDialog();
           }
         }}
         title={
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="w-5 h-5" />
-            Delete Account
-          </div>
+          <span className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+            Delete account
+          </span>
         }
-        description="This action cannot be undone. This will soft-delete your account and you will be signed out."
+        description="This action cannot be undone. Your account will be disabled, you will be signed out, and an active subscription will be canceled."
         footer={
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={handleCloseDeleteDialog}
               disabled={isDeleting}
+              className="min-h-11 justify-center"
             >
               Cancel
             </Button>
@@ -442,59 +550,64 @@ export function SettingsPage() {
               size="sm"
               onClick={handleDeleteAccount}
               disabled={isDeleting || deleteConfirmText !== 'delete my account'}
+              aria-busy={isDeleting}
+              className="min-h-11 justify-center"
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Deleting...
+                  <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />
+                  Deleting…
                 </>
               ) : (
                 <>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Account
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  Delete account
                 </>
               )}
             </Button>
           </div>
         }
       >
-        <div className="space-y-4">
-          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
-            <p className="text-sm font-medium text-destructive">
-              Warning: This will soft-delete your account. All your data will be marked as deleted
-              but retained in our system.
-            </p>
-          </div>
-
-          <div>
-            <label
-              htmlFor="delete-confirm"
-              className="block text-sm font-medium text-foreground mb-2"
-            >
-              Type{' '}
-              <code className="px-2 py-0.5 bg-muted rounded text-destructive font-bold">
-                delete my account
-              </code>{' '}
-              to confirm
-            </label>
-            <input
-              id="delete-confirm"
-              type="text"
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && deleteConfirmText === 'delete my account') {
-                  handleDeleteAccount();
-                }
-              }}
-              placeholder="Type here to confirm"
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-destructive/50 focus:border-transparent"
-              disabled={isDeleting}
-              autoFocus
-            />
-            {deleteError && <p className="mt-2 text-sm text-destructive">{deleteError.message}</p>}
-          </div>
+        <div className="rounded-[10px] border border-destructive/30 bg-destructive/10 px-4 py-3">
+          <p className="text-sm font-medium text-destructive">
+            Your access cannot be restored from this screen.
+          </p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Account and classroom records may be retained according to our data policies after the
+            profile is disabled.
+          </p>
         </div>
+
+        <label htmlFor="delete-confirm" className="mt-5 block text-sm font-medium text-foreground">
+          Type{' '}
+          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-destructive">
+            delete my account
+          </code>{' '}
+          to confirm
+        </label>
+        <input
+          id="delete-confirm"
+          type="text"
+          value={deleteConfirmText}
+          onChange={(event) => setDeleteConfirmText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && deleteConfirmText === 'delete my account') {
+              handleDeleteAccount();
+            }
+          }}
+          placeholder="delete my account"
+          className="mt-2 min-h-11 w-full rounded-[10px] border border-destructive/35 bg-background px-3 py-2.5 text-foreground outline-none transition placeholder:text-muted-foreground focus-visible:border-destructive focus-visible:ring-2 focus-visible:ring-destructive/25"
+          disabled={isDeleting}
+          autoComplete="off"
+          autoFocus
+          aria-invalid={deleteError ? true : undefined}
+          aria-describedby={deleteError ? 'delete-account-error' : undefined}
+        />
+        {deleteError && (
+          <p id="delete-account-error" role="alert" className="mt-2 text-sm text-destructive">
+            {deleteError.message}
+          </p>
+        )}
       </Dialog>
     </div>
   );

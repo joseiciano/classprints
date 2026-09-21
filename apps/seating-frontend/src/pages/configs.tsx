@@ -1,258 +1,233 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Layout, Plus, Users, Calendar, Clock, MoreVertical, Search } from 'lucide-react';
+import { BookOpen, LayoutGrid, Plus, Search, Users } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { fetchSeatingConfigs, type SeatingConfig } from '../lib/seating-api';
+import { fetchSeatingConfigs } from '../lib/seating-api';
+
+const seatingConfigsQueryKey = ['seating-configs'] as const;
 
 export function ConfigsPage() {
-  const [configs, setConfigs] = useState<SeatingConfig[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: configs = [],
+    error,
+    isFetching,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: seatingConfigsQueryKey,
+    queryFn: () => fetchSeatingConfigs(),
+  });
   const [searchQuery, setSearchQuery] = useState('');
-
-  useEffect(() => {
-    const loadConfigs = async () => {
-      try {
-        const data = await fetchSeatingConfigs();
-        setConfigs(data);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to load configs', err);
-        setError('Unable to load seating configurations.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadConfigs();
-  }, []);
-
+  const normalizedSearch = searchQuery.trim().toLocaleLowerCase();
   const filteredConfigs = configs.filter((config) =>
-    config.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    config.name.toLocaleLowerCase().includes(normalizedSearch),
   );
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const totalStudents = configs.reduce((sum, config) => sum + config.students.length, 0);
 
   return (
-    <section className="space-y-8">
-      {/* Header */}
-      <header className="space-y-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm uppercase tracking-[0.18em] text-muted-foreground">
-              Configuration Management
-            </p>
-            <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
-              Seating Configurations
-            </h1>
-          </div>
-          <Link to="/configs/arrangement">
-            <Button variant="playful" size="md" className="group px-4 py-2">
-              <Plus className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
-              Create New Config
-            </Button>
-          </Link>
+    <section className="space-y-7" aria-labelledby="configs-title">
+      <header className="flex flex-col gap-5 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-2xl">
+          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+            Reusable classroom setup
+          </p>
+          <h1
+            id="configs-title"
+            className="mt-2 font-display text-[32px] font-medium leading-tight text-foreground"
+          >
+            Class profiles
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Save rosters, room layouts, and classroom dynamics so your next seating chart starts
+            with the details already in place.
+          </p>
         </div>
-        <p className="max-w-3xl text-base text-muted-foreground">
-          View and manage your existing seating arrangements. Create new configurations to organize
-          students and seating placements for your events.
-        </p>
+        <Link
+          to="/configs/arrangement"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:w-auto"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          New class profile
+        </Link>
       </header>
 
-      {/* Search Bar */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search configurations..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background shadow-inner focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-[12px] border border-border bg-card px-5 py-4 shadow-sm">
+          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+            Saved profiles
+          </p>
+          <div className="mt-2 flex items-end justify-between gap-4">
+            <p className="font-display text-3xl font-medium tabular-nums text-foreground">
+              {isLoading ? '—' : configs.length}
+            </p>
+            <BookOpen className="h-5 w-5 text-primary" aria-hidden="true" />
+          </div>
+        </div>
+        <div className="rounded-[12px] border border-border bg-card px-5 py-4 shadow-sm">
+          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+            Students across profiles
+          </p>
+          <div className="mt-2 flex items-end justify-between gap-4">
+            <p className="font-display text-3xl font-medium tabular-nums text-foreground">
+              {isLoading ? '—' : totalStudents}
+            </p>
+            <Users className="h-5 w-5 text-primary" aria-hidden="true" />
+          </div>
+        </div>
       </div>
 
-      {/* Stats Summary */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-          <div className="rounded-2xl border border-border bg-card/80 p-6 shadow-card animate-pulse">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10" />
-              <div className="space-y-2">
-                <div className="h-3 w-20 bg-muted rounded" />
-                <div className="h-6 w-12 bg-muted rounded" />
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-border bg-card/80 p-6 shadow-card animate-pulse">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-green-100" />
-              <div className="space-y-2">
-                <div className="h-3 w-24 bg-muted rounded" />
-                <div className="h-6 w-16 bg-muted rounded" />
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-          <div className="rounded-2xl border border-border bg-card/80 p-6 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Layout className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Configs</p>
-                <p className="text-2xl font-bold">{configs.length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-border bg-card/80 p-6 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-                <Users className="w-5 h-5 text-green-700" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Students</p>
-                <p className="text-2xl font-bold">
-                  {configs.reduce((sum, c) => sum + c.students.length, 0)}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Configs List */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">
-            Existing Configurations ({filteredConfigs.length})
-          </h2>
-        </div>
-
-        {error && (
-          <div className="text-center py-16 rounded-2xl border border-destructive/50 bg-destructive/10">
-            <Layout className="w-16 h-16 text-destructive mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Failed to load configurations</h3>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button variant="playful" onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
-          </div>
-        )}
-
-        {!error && isLoading && (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="group rounded-2xl border border-border bg-card/80 p-6 shadow-card animate-pulse"
-              >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="w-12 h-12 rounded-xl bg-muted flex-shrink-0" />
-                    <div className="space-y-2 min-w-0 flex-1">
-                      <div className="h-5 w-48 bg-muted rounded" />
-                      <div className="flex gap-4">
-                        <div className="h-4 w-24 bg-muted rounded" />
-                        <div className="h-4 w-20 bg-muted rounded" />
-                        <div className="h-4 w-28 bg-muted rounded" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="w-10 h-10 bg-muted rounded-lg" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {!error && !isLoading && filteredConfigs.length === 0 ? (
-          <div className="text-center py-16 rounded-2xl border border-border bg-card/50">
-            <Layout className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No configurations found</h3>
-            <p className="text-muted-foreground mb-4">
-              {searchQuery
-                ? 'Try adjusting your search query'
-                : 'Create your first seating configuration to get started'}
+      <section
+        className="overflow-hidden rounded-[12px] border border-border bg-card shadow-sm"
+        aria-labelledby="saved-profiles-title"
+      >
+        <div className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div>
+            <h2
+              id="saved-profiles-title"
+              className="font-display text-lg font-medium text-foreground"
+            >
+              Saved profiles
+            </h2>
+            <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+              {isLoading ? 'Loading' : `${filteredConfigs.length} shown`}
             </p>
-            {!searchQuery && (
-              <Link to="/configs/arrangement">
-                <Button variant="playful">
-                  <Plus className="w-5 h-5" />
-                  Create New Config
-                </Button>
-              </Link>
-            )}
           </div>
-        ) : (
-          !error &&
-          !isLoading && (
-            <div className="grid gap-4">
-              {filteredConfigs.map((config) => (
-                <div
-                  key={config.id}
-                  className="group rounded-2xl border border-border bg-card/80 p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Layout className="w-6 h-6 text-primary" />
-                      </div>
-                      <div className="space-y-1 min-w-0">
-                        <h3 className="text-lg font-semibold truncate">{config.name}</h3>
-                        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1.5">
-                            <Users className="w-4 h-4" />
-                            {config.students.length} students
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <Layout className="w-4 h-4" />
-                            {config.seatingGrid.length * (config.seatingGrid[0]?.length || 0)} seats
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <Clock className="w-4 h-4" />
-                            {formatDate(config.createdAt)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+          <label className="relative block w-full sm:w-72">
+            <span className="sr-only">Search class profiles</span>
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              placeholder="Search profiles"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="min-h-11 w-full rounded-full border border-border bg-background py-2 pl-9 pr-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+            />
+          </label>
+        </div>
 
-                    <div className="flex items-center gap-3">
-                      <button className="p-2 rounded-lg hover:bg-accent/20 transition-colors">
-                        <MoreVertical className="w-5 h-5 text-muted-foreground" />
-                      </button>
+        <div aria-live="polite" aria-busy={isLoading}>
+          {error ? (
+            <div
+              role="alert"
+              className="m-4 rounded-[12px] border border-destructive/30 bg-destructive/10 px-5 py-8 text-center sm:m-5"
+            >
+              <LayoutGrid className="mx-auto h-8 w-8 text-destructive" aria-hidden="true" />
+              <h3 className="mt-3 font-display text-lg font-medium text-foreground">
+                We couldn’t load your profiles
+              </h3>
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                Unable to load your class profiles right now.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-5"
+                onClick={() => void refetch()}
+                disabled={isFetching}
+                aria-busy={isFetching}
+              >
+                {isFetching ? 'Trying again…' : 'Try again'}
+              </Button>
+            </div>
+          ) : isLoading ? (
+            <div className="divide-y divide-border" role="status">
+              <span className="sr-only">Loading class profiles</span>
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="motion-safe:animate-pulse px-4 py-5 sm:px-5">
+                  <div className="flex items-start gap-4">
+                    <div className="h-10 w-10 shrink-0 rounded-[10px] bg-muted" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-2/5 rounded bg-muted" />
+                      <div className="h-3 w-3/5 rounded bg-muted" />
                     </div>
-                  </div>
-
-                  {/* Quick Actions */}
-                  <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-2">
-                    <button className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1.5">
-                      <Layout className="w-4 h-4" />
-                      View Arrangement
-                    </button>
-                    <button className="text-sm font-medium text-foreground hover:text-foreground/80 transition-colors flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4" />
-                      Edit Details
-                    </button>
-                    <button className="text-sm font-medium text-foreground hover:text-foreground/80 transition-colors flex items-center gap-1.5">
-                      <Users className="w-4 h-4" />
-                      Manage Students
-                    </button>
                   </div>
                 </div>
               ))}
             </div>
-          )
-        )}
-      </div>
+          ) : filteredConfigs.length === 0 ? (
+            <div className="px-5 py-14 text-center">
+              <BookOpen className="mx-auto h-9 w-9 text-muted-foreground" aria-hidden="true" />
+              <h3 className="mt-4 font-display text-lg font-medium text-foreground">
+                {normalizedSearch ? 'No matching profiles' : 'No class profiles yet'}
+              </h3>
+              <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+                {normalizedSearch
+                  ? `No profile matches “${searchQuery.trim()}”. Try another classroom or roster name.`
+                  : 'Create a reusable profile for a class roster, its room layout, and the relationships that shape good seating.'}
+              </p>
+              {normalizedSearch ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-5"
+                  onClick={() => setSearchQuery('')}
+                >
+                  Clear search
+                </Button>
+              ) : (
+                <Link
+                  to="/configs/arrangement"
+                  className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  Create a profile
+                </Link>
+              )}
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {filteredConfigs.map((config) => {
+                const seatCount = config.seatingGrid.length * (config.seatingGrid[0]?.length ?? 0);
+
+                return (
+                  <li
+                    key={config.id}
+                    className="px-4 py-5 transition-colors hover:bg-muted/35 sm:px-5"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] border border-border bg-secondary text-secondary-foreground">
+                        <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate font-display text-[17px] font-medium text-foreground">
+                          {config.name}
+                        </h3>
+                        <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <dt className="sr-only">Students</dt>
+                            <Users className="h-3.5 w-3.5" aria-hidden="true" />
+                            <dd className="tabular-nums">{config.students.length} students</dd>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <dt className="sr-only">Seats</dt>
+                            <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
+                            <dd className="tabular-nums">{seatCount} seats</dd>
+                          </div>
+                          <div>
+                            <dt className="sr-only">Created</dt>
+                            <dd>
+                              Created{' '}
+                              {new Date(config.createdAt * 1000).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </section>
     </section>
   );
 }

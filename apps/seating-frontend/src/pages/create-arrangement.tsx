@@ -1,19 +1,11 @@
-import {
-  ChangeEvent,
-  FormEvent,
-  KeyboardEvent,
-  PointerEvent,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { ChangeEvent, KeyboardEvent, PointerEvent, useEffect, useMemo, useState } from 'react';
 import type { SeatingGrid } from '@classprints/seating-shared';
 import { SUBSCRIPTION_LIMITS } from '@classprints/seating-shared';
 import { useMutation } from '@tanstack/react-query';
+import { FormAlert } from '../components/job-panels';
 import { JobResultsSection } from '../components/create-arrangement/job-results-section';
 import { LayoutModeToggle } from '../components/create-arrangement/layout-mode-toggle';
 import { SeatMapPanel } from '../components/create-arrangement/seat-map-panel';
-import { SettingsTabContent } from '../components/create-arrangement/settings-tab-content';
 import { AttendeeInputSection } from '../components/create-arrangement/attendee-input-section';
 import { StudentSelectorList } from '../components/create-arrangement/student-selector-list';
 import { StudentEmptyState } from '../components/create-arrangement/student-empty-state';
@@ -21,12 +13,15 @@ import { StudentDetailHeader } from '../components/create-arrangement/student-de
 import { RelationshipsPanel } from '../components/create-arrangement/relationships-panel';
 import { SeatContendersPanel } from '../components/create-arrangement/seat-contenders-panel';
 import { SubmitTabContent } from '../components/create-arrangement/submit-tab-content';
+import { SummaryPanel } from '../components/create-arrangement/summary-panel';
+import { GridSizeFields } from '../components/create-arrangement/grid-size-fields';
 import { useJobMonitor } from '../hooks/use-job-monitor';
 import { useRandomAssignments } from '../hooks/use-random-assignments';
 import { useRelationships } from '../hooks/use-relationships';
 import { useSeatGrid } from '../hooks/use-seat-grid';
 import { useSeatInteractions } from '../hooks/use-seat-interactions';
 import { useSubscription } from '../hooks/use-subscription';
+import { AI_GENERATION_ENABLED } from '../lib/constants';
 import { GridSize, clamp } from '../lib/arrangement-utils';
 import {
   SeatingApiError,
@@ -40,11 +35,33 @@ const MAX_GRID_SIZE = 12;
 const DEFAULT_GRID: GridSize = { rows: 5, cols: 5 };
 const DEFAULT_RESULTS = 1;
 
+type Mode = 'new' | 'config';
 type Tab = 'settings' | 'students' | 'submit';
 type GenerationMethod = 'programmatic' | 'ai';
 type RelationshipType = 'conflicts' | 'works-well' | 'works-well-strong';
 
-export function CreateArrangementPage() {
+const MODE_COPY: Record<
+  Mode,
+  { crumbRoot: string; crumbCurrent: string; title: string; description: string }
+> = {
+  new: {
+    crumbRoot: 'Charts',
+    crumbCurrent: 'New chart · draft',
+    title: 'Create a new seating chart',
+    description:
+      'List attendees, set your room layout, define your constraints, and generate your seating charts.',
+  },
+  config: {
+    crumbRoot: 'Configs',
+    crumbCurrent: 'Arrangement · draft',
+    title: 'Create from a saved config',
+    description:
+      'List attendees, set your grid, and configure rules for this class, then generate seating arrangements.',
+  },
+};
+
+export function CreateArrangementPage({ mode = 'new' }: { mode?: Mode }) {
+  const copy = MODE_COPY[mode];
   const { isPlus } = useSubscription();
   const limits = isPlus ? SUBSCRIPTION_LIMITS.plus : SUBSCRIPTION_LIMITS.free;
 
@@ -405,11 +422,7 @@ export function CreateArrangementPage() {
     setMaxResults((prev) => (prev === 0 ? DEFAULT_RESULTS : prev));
   };
 
-  const submitJob = (
-    event: FormEvent<HTMLFormElement>,
-    submit: typeof createJobMutation.mutate,
-  ) => {
-    event.preventDefault();
+  const submitJob = (submit: typeof createJobMutation.mutate) => {
     setSubmitError(null);
 
     const validations = [
@@ -477,12 +490,8 @@ export function CreateArrangementPage() {
     });
   };
 
-  // Dispatches to the AI or programmatic pipeline based on the selected generation method.
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) =>
-    submitJob(
-      event,
-      generationMethod === 'ai' ? createAiJobMutation.mutate : createJobMutation.mutate,
-    );
+  const isPending =
+    generationMethod === 'ai' ? createAiJobMutation.isPending : createJobMutation.isPending;
 
   useEffect(() => {
     if (!jobStatus) return;
@@ -492,9 +501,9 @@ export function CreateArrangementPage() {
   }, [jobStatus]);
 
   const allTabs: { id: Tab; label: string }[] = [
-    { id: 'settings', label: '1. Grid & Settings' },
-    { id: 'students', label: '2. Students & Rules' },
-    { id: 'submit', label: '3. Submit' },
+    { id: 'settings', label: 'Layout' },
+    { id: 'students', label: 'Students' },
+    { id: 'submit', label: 'Submit' },
   ];
 
   const tabs =
@@ -515,95 +524,167 @@ export function CreateArrangementPage() {
   }, [layoutMode, activeTab]);
 
   return (
-    <section className="space-y-10">
-      <header className="space-y-4">
-        <p className="text-sm uppercase tracking-[0.18em] text-muted-foreground">
-          Seating Chart Generator{' '}
-        </p>
-        <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
-          Create a New Seating Chart{' '}
-        </h1>
-        <p className="max-w-3xl text-base text-muted-foreground">
-          List attendees, set your room layout, define your room constraints, and we will generate
-          your seating charts.{' '}
-        </p>
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <LayoutModeToggle layoutMode={layoutMode} onChange={setLayoutMode} />
-
-          <nav className="flex gap-1 rounded-xl bg-muted/30 p-1 border border-border">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
-                  activeTab === tab.id
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+    <section aria-label={copy.title}>
+      <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <nav
+            aria-label="Breadcrumb"
+            className="flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground"
+          >
+            <span>{copy.crumbRoot}</span>
+            <span aria-hidden="true">›</span>
+            <span className="text-foreground">{copy.crumbCurrent}</span>
           </nav>
+          <h1 className="mt-2 font-display text-[32px] font-medium leading-tight text-foreground">
+            {copy.title}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{copy.description}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <LayoutModeToggle layoutMode={layoutMode} onChange={setLayoutMode} />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-muted px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+            <i aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+            Draft
+          </span>
         </div>
       </header>
 
-      <div className="min-h-[500px]">
-        {activeTab === 'settings' && (
-          <SettingsTabContent
-            layoutMode={layoutMode}
-            generationMethod={generationMethod}
-            names={names}
-            gridSize={gridSize}
-            gridInputs={gridInputs}
-            maxResults={maxResults}
-            isPlus={isPlus}
-            selectedSeatCount={selectedSeatCount}
-            gridCapacity={gridCapacity}
-            attendeeNames={attendeeNames}
-            nameValidationIssues={nameValidationIssues}
-            onGenerationMethodChange={setGenerationMethod}
-            onNamesChange={setNames}
-            onGridSizeChange={handleGridSizeChange}
-            onGridSizeBlur={handleGridSizeBlur}
-            onMaxResultsChange={handleMaxResultsChange}
-            onMaxResultsBlur={handleMaxResultsBlur}
-            onNextClick={() => setActiveTab(layoutMode === 'random' ? 'submit' : 'students')}
-            onClearGrid={clearGrid}
-            onSeatPointerDown={wrapSeatInteraction(handleSeatPointerDown, 'click')}
-            onSeatPointerEnter={wrapSeatInteraction(handleSeatPointerEnter, 'hover')}
-            onSeatKeyDown={wrapSeatInteraction(handleSeatKeyDown, 'click')}
-            seatGrid={seatGrid}
-            isRandomView={isRandomView}
-            randomAssignments={randomAssignments}
-          />
-        )}
-
-        {activeTab === 'students' && (
-          <div className="space-y-8">
+      <div className="mt-8 grid grid-cols-1 items-start gap-5 md:grid-cols-[300px_minmax(0,1fr)] lg:grid-cols-[300px_minmax(0,1fr)_280px]">
+        {/* Column 1: student roster and selection */}
+        <section
+          aria-label="Students"
+          className="rounded-[12px] border border-line bg-card shadow-card"
+        >
+          <header className="flex items-center justify-between border-b border-line px-4 py-3">
+            <h2 className="text-base font-semibold">Students</h2>
+            <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              {attendeeNames.length} total
+            </span>
+          </header>
+          <div className="space-y-4 p-4">
             <AttendeeInputSection
               names={names}
               attendeeNames={attendeeNames}
               nameValidationIssues={nameValidationIssues}
               onNamesChange={setNames}
             />
+            <StudentSelectorList
+              attendeeNames={attendeeNames}
+              selectedStudentForContenders={selectedStudentForContenders}
+              conflictParseResult={conflictParseResult}
+              worksWellParseResult={worksWellParseResult}
+              worksWellStrongParseResult={worksWellStrongParseResult}
+              seatContenders={seatContenders}
+              onSelectStudent={setSelectedStudentForContenders}
+            />
+          </div>
+        </section>
 
-            <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
-              <StudentSelectorList
-                attendeeNames={attendeeNames}
-                selectedStudentForContenders={selectedStudentForContenders}
-                conflictParseResult={conflictParseResult}
-                worksWellParseResult={worksWellParseResult}
-                worksWellStrongParseResult={worksWellStrongParseResult}
-                seatContenders={seatContenders}
-                onSelectStudent={setSelectedStudentForContenders}
+        {/* Column 2: primary seat map / work area */}
+        <section
+          aria-label="Work area"
+          className="rounded-[12px] border border-line bg-card shadow-card"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+            <nav
+              aria-label="Builder steps"
+              className="inline-flex rounded-full border border-line bg-muted p-1"
+            >
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-current={activeTab === tab.id ? 'step' : undefined}
+                  className={`rounded-full px-4 py-1.5 text-[13px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    activeTab === tab.id
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <i aria-hidden="true" className="h-2.5 w-2.5 rounded-[3px] bg-primary" />
+                Seated
+              </span>
+              <span className="flex items-center gap-1.5">
+                <i
+                  aria-hidden="true"
+                  className="h-2.5 w-2.5 rounded-[3px] border border-accent bg-accent"
+                />
+                Contender
+              </span>
+              <span className="flex items-center gap-1.5">
+                <i
+                  aria-hidden="true"
+                  className="h-2.5 w-2.5 rounded-[3px] border border-dashed border-line"
+                />
+                Empty
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-5 p-4 sm:p-5">
+            {activeTab === 'settings' && (
+              <GridSizeFields
+                idPrefix="grid"
+                minSize={MIN_GRID_SIZE}
+                maxSize={MAX_GRID_SIZE}
+                rowsValue={gridInputs.rows}
+                colsValue={gridInputs.cols}
+                onRowsChange={handleGridSizeChange('rows')}
+                onRowsBlur={handleGridSizeBlur('rows')}
+                onColsChange={handleGridSizeChange('cols')}
+                onColsBlur={handleGridSizeBlur('cols')}
               />
+            )}
 
-              <div className="space-y-6">
+            <SeatMapPanel
+              seatGrid={seatGrid}
+              gridSize={gridSize}
+              isRandomView={isRandomView}
+              randomAssignments={randomAssignments}
+              onClearGrid={clearGrid}
+              onSeatPointerDown={wrapSeatInteraction(handleSeatPointerDown, 'click')}
+              onSeatPointerEnter={wrapSeatInteraction(handleSeatPointerEnter, 'hover')}
+              onSeatKeyDown={wrapSeatInteraction(handleSeatKeyDown, 'click')}
+              selectedStudentForContenders={selectedStudentForContenders}
+              seatContenders={seatContenders}
+            />
+
+            {isRandomView && randomAssignments.some((row) => row.some(Boolean)) && (
+              <div className="rounded-[12px] border border-line bg-muted/40 p-4">
+                <h3 className="mb-2 text-sm font-semibold">Random assignment preview</h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {randomAssignments.flatMap((row, rowIndex) =>
+                    row.map((name, colIndex) =>
+                      name ? (
+                        <div
+                          key={`${rowIndex}-${colIndex}`}
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <span>{name}</span>
+                          <span className="font-mono text-[11px] text-muted-foreground">
+                            {rowIndex + 1}-{colIndex + 1}
+                          </span>
+                        </div>
+                      ) : null,
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'students' && (
+              <div className="space-y-4">
                 {!selectedStudentForContenders ? (
                   <StudentEmptyState onSubmitTabClick={() => setActiveTab('submit')} />
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     <StudentDetailHeader
                       selectedStudent={selectedStudentForContenders}
                       activeSubTab={activeStudentSubTab}
@@ -628,79 +709,181 @@ export function CreateArrangementPage() {
                         onToggleRelationship={toggleRelationship}
                       />
                     ) : (
-                      <>
-                        <SeatContendersPanel selectedStudent={selectedStudentForContenders} />
-                        <SeatMapPanel
-                          seatGrid={seatGrid}
-                          gridSize={gridSize}
-                          isRandomView={isRandomView}
-                          randomAssignments={randomAssignments}
-                          onClearGrid={clearGrid}
-                          onSeatPointerDown={wrapSeatInteraction(handleSeatPointerDown, 'click')}
-                          onSeatPointerEnter={wrapSeatInteraction(handleSeatPointerEnter, 'hover')}
-                          onSeatKeyDown={wrapSeatInteraction(handleSeatKeyDown, 'click')}
-                          selectedStudentForContenders={selectedStudentForContenders}
-                          seatContenders={seatContenders}
-                        />
-                      </>
+                      <SeatContendersPanel selectedStudent={selectedStudentForContenders} />
                     )}
                   </div>
                 )}
+
+                <div className="flex justify-center border-t border-line pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('submit')}
+                    disabled={attendeeNames.length === 0}
+                    className="rounded-full bg-primary px-8 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Proceed to submit
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="flex justify-center pt-8 border-t border-border">
-              <button
-                onClick={() => setActiveTab('submit')}
-                disabled={attendeeNames.length === 0}
-                className="rounded-full bg-primary px-12 py-4 text-lg font-bold text-primary-foreground shadow-soft transition hover:bg-primary/90 disabled:opacity-50"
-              >
-                Proceed to Submit
-              </button>
-            </div>
+            {activeTab === 'submit' && (
+              <SubmitTabContent
+                layoutMode={layoutMode}
+                generationMethod={generationMethod}
+                attendeeNames={attendeeNames}
+                selectedSeatCount={selectedSeatCount}
+                conflictSummary={conflictSummary}
+                worksWellSummary={worksWellSummary}
+                worksWellStrongSummary={worksWellStrongSummary}
+                submitError={submitError}
+                isPending={isPending}
+                onSubmit={() =>
+                  submitJob(
+                    generationMethod === 'ai'
+                      ? createAiJobMutation.mutate
+                      : createJobMutation.mutate,
+                  )
+                }
+                onGenerateRandom={generateRandomAssignments}
+                onBackToSettings={() => setActiveTab('settings')}
+                isSubmitDisabled={isPending}
+              />
+            )}
           </div>
-        )}
+        </section>
 
-        {activeTab === 'submit' && (
-          <SubmitTabContent
-            layoutMode={layoutMode}
-            generationMethod={generationMethod}
-            attendeeNames={attendeeNames}
+        {/* Column 3: summary and generation controls */}
+        <div className="space-y-4 md:col-span-2 lg:col-span-1">
+          <SummaryPanel
+            attendeeCount={attendeeNames.length}
             selectedSeatCount={selectedSeatCount}
-            conflictSummary={conflictSummary}
-            worksWellSummary={worksWellSummary}
-            worksWellStrongSummary={worksWellStrongSummary}
-            submitError={submitError}
-            isPending={
-              generationMethod === 'ai' ? createAiJobMutation.isPending : createJobMutation.isPending
-            }
-            onSubmit={() => {
-              const mockEvent = { preventDefault: () => {} } as FormEvent<HTMLFormElement>;
-              handleSubmit(mockEvent);
-            }}
-            onGenerateRandom={generateRandomAssignments}
-            onBackToSettings={() => setActiveTab('settings')}
-            isSubmitDisabled={
-              generationMethod === 'ai' ? createAiJobMutation.isPending : createJobMutation.isPending
-            }
+            gridCapacity={gridCapacity}
+            rows={gridSize.rows}
+            cols={gridSize.cols}
+            conflicts={conflictSummary.totalConflicts}
+            partners={worksWellSummary.totalPartners}
+            strongPartners={worksWellStrongSummary.totalPartners}
           />
-        )}
+
+          <section
+            aria-label="Generate"
+            className="rounded-[12px] border border-line bg-card shadow-card"
+          >
+            <header className="border-b border-line px-4 py-3">
+              <h2 className="text-base font-semibold">Generate</h2>
+            </header>
+            <div className="space-y-4 p-4">
+              {layoutMode === 'custom' && (
+                <fieldset className="space-y-2">
+                  <legend className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                    Method
+                  </legend>
+                  {AI_GENERATION_ENABLED && isPlus ? (
+                    <div className="inline-flex overflow-hidden rounded-full border border-line">
+                      {(['programmatic', 'ai'] as const).map((method, index) => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setGenerationMethod(method)}
+                          aria-pressed={generationMethod === method}
+                          className={`px-3.5 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                            index > 0 ? 'border-l border-line' : ''
+                          } ${
+                            generationMethod === method
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {method === 'programmatic' ? 'Algorithmic' : 'AI assist'}
+                        </button>
+                      ))}
+                    </div>
+                  ) : AI_GENERATION_ENABLED ? (
+                    <>
+                      <p className="text-sm font-medium text-foreground">Algorithmic</p>
+                      <p className="text-xs font-medium text-primary">
+                        AI-assisted generation is available on the Plus plan.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm font-medium text-foreground">Algorithmic</p>
+                  )}
+                </fieldset>
+              )}
+
+              <fieldset className="space-y-2">
+                <label
+                  htmlFor="max-results"
+                  className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground"
+                >
+                  Result options
+                </label>
+                <input
+                  id="max-results"
+                  type="number"
+                  min={1}
+                  max={limits.maxResultsPerRun}
+                  value={maxResults}
+                  onChange={handleMaxResultsChange}
+                  onBlur={handleMaxResultsBlur}
+                  className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <p className="text-xs text-muted-foreground">
+                  1–{limits.maxResultsPerRun} per run.
+                  {!isPlus && (
+                    <span className="mt-1 block font-medium text-primary">
+                      Plus allows up to {SUBSCRIPTION_LIMITS.plus.maxResultsPerRun}.
+                    </span>
+                  )}
+                </p>
+              </fieldset>
+
+              {submitError && <FormAlert tone="error">{submitError}</FormAlert>}
+
+              {layoutMode === 'random' ? (
+                <button
+                  type="button"
+                  onClick={generateRandomAssignments}
+                  disabled={attendeeNames.length === 0 || selectedSeatCount === 0}
+                  className="w-full rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Generate random seating
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    submitJob(
+                      generationMethod === 'ai'
+                        ? createAiJobMutation.mutate
+                        : createJobMutation.mutate,
+                    )
+                  }
+                  disabled={isPending}
+                  className="w-full rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isPending ? 'Generating…' : 'Generate chart'}
+                </button>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
 
-      <JobResultsSection
-        jobSummary={jobSummary}
-        jobStatus={jobStatus}
-        jobResults={jobResults}
-        statusError={statusError}
-        isRefreshing={isRefreshing}
-        isAutoRefreshing={isAutoRefreshing}
-        onRefresh={refreshJob}
-        fallbackCols={submittedCols ?? gridSize.cols}
-        seatGrid={submittedSeatGrid}
-      />
-
-      {/* Hidden form to handle submission logic if needed */}
-      <form onSubmit={handleSubmit} className="hidden" />
+      <div className="mt-8">
+        <JobResultsSection
+          jobSummary={jobSummary}
+          jobStatus={jobStatus}
+          jobResults={jobResults}
+          statusError={statusError}
+          isRefreshing={isRefreshing}
+          isAutoRefreshing={isAutoRefreshing}
+          onRefresh={refreshJob}
+          fallbackCols={submittedCols ?? gridSize.cols}
+          seatGrid={submittedSeatGrid}
+        />
+      </div>
     </section>
   );
 }
