@@ -1,12 +1,10 @@
 export interface WorkerClientConfig {
   baseUrlEnvKeys: string[];
-  localDevPort: number;
   apiPrefix?: string;
 }
 
 const defaultWorkerClientConfig: WorkerClientConfig = {
   baseUrlEnvKeys: ['WORKER_BASE_URL', 'API_BASE_URL'],
-  localDevPort: 8787,
   apiPrefix: '',
 };
 

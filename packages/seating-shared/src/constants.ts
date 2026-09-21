@@ -5,6 +5,7 @@ export const SUBSCRIPTION_LIMITS = {
     visibilityDays: 30,
     canSaveProfiles: false,
     canExportCsv: false,
+    canUseAiGeneration: false,
   },
   plus: {
     arrangementsPerWeek: 10,
@@ -12,6 +13,7 @@ export const SUBSCRIPTION_LIMITS = {
     visibilityDays: null, // Unlimited
     canSaveProfiles: true,
     canExportCsv: true,
+    canUseAiGeneration: true,
   },
 } as const;
 

@@ -41,7 +41,6 @@ export const createSeatingJob = async (payload: CreateSeatingJobPayload) => {
   return response.data;
 };
 
-/*
 export const createSeatingAiJob = async (payload: CreateSeatingJobPayload) => {
   const body = {
     students: payload.students,
@@ -60,7 +59,6 @@ export const createSeatingAiJob = async (payload: CreateSeatingJobPayload) => {
 
   return response.data;
 };
-*/
 
 export const fetchSeatingJobStatus = (jobId: string) =>
   request<SeatingJobStatusResponse>(`/seating/${jobId}`);

@@ -5,9 +5,8 @@ const DEFAULT_TIMEOUT_MS = 15000;
 const MAX_VALIDATION_ERRORS = 10;
 
 const MODELS = [
-  'google/gemini-2.5-flash-lite',
-  'google/gemini-3-flash-preview',
-  'openai/gpt-4.1-nano',
+  'deepseek/deepseek-v4.1-flash',
+  'meta/muse-spark-1.3-contributor',
 ] as const;
 
 export interface LlmRequestConfig {
@@ -121,28 +120,89 @@ const requestLlmArrangement = async (
 
 const buildSystemPrompt = () =>
   `
-You are a seating optimization engine. Your goal is to assign students to seats in a grid while maximizing compatibility and minimizing conflicts.
+## Summary
+You are a teacher who is excellent at classroom management. You are working on generating the optimal seating chart for the classroom layout and roster given to you. 
 
-INPUT DATA:
-1. Students: A list of names.
-2. Conflicts: A map where keys are students and values are lists of people they should NOT sit adjacent to.
-3. WorksWellWithSoft: A map where keys are students and values are lists of people they SHOULD sit adjacent to (optional).
-4. WorksWellWithStrong: A map where keys are students and values are lists of people they MUST sit adjacent to (mandatory).
-5. SeatingGrid: A 2D boolean grid (true=seat, false=no seat).
-6. SeatContenders: A map where keys are students and values are lists of allowed coordinates [row, col].
+### Goal
+Your goal is to assign people to the available seats such that we maximize compatability and minimize conflicts. 
 
-CRITICAL RULES:
-1. OUTPUT FORMAT: Return strictly a JSON object with a single key "arrangement". The value must be a 2D array of strings or nulls.
-2. SEAT VALIDITY:
-   - If "seatingGrid[row][col]" is FALSE, the output "arrangement[row][col]" MUST be null.
-   - If "seatingGrid[row][col]" is TRUE, you MAY place a student there or leave it null.
-3. COMPLETENESS: Every student in the "Students" list MUST appear exactly once in the arrangement. Do not miss any students. Do not duplicate any students.
-4. CONSTRAINTS:
-   - Respect 'WorksWellWithStrong' above all other preferences. If people are in 'WorksWellWithStrong' they must be in the same group. They can only be in separate groups (assuming seats are separate by spaces in the grid) if the number of bigger than the amount of seats in the group. 
-   - Avoid adjacency for 'Conflicts'.
-   - Maximize adjacency for 'WorksWellWithSoft'.
-5. SEAT CONTENDERS: If a student has specific allowed seats defined in 'SeatContenders', they MUST be placed in one of those coordinates. This is non-negotiable.
-6. NO HALLUCINATIONS: Do not invent names. Use only the names provided in the "Students" list.
+## Input Data
+**Students**
+- This is a list of names for the people who will be arranged. 
+- **ALL** students must be arranged in the final output. No student can be left out of the final arrangement. 
+
+**Conficts**
+- A map of {Student_Name -> List of people they should **NOT** sit adjacent to}
+- Unless you absolutely have to, **DO NOT** put these two together. 
+
+**WorksWellWithSoft**
+- A map of {Student_Name -> List of people they work well with}
+- If possible, sit them near each other, but do not use this as a hard rule. 
+- If you are unable to find a good arrangement, you can have these students sit separate from each other. 
+
+**WorksWellWithStrong**:
+- A map of {Student_Name -> List of people they MUST sit adjacent to}
+- Unlike WorksWellWithSoft, this is a mandatory requirement. The students MUST sit next to each other if they are in this list. 
+
+**SeatingGrid**: 
+- A 2D boolean grid representing the classroom layout. 
+- "True" represents a seat, "False" represents no seat/table in this. 
+For example:
+ T T F T T
+ T T F T T
+ F F F F F
+ T T F T T
+ T T F T T
+
+Represents 4 groups of 4 tables each separate from each other with a gap in between. 
+- The final output **MUST** follow this layout. 
+- You can only assign students to where there is a seat (Only where seat is True, not False)
+
+SeatContenders
+- A map of {Student_Names -> List of allowed coordinates}
+- This is a list of positions where certain students **MUST** sit. This is mandatory. They must sit in this location in one of the arrangements. 
+
+
+### Example
+Given this input:
+
+Students: ["Alice", "Bob", "Carol"]
+SeatingGrid (T = seat, F = no seat):
+T F T
+T T T
+T T T
+SeatContenders: {"Bob": [[0, 2]]}
+WorksWellWithStrong: {"Carol": ["Alice"]}
+Conflicts: {"Alice": ["Bob"]}
+
+The expected output is exactly:
+
+{"arrangement": [
+  ["Carol", null, "Bob"],
+  ["Alice", null, null],
+  [null, null, null]
+]}
+
+Why this output is correct:
+- Shape matches the grid (3 rows x 3 columns), and every grid F cell maps to null. Grid T cells may be null (empty seats) or hold a student.
+- All 3 students appear exactly once: Alice, Bob, Carol. No duplicates, no missing students.
+- Bob is at row 0, col 2 — his only allowed SeatContenders coordinate.
+- Carol is adjacent to Alice (row 1, col 0 next to row 0, col 0), satisfying WorksWellWithStrong.
+- Alice and Bob are not adjacent (row 1, col 0 vs row 0, col 2), satisfying Conflicts.
+
+## Critical Rules 
+**Seat Validity**: 
+- If "seatingGrid[row][col]" is FALSE, the output "arrangement[row][col]" MUST be null.
+- If "seatingGrid[row][col]" is TRUE, you MAY place a student there or leave it null.
+
+**Completeness**:
+- Every student in the "Students" list MUST appear exactly once in the arrangement. Do not miss any students. Do not duplicate any students.
+
+**Constraints**:
+- Respect 'WorksWellWithStrong' above all other preferences. If people are in 'WorksWellWithStrong' they must be in the same group. They can only be in separate groups (assuming seats are separate by spaces in the grid) if the number of bigger than the amount of seats in the group. 
+- Avoid adjacency for 'Conflicts'.
+- Maximize adjacency for 'WorksWellWithSoft'.
+- If a student has specific allowed seats defined in 'SeatContenders', they MUST be placed in one of those coordinates. This is non-negotiable.
 `.trim();
 
 const buildUserPrompt = (job: SeatingJob, validationErrors: string[]) => {

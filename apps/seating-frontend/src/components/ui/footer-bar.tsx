@@ -12,27 +12,27 @@ export const FooterBar = ({
   className = '',
 }: FooterBarProps) => {
   return (
-    <footer className={`bg-transparent py-6 w-full ${className}`.trim()}>
-      <div className="mx-auto max-w-1280 px-4 text-center">
-        <p className="m-0 font-sans text-sm text-muted-foreground">
-          © {year ?? new Date().getFullYear()} {brand}. All rights reserved.
+    <footer className={`w-full border-t border-border bg-transparent ${className}`.trim()}>
+      <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-3 px-4 py-6 text-[13px] text-ink-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <p className="m-0">
+          © {year ?? new Date().getFullYear()} {brand}
         </p>
-        <div className="flex justify-center gap-4 mt-2">
+        <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2">
           {(
             links ?? [
-              { label: 'Terms of Service', href: '/terms-of-service' },
-              { label: 'Privacy Policy', href: '/privacy-policy' },
+              { label: 'Terms', href: '/terms-of-service' },
+              { label: 'Privacy', href: '/privacy-policy' },
             ]
           ).map((link) => (
             <a
               key={link.label}
               href={link.href}
-              className="text-primary no-underline font-sans text-sm font-semibold hover:opacity-80 transition-opacity"
+              className="underline-offset-4 transition-colors hover:text-foreground hover:underline"
             >
               {link.label}
             </a>
           ))}
-        </div>
+        </nav>
       </div>
     </footer>
   );

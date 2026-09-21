@@ -1,4 +1,10 @@
-import type { AnalyticsEngineDataset, Hyperdrive, Queue, RateLimit } from '@cloudflare/workers-types';
+import type {
+  AnalyticsEngineDataset,
+  Hyperdrive,
+  Queue,
+  RateLimit,
+  SendEmail,
+} from '@cloudflare/workers-types';
 import type { SeatingJobQueueMessage } from '@classprints/seating-shared';
 
 export interface SeatingWorkerBindings {
@@ -21,8 +27,9 @@ export interface SeatingWorkerBindings {
   API_RATELIMITER?: RateLimit;
   SEATING_JOBS: Queue<SeatingJobQueueMessage>;
   ANALYTICS?: AnalyticsEngineDataset;
-  RESEND_API_KEY?: string;
-  RESEND_FROM_EMAIL?: string;
+  EMAIL: SendEmail;
+  EMAIL_FROM_ADDRESS: string;
+  EMAIL_FROM_NAME: string;
 }
 
 export interface UserVariables {

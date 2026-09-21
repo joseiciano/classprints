@@ -352,10 +352,10 @@ const processLlmJob = async (
   const maxResults = Math.max(1, job.maxResults);
   let resultsCount = job.resultsCount;
   const start = Date.now();
-  const CONCURRENCY_LIMIT = 3;
 
-  // We loop until we have enough results or run out of time
-  // Each iteration processes a batch of concurrent requests
+  // Cost control: exactly one LLM request per arrangement, issued sequentially.
+  // Each request yields at most one arrangement (internal retries within
+  // generateLlmArrangement only re-attempt the same single arrangement).
   while (resultsCount < maxResults) {
     const timeSpent = Date.now() - start;
     // Check if we have enough time for a full timeout duration + buffer
@@ -364,45 +364,22 @@ const processLlmJob = async (
       break;
     }
 
-    const remainingNeeded = maxResults - resultsCount;
-    const batchSize = Math.min(remainingNeeded, CONCURRENCY_LIMIT);
-    console.log(`Starting batch of ${batchSize} LLM requests for job ${job.id}`);
+    console.log(`Starting LLM request ${resultsCount + 1}/${maxResults} for job ${job.id}`);
 
-    const tasks = Array.from({ length: batchSize }).map(() =>
-      generateLlmArrangement(job, { apiKey: env.LLM_API_KEY! }, 3),
-    );
-
-    const outcomes = await Promise.allSettled(tasks);
-    let batchSuccesses = 0;
-
-    for (const outcome of outcomes) {
-      if (outcome.status === 'fulfilled') {
-        const arrangement = outcome.value;
-        const inserted = await store.saveArrangement(job.id, arrangement, 1);
-        metrics.trackArrangementSaved(job.id, 1, !inserted);
-        if (inserted) {
-          batchSuccesses += 1;
-          resultsCount += 1;
-        }
-      } else {
-        const errorMessage =
-          outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason);
-        console.warn(`One LLM request in batch failed for job ${job.id}:`, errorMessage);
-        // We log warnings but don't fail the whole job yet, unless we end up with 0 results total
+    try {
+      const arrangement = await generateLlmArrangement(job, { apiKey: env.LLM_API_KEY! }, 3);
+      const inserted = await store.saveArrangement(job.id, arrangement, 1);
+      metrics.trackArrangementSaved(job.id, 1, !inserted);
+      if (inserted) {
+        resultsCount += 1;
       }
-    }
-
-    // If the entire batch failed, we might want to stop early to avoid wasting resources on guaranteed failures
-    // (e.g. invalid API key or persistent 400s).
-    // However, transient network issues might affect one batch and not the next.
-    // For now, we continue unless we've made NO progress and hit specific fatal errors?
-    // Actually, simply checking if batchSuccesses === 0 could be a signal, but with temperature > 0, retries might work.
-    // Given the time budget check at the top, we will naturally stop when time runs out.
-
-    // Optimization: If we got 0 successes in a batch of 3, maybe we should break to avoid spin-looping?
-    // Let's assume if ALL failed, it's bad.
-    if (batchSuccesses === 0 && batchSize > 0) {
-      console.error(`Entire batch of ${batchSize} failed for job ${job.id}. Stopping processing.`);
+      // A duplicate result does not count toward maxResults; the loop issues
+      // another request, bounded by the time budget check above.
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn(`LLM request failed for job ${job.id}:`, errorMessage);
+      // A fully failed request (all model/attempt retries exhausted) stops the
+      // loop; the job completes with whatever arrangements were saved so far.
       break;
     }
   }

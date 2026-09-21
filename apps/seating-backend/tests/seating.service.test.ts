@@ -3,6 +3,7 @@ import { ZodError } from 'zod';
 import type { InsertSeatingJob, SeatingRepository } from '../src/seating/seating.db';
 import type { SeatingJob, SeatingResult } from '@classprints/seating-shared';
 import { SeatingService } from '../src/seating/seating.service';
+import { HttpError } from '../src/lib/http-error';
 import type { BillingService } from '@classprints/server/billing';
 
 class InMemorySeatingRepository implements SeatingRepository {
@@ -328,5 +329,38 @@ describe('SeatingService', () => {
     expect(results).not.toBeNull();
     expect(results?.results).toHaveLength(1);
     expect(results?.results[0].fitnessScore).toBeCloseTo(0.9);
+  });
+
+  it('rejects AI (LLM) generation for free tier subscribers', async () => {
+    billing.getSubscription = vi.fn().mockResolvedValue({ tier: 'free' });
+
+    expect.assertions(3);
+    try {
+      await service.createJob({ ...baseRequest, algorithm: 'llm' });
+    } catch (error) {
+      expect(error).toBeInstanceOf(HttpError);
+      expect((error as HttpError).status).toBe(403);
+      expect((error as HttpError).message).toContain('Plus tier');
+      return;
+    }
+    throw new Error('Expected AI generation entitlement check to fail');
+  });
+
+  it('allows AI (LLM) generation for Plus tier subscribers', async () => {
+    billing.getSubscription = vi.fn().mockResolvedValue({ tier: 'plus' });
+
+    const { job } = await service.createJob({ ...baseRequest, algorithm: 'llm' });
+
+    expect(job.algorithm).toBe('llm');
+    expect(queueSend).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows genetic algorithm for free tier subscribers', async () => {
+    billing.getSubscription = vi.fn().mockResolvedValue({ tier: 'free' });
+
+    const { job } = await service.createJob({ ...baseRequest, results: 1 });
+
+    expect(job.algorithm).toBe('genetic');
+    expect(queueSend).toHaveBeenCalledTimes(1);
   });
 });

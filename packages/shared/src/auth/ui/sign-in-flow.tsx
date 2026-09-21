@@ -29,6 +29,7 @@ export interface SignInFlowProps extends SignInFlowHandlers {
   copy?: AuthCopy;
   title?: ReactNode;
   subtitle?: ReactNode;
+  notice?: ReactNode;
   description?: ReactNode;
   eyebrow?: ReactNode;
   submitLabel?: string;
@@ -67,6 +68,7 @@ export function SignInFlow({
   copy,
   title,
   subtitle,
+  notice,
   description,
   eyebrow,
   submitLabel,
@@ -236,6 +238,16 @@ export function SignInFlow({
             </p>
           ) : null}
         </header>
+
+        {notice ? (
+          <div
+            className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-medium text-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            {notice}
+          </div>
+        ) : null}
 
         {globalError ? (
           <div
