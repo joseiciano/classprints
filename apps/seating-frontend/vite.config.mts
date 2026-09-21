@@ -22,5 +22,13 @@ export default defineConfig({
   },
   preview: {
     port: 4174,
+    // Same-origin /api proxy, matching `server.proxy`, so the built SPA talks
+    // to the API worker the same way the deployed asset worker does.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+      },
+    },
   },
 });

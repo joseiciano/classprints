@@ -1,8 +1,9 @@
 {
   // ClassPrints frontend — Workers static assets serving the Vite build (TASK-003,
   // ALT-007 preferred option). Top-level = staging, env.production = production.
-  // API origin is baked at build time via VITE_SEATING_API_URL (see .env.example);
-  // no runtime env vars needed here.
+  // The API is reached same-origin: /api/* is forwarded to classprints-api via a
+  // service binding below, so auth cookies are first-party and sessions survive
+  // a page refresh. No build-time API URL is baked into the bundle.
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "classprints-web",
   "main": "worker/index.ts",
@@ -17,6 +18,12 @@
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "single-page-application"
   },
+  "services": [
+    {
+      "binding": "API",
+      "service": "classprints-api",
+    },
+  ],
   "env": {
     "production": {
       "name": "classprints-web",
@@ -25,6 +32,12 @@
         {
           "pattern": "classprints.app",
           "custom_domain": true
+        }
+      ],
+      "services": [
+        {
+          "binding": "API",
+          "service": "classprints-api",
         }
       ]
     }

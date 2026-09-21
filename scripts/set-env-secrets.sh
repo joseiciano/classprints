@@ -45,7 +45,7 @@ REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null) || {
   exit 1
 }
 
-# Secrets managed by this pipeline (vars are separate — see VITE_SEATING_API_URL).
+# Secrets managed by this pipeline.
 SECRETS="CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID DATABASE_URL \
 BETTER_AUTH_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET RESEND_API_KEY LLM_API_KEY"
 
@@ -71,16 +71,6 @@ for key in $SECRETS; do
     failed=1
   fi
 done
-
-# VITE_SEATING_API_URL is public build-time config -> GitHub Environment VARIABLE.
-if [ -n "${VITE_SEATING_API_URL:-}" ]; then
-  if gh variable set VITE_SEATING_API_URL --env "$ENVIRONMENT" --body "$VITE_SEATING_API_URL" >/dev/null 2>&1; then
-    echo "  VITE_SEATING_API_URL: set (variable)"
-  else
-    echo "  VITE_SEATING_API_URL: FAILED" >&2
-    failed=1
-  fi
-fi
 
 if [ "$failed" -ne 0 ]; then
   echo "==> some secrets failed to set" >&2
