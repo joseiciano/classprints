@@ -2,7 +2,6 @@ import Stripe from 'stripe';
 import type { Sql } from '../db/sql';
 import { HttpError } from '../http';
 import { BillingRepository } from './billing-repository';
-import { isPlusAllowlistedEmail } from './allowlist';
 import type { BillingPlan, BillingSubscriptionResponse, BillingSubscriptionStatus } from './types';
 
 export interface StripePriceConfig {
@@ -92,11 +91,6 @@ export class BillingService {
   }
 
   async getSubscriptionStatus(userId: string): Promise<BillingSubscriptionStatus> {
-    const email = await this.repository.getEmailByUserId(userId);
-    if (isPlusAllowlistedEmail(email)) {
-      return 'active';
-    }
-
     const subscription = await this.repository.getSubscriptionByUserId(userId);
     if (!subscription) {
       return 'none';
@@ -107,13 +101,7 @@ export class BillingService {
 
   async getSubscription(userId: string): Promise<BillingSubscriptionResponse> {
     const subscription = await this.repository.getSubscriptionByUserId(userId);
-    const email = await this.repository.getEmailByUserId(userId);
-    const allowlisted = isPlusAllowlistedEmail(email);
-    const status = allowlisted
-      ? 'active'
-      : subscription
-        ? this.mapStripeStatus(subscription.status)
-        : 'none';
+    const status = subscription ? this.mapStripeStatus(subscription.status) : 'none';
     const tier = status === 'active' ? 'plus' : 'free';
     const planId = this.getPlanIdFromPriceId(subscription?.price_id ?? null);
 
