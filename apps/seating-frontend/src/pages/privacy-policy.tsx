@@ -1,168 +1,242 @@
+import { Link } from '@tanstack/react-router';
 import { SUPPORT_EMAIL } from '../lib/constants';
 
-const lastReviewed = 'January 15, 2025';
+const lastUpdated = 'September 20, 2026';
 
-const sections = [
-  {
-    title: 'Information We Collect',
-    summary:
-      'We collect the information you provide when you create an account and use classroom seating tools. This includes account credentials handled by our authentication provider, student names, seating preferences, saved configurations, and limited activity logs.',
-    items: [
-      {
-        title: 'You control classroom data',
-        description:
-          'You decide which student names, relationship preferences, and seating arrangements to provide. We process that information only to deliver the service and never sell or publish it.',
-      },
-      {
-        title: 'Operational data',
-        description:
-          'Saved configurations, arrangement jobs, notification preferences, and limited event records help us generate seating charts, deliver updates, and maintain the service.',
-      },
-      {
-        title: 'Support communications',
-        description: `If you email ${SUPPORT_EMAIL} we retain that conversation history to respond and improve the product.`,
-      },
-    ],
-  },
-  {
-    title: 'How We Use Information',
-    summary:
-      'Data is used solely to provide optimal generated layouts for our users and to provide a smooth experience on our service.',
-    items: [
-      {
-        title: 'Service delivery',
-        description:
-          'Row level security guarantees data is only accessible by the account owner for whom the data belongs to. We serve as minimal data as we can when we can.',
-      },
-      {
-        title: 'Communication and notifications',
-        description:
-          'Your notification preferences record whether you receive service emails. We only email you about account activity, seating jobs, or important product updates.',
-      },
-      {
-        title: 'Product safety',
-        description:
-          'We monitor aggregated usage and job activity to detect abuse, investigate errors, and maintain rate limits.',
-      },
-    ],
-  },
-  {
-    title: 'How We Share Information',
-    summary:
-      'We do not sell personal data. Information is shared only with service providers that operate ClassPrints or when required by law.',
-    items: [
-      {
-        title: 'Infrastructure partners',
-        description:
-          'Hosting, database, authentication, and email delivery providers process the limited information needed to run ClassPrints and send transactional messages.',
-      },
-    ],
-  },
-  {
-    title: 'Security & Data Retention',
-    summary:
-      'Security is layered into our schema and application code. We remove or anonymize data when it is no longer needed.',
-    items: [
-      {
-        title: 'Built-in safeguards',
-        description:
-          'We use access controls, least-privilege policies, encryption at rest and in transit, and isolated cloud environments to protect stored data.',
-      },
-      {
-        title: 'Incident response',
-        description:
-          'We maintain operational logs and backups through our service providers. If we detect unauthorized access, we will investigate, notify affected users when required, and take protective action.',
-      },
-    ],
-  },
-  {
-    title: 'Your Rights & Choices',
-    summary:
-      'Data provided is ultimately yours at the end of the day. We provide easily accessible ways to modify and delete existing data.',
-    items: [
-      {
-        title: 'Account controls',
-        description:
-          'You can update existing account and configuration details within your account. On request, we can delete user data assuming their consent.',
-      },
-      {
-        title: 'Data export or deletion',
-        description: `Contact ${SUPPORT_EMAIL} if you would like a copy of your data or need assistance deleting an account. We will verify ownership before fulfilling the request.`,
-      },
-      {
-        title: 'Regional rights',
-        description:
-          'If applicable laws provide additional rights (for example GDPR or CCPA) we will honor those protections. Reach out to clarify any request and we will respond promptly.',
-      },
-    ],
-  },
-];
+const contents = [
+  ['privacy-collect', 'What we collect'],
+  ['privacy-use', 'How we use it'],
+  ['privacy-ai', 'AI-assisted mode'],
+  ['privacy-share', 'When we share'],
+  ['privacy-students', 'Student information'],
+  ['privacy-retention', 'Retention and security'],
+  ['privacy-rights', 'Your choices'],
+  ['privacy-changes', 'Changes and contact'],
+] as const;
+
+const sectionClass = 'scroll-mt-24 border-t border-border py-7';
+const headingClass = 'font-display text-2xl font-medium tracking-[-0.01em] text-foreground';
+const copyClass = 'mt-3 text-[15px] leading-7 text-muted-foreground';
+const linkClass =
+  'text-primary underline decoration-border underline-offset-4 hover:decoration-primary';
 
 export function PrivacyPolicyPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <div className="mx-auto flex w-full flex-1 flex-col px-4 pb-12 pt-6 sm:max-w-[1040px] sm:px-6 sm:pt-12">
-        <section className="mt-4 flex flex-col gap-6">
-          <header className="mb-2 animate-fade-in">
-            <div className="flex flex-col gap-4 rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border/60 sm:p-8">
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-                  Legal
-                </p>
-                <h1 className="text-3xl font-bold font-display text-foreground md:text-4xl">
-                  Privacy Policy
-                </h1>
-                <p className="text-lg text-muted-foreground max-w-3xl">
-                  This Privacy Policy explains what information we collect, how we use it, and the
-                  choices you have. It also describes the safeguards we apply while operating
-                  ClassPrints.
-                </p>
-                <p className="text-sm text-muted-foreground">Last reviewed: {lastReviewed}</p>
-              </div>
-            </div>
-          </header>
-
-          {sections.map((section, index) => (
-            <article
-              key={section.title}
-              className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border/60 space-y-4 animate-fade-in"
-              style={{ animationDelay: `${160 + index * 60}ms` }}
-            >
-              <div>
-                <h2 className="text-2xl font-bold font-display text-foreground">{section.title}</h2>
-                <p className="text-muted-foreground mt-2">{section.summary}</p>
-              </div>
-              <div className="space-y-3">
-                {section.items.map((item) => (
-                  <div key={item.title}>
-                    <h3 className="text-lg font-semibold text-foreground">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
-                  </div>
-                ))}
-              </div>
-            </article>
-          ))}
-
-          <div
-            className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border/60 text-center animate-fade-in"
-            style={{ animationDelay: `${160 + sections.length * 60}ms` }}
-          >
-            <h2 className="text-2xl font-bold font-display text-foreground mb-3">
-              Questions or requests?
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              Email {SUPPORT_EMAIL} with privacy questions, export requests, or account removal
-              inquiries. We answer every message.
-            </p>
+    <div className="mx-auto grid w-full max-w-[1000px] items-start gap-8 px-4 py-10 text-foreground sm:px-6 sm:py-14 md:grid-cols-[210px_minmax(0,680px)] md:gap-[72px] lg:py-16">
+      <aside className="md:sticky md:top-24" aria-label="Privacy Policy contents">
+        <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+          On this page
+        </p>
+        <nav className="mt-3 flex flex-wrap gap-x-4 gap-y-2 md:flex-col md:gap-1">
+          {contents.map(([id, label]) => (
             <a
-              className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition duration-300 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary"
-              href={`mailto:${SUPPORT_EMAIL}`}
+              key={id}
+              href={`#${id}`}
+              className="text-sm text-muted-foreground underline decoration-border underline-offset-4 transition hover:text-foreground md:border-l md:border-border md:py-1 md:pl-3 md:no-underline md:hover:border-primary"
             >
-              Contact Support
+              {label}
             </a>
+          ))}
+        </nav>
+      </aside>
+
+      <article className="min-w-0">
+        <header>
+          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-primary">Legal</p>
+          <h1 className="mt-3 font-display text-[clamp(2.5rem,5vw,3.5rem)] font-medium leading-[1.06] tracking-[-0.02em]">
+            Privacy Policy
+          </h1>
+          <p className="mt-4 text-lg leading-8 text-muted-foreground">
+            This Policy explains what ClassPrints collects, why we use it, when it is shared, and
+            the choices available to educators.
+          </p>
+          <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+            Last updated · {lastUpdated}
+          </p>
+        </header>
+
+        <section
+          className="my-8 rounded-[12px] border border-primary/25 bg-secondary p-5 sm:p-6"
+          aria-labelledby="privacy-summary"
+        >
+          <h2 id="privacy-summary" className="font-display text-xl font-medium">
+            The short version
+          </h2>
+          <ul className="mt-3 grid gap-2 text-[15px] leading-6 text-muted-foreground">
+            <li className="before:mr-2 before:text-primary before:content-['—']">
+              We collect account details and the classroom information needed to build seating
+              charts.
+            </li>
+            <li className="before:mr-2 before:text-primary before:content-['—']">
+              We do not sell personal information or student information.
+            </li>
+            <li className="before:mr-2 before:text-primary before:content-['—']">
+              AI-assisted mode sends relevant classroom inputs to external AI providers.
+            </li>
+            <li className="before:mr-2 before:text-primary before:content-['—']">
+              Account deletion disables access, but associated classroom records may require a
+              separate support request.
+            </li>
+          </ul>
+        </section>
+
+        <section id="privacy-collect" className={`${sectionClass} mt-7`}>
+          <h2 className={headingClass}>1. What we collect</h2>
+          <p className={copyClass}>We collect the categories needed to run ClassPrints:</p>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-7 text-muted-foreground">
+            <li>
+              <strong className="font-semibold text-foreground">Account information:</strong> your
+              email address, authentication details, and notification preferences.
+            </li>
+            <li>
+              <strong className="font-semibold text-foreground">Classroom content:</strong> student
+              names, relationship and seating preferences, classroom layouts, saved profiles,
+              arrangement jobs, and generated results.
+            </li>
+            <li>
+              <strong className="font-semibold text-foreground">Technical information:</strong> IP
+              address, browser and device details, request times, errors, security events, and
+              essential cookies used for sign-in and preferences. Worker diagnostic logs may include
+              generated seating arrangements and student names.
+            </li>
+            <li>
+              <strong className="font-semibold text-foreground">Billing information:</strong>{' '}
+              subscription plan, customer and subscription identifiers, and billing status. Stripe
+              handles payment-card details; ClassPrints does not receive or store your full card
+              number.
+            </li>
+            <li>
+              <strong className="font-semibold text-foreground">Support messages:</strong>{' '}
+              information you include when contacting us.
+            </li>
+          </ul>
+        </section>
+
+        <section id="privacy-use" className={sectionClass}>
+          <h2 className={headingClass}>2. How we use information</h2>
+          <p className={copyClass}>
+            We use information to create and store seating arrangements, manage accounts and
+            subscriptions, send requested notifications, provide support, enforce plan limits,
+            prevent abuse, troubleshoot errors, secure the service, and comply with legal
+            obligations.
+          </p>
+          <p className={copyClass}>
+            We do not sell personal information or student information. We do not use classroom
+            content to build advertising profiles.
+          </p>
+        </section>
+
+        <section id="privacy-ai" className={sectionClass}>
+          <h2 className={headingClass}>3. AI-assisted mode</h2>
+          <p className={copyClass}>
+            If you select AI-assisted generation, ClassPrints sends the student names, classroom
+            layout, relationship mappings, and seating constraints needed for that request to
+            OpenRouter and the selected model provider. They process that information to return an
+            arrangement.
+          </p>
+          <div className="mt-5 rounded-r-[9px] border-l-4 border-accent-foreground bg-accent px-4 py-3">
+            <h3 className="text-sm font-semibold text-foreground">You have a non-AI option</h3>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Programmatic generation uses the ClassPrints optimization engine and does not send the
+              roster to the external AI provider. Use AI-assisted mode only when your school permits
+              that processing. Review{' '}
+              <a
+                href="https://openrouter.ai/privacy"
+                target="_blank"
+                rel="noreferrer"
+                className={linkClass}
+              >
+                OpenRouter’s privacy policy
+              </a>{' '}
+              for more information.
+            </p>
           </div>
         </section>
-      </div>
+
+        <section id="privacy-share" className={sectionClass}>
+          <h2 className={headingClass}>4. When we share information</h2>
+          <p className={copyClass}>
+            We disclose what is needed to providers that help operate ClassPrints, including cloud
+            hosting and databases, authentication, email delivery, payment processing, and—only when
+            you choose AI-assisted generation—AI processing. These providers handle information
+            under their own terms and applicable agreements.
+          </p>
+          <p className={copyClass}>
+            We may also disclose information when required by law, to protect the service or its
+            users, with your direction, or as part of a merger, financing, or sale where the
+            recipient agrees to protect the information. We do not sell personal information.
+          </p>
+        </section>
+
+        <section id="privacy-students" className={sectionClass}>
+          <h2 className={headingClass}>5. Student information</h2>
+          <p className={copyClass}>
+            ClassPrints is intended for educators and authorized school staff, not for students to
+            create accounts. Educators and schools are responsible for confirming that they may
+            provide student information and for following applicable privacy laws and district or
+            school policies. ClassPrints does not claim FERPA or COPPA certification.
+          </p>
+          <p className={copyClass}>
+            Use the minimum information necessary. Do not enter grades, medical information,
+            diagnoses, IEP contents, disciplinary records, or the reason for a seating constraint.
+            ClassPrints generally needs only a student name and the seating relationship or position
+            to consider.
+          </p>
+        </section>
+
+        <section id="privacy-retention" className={sectionClass}>
+          <h2 className={headingClass}>6. Retention and security</h2>
+          <p className={copyClass}>
+            We keep account and classroom information while your account is active and as needed to
+            provide the service. A plan may limit how long results remain visible; that visibility
+            period is not necessarily a deletion period. Account deletion soft-deletes the user
+            profile and cancels an active subscription, but does not automatically purge every
+            classroom job or saved profile. Contact support to request deletion of associated
+            classroom data. We may retain records needed for billing, security, legal obligations,
+            or limited backups.
+          </p>
+          <p className={copyClass}>
+            We use reasonable administrative and technical safeguards designed to protect
+            information. No online service can guarantee absolute security, so protect your account
+            credentials and contact us if you suspect unauthorized access.
+          </p>
+        </section>
+
+        <section id="privacy-rights" className={sectionClass}>
+          <h2 className={headingClass}>7. Your choices and rights</h2>
+          <p className={copyClass}>
+            You can update account settings, change email-notification preferences, delete your
+            account, and export eligible arrangement results through available product controls. You
+            may also ask us to access, correct, export, or delete personal information associated
+            with your account.
+          </p>
+          <p className={copyClass}>
+            Depending on where you live, privacy law may provide additional rights, such as
+            objecting to processing or filing a complaint with a regulator. We may need to verify
+            your identity before completing a request.
+          </p>
+        </section>
+
+        <section id="privacy-changes" className={sectionClass}>
+          <h2 className={headingClass}>8. Changes and contact</h2>
+          <p className={copyClass}>
+            We may update this Policy as the service, providers, or applicable law changes. We will
+            update the date above and provide reasonable notice if a change materially affects your
+            privacy rights.
+          </p>
+          <p className={copyClass}>
+            For privacy questions or requests, email{' '}
+            <a href={`mailto:${SUPPORT_EMAIL}`} className={linkClass}>
+              {SUPPORT_EMAIL}
+            </a>
+            . Review the{' '}
+            <Link to="/terms-of-service" className={linkClass}>
+              Terms of Service
+            </Link>{' '}
+            for the rules governing use of ClassPrints.
+          </p>
+        </section>
+      </article>
     </div>
   );
 }

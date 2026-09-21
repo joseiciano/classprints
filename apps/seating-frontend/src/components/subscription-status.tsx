@@ -7,9 +7,12 @@ export function SubscriptionStatus() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10 border border-border animate-pulse">
-        <div className="w-4 h-4 rounded-full bg-muted" />
-        <div className="w-16 h-3 rounded bg-muted" />
+      <div
+        role="status"
+        className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-card px-3 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground"
+      >
+        <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden="true" />
+        Checking plan
       </div>
     );
   }
@@ -20,18 +23,20 @@ export function SubscriptionStatus() {
 
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="sm"
       onClick={() => openPortal(undefined)}
       disabled={isOpeningPortal}
-      className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-      title="Manage Subscription"
+      aria-busy={isOpeningPortal}
+      aria-label="Manage Plus subscription billing"
+      className="min-h-10 rounded-full px-3 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground hover:text-foreground"
     >
       {isOpeningPortal ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden="true" />
       ) : (
-        <CreditCard className="h-4 w-4" />
+        <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
       )}
+      {isOpeningPortal ? 'Opening billing' : 'Plus · Manage billing'}
     </Button>
   );
 }

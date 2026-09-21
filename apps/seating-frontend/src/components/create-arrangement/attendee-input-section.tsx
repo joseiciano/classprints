@@ -12,27 +12,30 @@ export function AttendeeInputSection({
   onNamesChange,
 }: AttendeeInputSectionProps) {
   return (
-    <div className="max-w-4xl mx-auto space-y-4 rounded-2xl border bg-card/80 p-6 shadow-card">
+    <fieldset className="space-y-2">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">1. Add Attendees</h2>
-        <p className="text-sm text-muted-foreground">
-          {attendeeNames.length > 0
-            ? `${attendeeNames.length} attendee(s) listed.`
-            : 'No attendees added yet.'}
-        </p>
+        <label
+          htmlFor="roster-names"
+          className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground"
+        >
+          Roster
+        </label>
+        <span className="text-xs text-muted-foreground">
+          {attendeeNames.length > 0 ? `${attendeeNames.length} listed` : 'None yet'}
+        </span>
       </div>
       <textarea
-        id="names"
+        id="roster-names"
         value={names}
         onChange={(e) => onNamesChange(e.target.value)}
-        rows={3}
-        placeholder="Alice, Bob, Charlie, Dee..."
-        className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-base shadow-inner focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+        rows={4}
+        placeholder="Add a student, or paste a roster…"
+        className="w-full resize-none rounded-lg border border-line bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
       />
       {nameValidationIssues.length > 0 && (
-        <p className="text-sm text-red-500 font-medium">{nameValidationIssues[0]}</p>
+        <p className="text-xs font-medium text-destructive">{nameValidationIssues[0]}</p>
       )}
-      <p className="text-xs text-muted-foreground">Enter names separated by commas.</p>
-    </div>
+      <p className="text-xs text-muted-foreground">Separate names with commas.</p>
+    </fieldset>
   );
 }

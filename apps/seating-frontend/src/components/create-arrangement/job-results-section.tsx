@@ -30,9 +30,9 @@ export function JobResultsSection({
   seatGrid,
 }: JobResultsSectionProps) {
   return (
-    <section className="space-y-4">
+    <section aria-label="Generation results">
       {jobSummary ? (
-        <div className="space-y-4 rounded-2xl border bg-card/60 p-6 shadow-card">
+        <div className="space-y-4 rounded-[12px] border border-line bg-card p-5 shadow-card">
           <JobSummaryCard summary={jobSummary} />
           <JobStatusPanel
             summary={jobSummary}
@@ -44,7 +44,7 @@ export function JobResultsSection({
           <ResultsPanel results={jobResults} fallbackCols={fallbackCols} seatGrid={seatGrid} />
         </div>
       ) : (
-        <div className="rounded-2xl border border-dashed border-muted-foreground/40 bg-muted/20 p-6 text-sm text-muted-foreground">
+        <div className="rounded-[12px] border border-dashed border-line bg-muted/40 p-5 text-sm text-muted-foreground">
           Submit a seating chart request to see live status updates here.
         </div>
       )}

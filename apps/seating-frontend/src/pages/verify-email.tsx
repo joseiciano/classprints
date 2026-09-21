@@ -1,20 +1,18 @@
-import { Link, useLocation } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { Link, useLocation } from '@tanstack/react-router';
 import { VerifyEmailFlow, type VerifyEmailCopy } from '@classprints/shared/auth';
-import LogoUrl from '@classprints/seating-shared/assets/logos/Letter-Circle-2x.svg';
-import { APPLICATION_NAME } from '../lib/constants';
 import { getAuthSessionClient } from '../lib/auth-client';
 
 const verifyEmailCopy: VerifyEmailCopy = {
-  title: 'Verify email',
-  subtitle: 'Confirm your email to continue.',
-  notice: 'Check your inbox for the verification link. You can resend it below.',
-  emailLabel: 'Email',
-  passwordLabel: 'Password',
-  submitButton: 'Resend verification',
+  title: 'Verify your email.',
+  subtitle: 'Confirm your educator account before opening the classroom workspace.',
+  notice: 'Use the link in your inbox. If it expired or never arrived, resend it below.',
+  emailLabel: 'Email address',
+  passwordLabel: 'Account password',
+  submitButton: 'Resend verification email',
   submitPendingLabel: 'Resending…',
   successMessage: 'Verification email sent. Check your inbox to confirm your account.',
-  defaultErrorMessage: 'Something went wrong. Please try again.',
+  defaultErrorMessage: 'We couldn’t resend the email. Please try again.',
   alternateActionLabel: 'Back to sign in',
   forgotPasswordLabel: 'Forgot password?',
 };
@@ -29,18 +27,16 @@ const parseSearch = (search: string) => {
 
 function VerifyEmailLayout({ children }: { children: ReactNode }) {
   return (
-    <>
-      <div className="mb-4 flex flex-col items-center justify-center gap-3">
-        <img src={LogoUrl} alt="Logo" className="h-32 w-32 object-contain" />
-        <span
-          className="text-3xl font-semibold text-foreground"
-          style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}
-        >
-          {APPLICATION_NAME}
-        </span>
+    <div className="mx-auto flex w-full max-w-[1120px] justify-center px-4 py-12 sm:px-6 sm:py-16">
+      <div className="w-full max-w-[480px]">
+        <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.12em] text-primary">
+          Email confirmation
+        </p>
+        <div className="[&>section]:max-w-none [&>section]:rounded-[12px] [&>section]:border-border [&>section]:p-6 [&>section]:shadow-sm sm:[&>section]:p-8 [&_button]:min-h-11 [&_button]:rounded-full [&_button]:bg-primary [&_button]:text-primary-foreground [&_form]:gap-4 [&_h1]:font-display [&_h1]:font-medium [&_h1]:tracking-[-0.01em] [&_input]:rounded-lg [&_input]:bg-background [&_label]:gap-2 [&_[role=status]]:border-primary/30 [&_[role=status]]:bg-secondary [&_[role=status]]:text-secondary-foreground">
+          {children}
+        </div>
       </div>
-      {children}
-    </>
+    </div>
   );
 }
 
@@ -60,7 +56,7 @@ export function VerifyEmailPage() {
         <Link
           to="/sign-in"
           search={redirect ? { redirect } : undefined}
-          className="font-semibold text-primary"
+          className="font-semibold text-primary underline decoration-border underline-offset-4 hover:decoration-primary"
         >
           {label}
         </Link>

@@ -1,275 +1,240 @@
-import { APPLICATION_NAME, SUPPORT_EMAIL } from '../lib/constants';
+import { Link } from '@tanstack/react-router';
+import { SUPPORT_EMAIL } from '../lib/constants';
 
-const lastUpdated = 'March 6, 2026';
+const lastUpdated = 'September 20, 2026';
 
-type Section = {
-  title: string;
-  summary: string;
-  items: { title: string; description: string }[];
-};
+const contents = [
+  ['terms-eligibility', 'Who can use ClassPrints'],
+  ['terms-service', 'The service'],
+  ['terms-data', 'Classroom data'],
+  ['terms-use', 'Acceptable use'],
+  ['terms-billing', 'Plans and billing'],
+  ['terms-ownership', 'Ownership'],
+  ['terms-ending', 'Ending use'],
+  ['terms-liability', 'Disclaimers'],
+  ['terms-changes', 'Changes and contact'],
+] as const;
 
-const keyHighlights = [
-  {
-    title: 'Built for Classroom Management',
-    description:
-      '{APPLICATION_NAME} saves teacher time by handling the difficulty of creating classroom seating charts. These terms and conditions dictate the experience of our application.',
-  },
-  {
-    title: 'You own your data',
-    description:
-      'The student names, seating configurations, and arrangements you create stay yours. Providing us any names used is done of your own consent. We process this data solely for {APPLICATION_NAME} to operate.',
-  },
-  {
-    title: 'Privacy-first foundation',
-    description:
-      'We only collect the data needed to provide the service, follow our Privacy Policy, and never sell personal information. Student data is handled with extra care.',
-  },
-  {
-    title: 'A shared responsibility',
-    description:
-      'Keep your account secure, use data provided responsibly, and ensure you have authority to manage the classroom information you upload.',
-  },
-];
-
-const responsibilities = [
-  'Keep account credentials confidential and notify us immediately of unauthorized use.',
-  'Use {APPLICATION_NAME} only for lawful purposes and educational scenarios.',
-  'Ensure you have permission to manage student information and seating arrangements.',
-  'Respect student privacy and follow applicable educational data protection laws (e.g., FERPA, COPPA).',
-  "Do not interfere with the platform, attempt to access other users' data, or reverse engineer the service.",
-];
-
-const contactInfo = {
-  title: 'Questions?',
-  description:
-    'If anything in these Terms is unclear, contact our team and we will be happy to help.',
-  email: SUPPORT_EMAIL,
-};
-
-const pageMetadata = {
-  headerDescription:
-    'Please review these Terms carefully. They explain how {APPLICATION_NAME} works, what you can expect from us, and what we expect from every educator using the service.',
-  responsibilitiesIntro:
-    '{APPLICATION_NAME} works best when classroom data is handled responsibly. By using the platform, you agree to:',
-};
-
-const sections: Section[] = [
-  {
-    title: '1. Acceptance of Terms',
-    summary:
-      'These Terms of Service ("Terms") form a legally binding agreement between you and {APPLICATION_NAME}. You accept them every time you create an account, upload student data, or access the platform.',
-    items: [
-      {
-        title: 'Updates to these Terms',
-        description:
-          'We may change the Terms to reflect product updates, legal requirements, or improvements. When we do, we will post the revised version with the updated date. Continued use means you agree to the new Terms.',
-      },
-      {
-        title: 'Other referenced documents',
-        description:
-          'Our Privacy Policy, product guidelines, and any additional in-product notices are incorporated by reference. Please review them to understand how data is handled and how the platform should be used.',
-      },
-    ],
-  },
-  {
-    title: '2. Eligibility & Accounts',
-    summary:
-      '{APPLICATION_NAME} is designed for educators, teachers, and school staff managing classroom seating. Users must be able to form a contract with us under local law.',
-    items: [
-      {
-        title: 'Age and authority',
-        description:
-          'You must be at least 18 years old and confirm you have the authority to manage student information for classroom seating purposes. By using this service, you represent that you are an educator or have been authorized by an educational institution.',
-      },
-      {
-        title: 'Accurate information',
-        description:
-          'Provide complete, up-to-date info for your account. You are responsible for all activity that happens under your login until you tell us about unusual access.',
-      },
-      {
-        title: 'Student data responsibility',
-        description:
-          'You are responsible for ensuring you have proper authorization to upload and manage student names and any associated data. Only upload information you are legally permitted to process.',
-      },
-    ],
-  },
-  {
-    title: '3. Use of the Service',
-    summary:
-      '{APPLICATION_NAME} lets you input student names, define conflicts and compatibility preferences, generate seating arrangements, and manage classroom layouts. Use these tools responsibly and within the law.',
-    items: [
-      {
-        title: 'Acceptable use',
-        description:
-          "Do not upload sensitive student information beyond names, misuse the platform for non-educational purposes, or attempt to extract data about other users' classrooms. We may suspend accounts that abuse the product or violate these Terms.",
-      },
-      {
-        title: 'Student data',
-        description:
-          'You retain ownership of the student names and seating data you contribute but grant {APPLICATION_NAME} a limited license to process, store, and arrange it so the service can function. Delete data at any time and it will be removed from our systems.',
-      },
-      {
-        title: 'Algorithm results',
-        description:
-          'Seating arrangements are generated algorithmically based on your inputs. We do not guarantee optimal results and encourage you to review and adjust arrangements as needed for your classroom.',
-      },
-    ],
-  },
-  {
-    title: '4. Payments & Premium Features',
-    summary:
-      'Some features may require payment or subscription in the future. We will always tell you the price, billing frequency, and cancellation terms before you complete a transaction.',
-    items: [
-      {
-        title: 'Billing details',
-        description:
-          'Charges are processed by our payment partners. You agree to provide accurate billing information and authorize us to store tokens necessary to manage your subscription.',
-      },
-      {
-        title: 'Refunds and trials',
-        description:
-          'If we offer trials we will describe their length and what happens afterward. Unless required by law, fees are non-refundable once the billing period begins.',
-      },
-    ],
-  },
-  {
-    title: '5. Privacy & Data Security',
-    summary:
-      'We design {APPLICATION_NAME} with privacy in mind, especially for educational settings. Data is collected and processed according to the Privacy Policy, and we apply reasonable technical and organizational safeguards.',
-    items: [
-      {
-        title: 'Data we process',
-        description:
-          'Account details, student names, conflict mappings, compatibility preferences, and seating grid configurations are used to operate the service. We do not sell personal data or student information.',
-      },
-      {
-        title: 'Student privacy compliance',
-        description:
-          "While {APPLICATION_NAME} provides tools to help organize seating, you are responsible for ensuring your use complies with applicable laws such as FERPA (Family Educational Rights and Privacy Act) and COPPA (Children's Online Privacy Protection Act).",
-      },
-      {
-        title: 'Security expectations',
-        description:
-          'While no service can be 100% secure, we use encryption, access controls, and monitoring. You agree to implement reasonable security practices on your own devices.',
-      },
-    ],
-  },
-  {
-    title: '6. Termination, Liability & Disputes',
-    summary:
-      'We reserve the right to suspend or terminate accounts that violate these Terms. You may stop using {APPLICATION_NAME} at any time by deleting your account.',
-    items: [
-      {
-        title: 'Service availability',
-        description:
-          '{APPLICATION_NAME} is provided "as is." We disclaim warranties of merchantability, fitness, and non-infringement to the fullest extent allowed by law.',
-      },
-      {
-        title: 'Limitation of liability',
-        description:
-          'To the extent permitted, {APPLICATION_NAME}, its affiliates, and team members are not liable for indirect, incidental, or consequential damages and our total liability is limited to the amount you paid during the 12 months before the claim.',
-      },
-      {
-        title: 'Governing law & disputes',
-        description:
-          'These Terms are governed by the laws of the State of California, excluding conflict-of-law principles. Disputes will be resolved in the courts located in San Francisco County, unless your local laws provide otherwise.',
-      },
-    ],
-  },
-];
+const sectionClass = 'scroll-mt-24 border-t border-border py-7';
+const headingClass = 'font-display text-2xl font-medium tracking-[-0.01em] text-foreground';
+const copyClass = 'mt-3 text-[15px] leading-7 text-muted-foreground';
+const linkClass =
+  'text-primary underline decoration-border underline-offset-4 hover:decoration-primary';
 
 export function TermsOfServicePage() {
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <div className="mx-auto flex w-full flex-1 flex-col px-4 pb-12 pt-6 sm:max-w-[1040px] sm:px-6 sm:pt-12">
-        <section className="mt-4 flex flex-col gap-6">
-          <header className="mb-2 animate-fade-in">
-            <div className="flex flex-col gap-4 rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border/60 sm:p-8">
-              <div className="space-y-3">
-                <h1 className="text-3xl font-bold font-display text-foreground md:text-4xl">
-                  Terms of Service
-                </h1>
-                <p className="text-lg text-muted-foreground max-w-3xl">
-                  {pageMetadata.headerDescription.replace(/{APPLICATION_NAME}/g, APPLICATION_NAME)}
-                </p>
-                <p className="text-sm text-muted-foreground">Last updated: {lastUpdated}</p>
-              </div>
-            </div>
-          </header>
-
-          <div
-            className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border/60 grid gap-4 md:grid-cols-2 animate-fade-in"
-            style={{ animationDelay: '80ms' }}
-          >
-            {keyHighlights.map((highlight) => (
-              <div key={highlight.title} className="space-y-2">
-                <h3 className="text-lg font-semibold text-foreground">{highlight.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {highlight.description.replace(/{APPLICATION_NAME}/g, APPLICATION_NAME)}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div
-            className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border/60 animate-fade-in"
-            style={{ animationDelay: '120ms' }}
-          >
-            <h2 className="text-2xl font-bold font-display text-foreground mb-4">
-              User responsibilities
-            </h2>
-            <p className="text-muted-foreground mb-4">
-              {pageMetadata.responsibilitiesIntro.replace(/{APPLICATION_NAME}/g, APPLICATION_NAME)}
-            </p>
-            <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-              {responsibilities.map((item) => (
-                <li key={item}>{item.replace(/{APPLICATION_NAME}/g, APPLICATION_NAME)}</li>
-              ))}
-            </ul>
-          </div>
-
-          {sections.map((section, index) => (
-            <article
-              key={section.title}
-              className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border/60 space-y-4 animate-fade-in"
-              style={{ animationDelay: `${160 + index * 60}ms` }}
-            >
-              <div>
-                <h2 className="text-2xl font-bold font-display text-foreground">{section.title}</h2>
-                <p className="text-muted-foreground mt-2">
-                  {section.summary.replace(/{APPLICATION_NAME}/g, APPLICATION_NAME)}
-                </p>
-              </div>
-              <div className="space-y-3">
-                {section.items.map((item) => (
-                  <div key={item.title}>
-                    <h3 className="text-lg font-semibold text-foreground">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {item.description.replace(/{APPLICATION_NAME}/g, APPLICATION_NAME)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </article>
-          ))}
-
-          <div
-            className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border/60 text-center animate-fade-in"
-            style={{ animationDelay: `${160 + sections.length * 60}ms` }}
-          >
-            <h2 className="text-2xl font-bold font-display text-foreground mb-3">
-              {contactInfo.title}
-            </h2>
-            <p className="text-muted-foreground mb-6">{contactInfo.description}</p>
+    <div className="mx-auto grid w-full max-w-[1000px] items-start gap-8 px-4 py-10 text-foreground sm:px-6 sm:py-14 md:grid-cols-[210px_minmax(0,680px)] md:gap-[72px] lg:py-16">
+      <aside className="md:sticky md:top-24" aria-label="Terms of Service contents">
+        <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+          On this page
+        </p>
+        <nav className="mt-3 flex flex-wrap gap-x-4 gap-y-2 md:flex-col md:gap-1">
+          {contents.map(([id, label]) => (
             <a
-              className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition duration-300 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary"
-              href={`mailto:${contactInfo.email}`}
+              key={id}
+              href={`#${id}`}
+              className="text-sm text-muted-foreground underline decoration-border underline-offset-4 transition hover:text-foreground md:border-l md:border-border md:py-1 md:pl-3 md:no-underline md:hover:border-primary"
             >
-              Email {contactInfo.email}
+              {label}
             </a>
+          ))}
+        </nav>
+      </aside>
+
+      <article className="min-w-0">
+        <header>
+          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-primary">Legal</p>
+          <h1 className="mt-3 font-display text-[clamp(2.5rem,5vw,3.5rem)] font-medium leading-[1.06] tracking-[-0.02em]">
+            Terms of Service
+          </h1>
+          <p className="mt-4 text-lg leading-8 text-muted-foreground">
+            These Terms explain the rules for using ClassPrints. By creating an account, starting a
+            subscription, or using the service, you agree to them.
+          </p>
+          <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+            Last updated · {lastUpdated}
+          </p>
+        </header>
+
+        <section
+          className="my-8 rounded-[12px] border border-primary/25 bg-secondary p-5 sm:p-6"
+          aria-labelledby="terms-summary"
+        >
+          <h2 id="terms-summary" className="font-display text-xl font-medium">
+            The short version
+          </h2>
+          <ul className="mt-3 grid gap-2 text-[15px] leading-6 text-muted-foreground">
+            <li className="before:mr-2 before:text-primary before:content-['—']">
+              ClassPrints is intended for adult educators and authorized school staff.
+            </li>
+            <li className="before:mr-2 before:text-primary before:content-['—']">
+              You keep ownership of the classroom information you provide.
+            </li>
+            <li className="before:mr-2 before:text-primary before:content-['—']">
+              Generated arrangements are suggestions; review them before classroom use.
+            </li>
+            <li className="before:mr-2 before:text-primary before:content-['—']">
+              Paid subscriptions renew until you cancel them.
+            </li>
+          </ul>
+        </section>
+
+        <section id="terms-eligibility" className={`${sectionClass} mt-7`}>
+          <h2 className={headingClass}>1. Who can use ClassPrints</h2>
+          <p className={copyClass}>
+            You must be at least 18 years old, or the age of legal majority where you live, and able
+            to enter into a binding agreement. ClassPrints is designed for educators and authorized
+            school staff; it is not intended for students to create or manage accounts.
+          </p>
+          <p className={copyClass}>
+            If you use ClassPrints for a school or district, you confirm that you are authorized to
+            act for that organization and to provide the classroom information you enter. Keep your
+            account details accurate and protect your login credentials.
+          </p>
+        </section>
+
+        <section id="terms-service" className={sectionClass}>
+          <h2 className={headingClass}>2. The service</h2>
+          <p className={copyClass}>
+            ClassPrints creates seating arrangements from the class roster, room layout,
+            relationship preferences, and seating constraints you provide. You are responsible for
+            reviewing every result and deciding whether it is appropriate for your classroom.
+          </p>
+          <p className={copyClass}>
+            We may add, change, or remove features and may temporarily interrupt the service for
+            maintenance, security, or reasons outside our control. We do not guarantee that every
+            arrangement will be optimal or satisfy every preference.
+          </p>
+        </section>
+
+        <section id="terms-data" className={sectionClass}>
+          <h2 className={headingClass}>3. Your classroom data</h2>
+          <p className={copyClass}>
+            You keep ownership of student names, relationship mappings, seating preferences,
+            classroom layouts, saved profiles, and other content you provide. You give ClassPrints a
+            limited right to host, process, and display that content only as needed to operate,
+            secure, and support the service.
+          </p>
+          <p className={copyClass}>
+            You must have permission to provide the data you enter. Submit only what is needed for
+            seating arrangements. Do not enter grades, diagnoses, medical details, IEP contents,
+            disciplinary records, or other sensitive information; a name and the required seating
+            constraint are enough.
+          </p>
+          <div className="mt-5 rounded-r-[9px] border-l-4 border-accent-foreground bg-accent px-4 py-3">
+            <h3 className="text-sm font-semibold text-foreground">AI-assisted arrangements</h3>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              If you choose AI-assisted generation, student names, the classroom layout,
+              relationships, and seating constraints needed for the request are sent to OpenRouter
+              and the selected model provider. Programmatic generation does not use that external AI
+              provider. See the{' '}
+              <Link to="/privacy-policy" className={linkClass}>
+                Privacy Policy
+              </Link>{' '}
+              for details.
+            </p>
           </div>
         </section>
-      </div>
+
+        <section id="terms-use" className={sectionClass}>
+          <h2 className={headingClass}>4. Acceptable use</h2>
+          <p className={copyClass}>
+            Use ClassPrints lawfully and only with data you are authorized to manage. You may not:
+          </p>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-7 text-muted-foreground">
+            <li>access another user’s account or classroom information without permission;</li>
+            <li>upload harmful code or interfere with the service or its security;</li>
+            <li>
+              scrape, resell, reverse engineer, or use the service to build a competing product,
+              except where law expressly permits it; or
+            </li>
+            <li>
+              use ClassPrints to discriminate, harass, or make decisions unrelated to classroom
+              seating.
+            </li>
+          </ul>
+        </section>
+
+        <section id="terms-billing" className={sectionClass}>
+          <h2 className={headingClass}>5. Plans and billing</h2>
+          <p className={copyClass}>
+            ClassPrints offers free and paid plans. Prices, billing periods, and included features
+            are shown before purchase. Paid subscriptions renew automatically at the selected
+            interval until canceled through the billing portal.
+          </p>
+          <p className={copyClass}>
+            Cancellation takes effect at the end of the current paid period. Fees already paid are
+            non-refundable unless required by law or stated otherwise at purchase. Stripe handles
+            payment-card details; ClassPrints receives subscription and customer identifiers and
+            billing status. If prices change, the new price will apply no earlier than your next
+            renewal after notice.
+          </p>
+        </section>
+
+        <section id="terms-ownership" className={sectionClass}>
+          <h2 className={headingClass}>6. Ownership</h2>
+          <p className={copyClass}>
+            ClassPrints and its licensors own the application, software, branding, and
+            documentation. These Terms give you a limited, non-exclusive, non-transferable right to
+            use the service while your account is active. They do not transfer ownership of the
+            service or its source code to you.
+          </p>
+          <p className={copyClass}>
+            If you send product feedback, you allow us to use it to improve ClassPrints without
+            payment or restriction. This does not give us ownership of your classroom data.
+          </p>
+        </section>
+
+        <section id="terms-ending" className={sectionClass}>
+          <h2 className={headingClass}>7. Suspension and ending use</h2>
+          <p className={copyClass}>
+            You may stop using ClassPrints or delete your account at any time. We may suspend or
+            terminate access for non-payment, misuse, a security threat, or a material violation of
+            these Terms. Where practical, we will provide notice and an opportunity to correct the
+            issue.
+          </p>
+          <p className={copyClass}>
+            Deleting an account disables access and cancels an active subscription, but it does not
+            automatically purge every classroom job or saved profile. Contact support to request
+            deletion of associated classroom data; retention is described in the Privacy Policy.
+          </p>
+        </section>
+
+        <section id="terms-liability" className={sectionClass}>
+          <h2 className={headingClass}>8. Disclaimers and liability</h2>
+          <p className={copyClass}>
+            ClassPrints is provided “as is” and “as available.” Generated seating arrangements are
+            classroom-planning aids, not a substitute for an educator’s professional judgment. We do
+            not promise uninterrupted service, error-free results, or that data will never be lost.
+          </p>
+          <p className={copyClass}>
+            To the extent permitted by law, ClassPrints is not liable for indirect, incidental,
+            special, or consequential damages. Our total liability relating to the service will not
+            exceed the amount you paid ClassPrints during the 12 months before the event giving rise
+            to the claim. Nothing here limits rights or liabilities that cannot legally be limited.
+          </p>
+        </section>
+
+        <section id="terms-changes" className={sectionClass}>
+          <h2 className={headingClass}>9. Changes and contact</h2>
+          <p className={copyClass}>
+            We may update these Terms as the service or applicable law changes. We will post the new
+            date here and provide reasonable notice of material changes. Continued use after the
+            effective date means you accept the revised Terms.
+          </p>
+          <p className={copyClass}>
+            Questions? Email{' '}
+            <a href={`mailto:${SUPPORT_EMAIL}`} className={linkClass}>
+              {SUPPORT_EMAIL}
+            </a>
+            . Our{' '}
+            <Link to="/privacy-policy" className={linkClass}>
+              Privacy Policy
+            </Link>{' '}
+            explains how we handle personal information.
+          </p>
+        </section>
+      </article>
     </div>
   );
 }

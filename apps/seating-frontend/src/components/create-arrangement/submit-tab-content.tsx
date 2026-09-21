@@ -18,6 +18,8 @@ interface SubmitTabContentProps {
   isSubmitDisabled: boolean;
 }
 
+const STAT_LABEL_CLASS = 'font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground';
+
 export function SubmitTabContent({
   layoutMode,
   generationMethod,
@@ -34,51 +36,44 @@ export function SubmitTabContent({
   isSubmitDisabled,
 }: SubmitTabContentProps) {
   return (
-    <div className="max-w-xl mx-auto space-y-8 rounded-3xl border bg-card/80 p-10 shadow-card text-center">
-      <div className="space-y-4">
-        <h2 className="text-3xl font-bold">Ready to generate?</h2>
-        <p className="text-muted-foreground">
-          We&apos;ve gathered all your requirements. Review the summary below and click submit to
-          start the seating process.
+    <div className="mx-auto w-full max-w-xl space-y-5 rounded-[12px] border border-line bg-muted/40 p-6 text-center">
+      <div className="space-y-1.5">
+        <h2 className="font-display text-xl font-medium text-foreground">Ready to generate?</h2>
+        <p className="text-sm text-muted-foreground">
+          We&apos;ve gathered all your requirements. Review the summary and generate your seating
+          charts.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 text-left p-6 rounded-2xl bg-muted/30 border border-border">
+      <div className="grid grid-cols-2 gap-4 rounded-[12px] border border-line bg-card p-5 text-left">
         <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
-            Attendees
-          </p>
-          <p className="text-lg font-semibold">{attendeeNames.length}</p>
+          <p className={STAT_LABEL_CLASS}>Attendees</p>
+          <p className="text-lg font-semibold tabular-nums">{attendeeNames.length}</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
-            Seats Selected
-          </p>
-          <p className="text-lg font-semibold">{selectedSeatCount}</p>
+          <p className={STAT_LABEL_CLASS}>Seats selected</p>
+          <p className="text-lg font-semibold tabular-nums">{selectedSeatCount}</p>
         </div>
         {layoutMode !== 'random' && (
           <>
-            <div className="col-span-2 border-t border-border pt-4 mt-2">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
-                Method
-              </p>
+            <div className="col-span-2 mt-1 border-t border-line pt-3">
+              <p className={STAT_LABEL_CLASS}>Method</p>
               <p className="text-sm font-semibold text-primary">
                 {generationMethod === 'programmatic'
-                  ? 'Programmatic (Genetic Algorithm)'
-                  : 'AI Powered (LLM)'}
+                  ? 'Algorithmic (genetic optimization)'
+                  : 'AI assist (LLM)'}
               </p>
             </div>
-            <div className="col-span-2 border-t border-border pt-4 mt-2">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
-                Constraints
-              </p>
-              <div className="flex gap-4 mt-1">
-                <span className="text-sm">
-                  Conflicts: <strong>{conflictSummary.totalConflicts}</strong>
+            <div className="col-span-2 mt-1 border-t border-line pt-3">
+              <p className={STAT_LABEL_CLASS}>Constraints</p>
+              <div className="mt-1 flex gap-4 text-sm">
+                <span>
+                  Conflicts:{' '}
+                  <strong className="tabular-nums">{conflictSummary.totalConflicts}</strong>
                 </span>
-                <span className="text-sm">
+                <span>
                   Partners:{' '}
-                  <strong>
+                  <strong className="tabular-nums">
                     {worksWellSummary.totalPartners + worksWellStrongSummary.totalPartners}
                   </strong>
                 </span>
@@ -88,33 +83,35 @@ export function SubmitTabContent({
         )}
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {submitError && <FormAlert tone="error">{submitError}</FormAlert>}
 
         {layoutMode === 'random' ? (
           <button
             type="button"
-            className="w-full rounded-full bg-primary px-8 py-4 text-lg font-bold text-primary-foreground shadow-soft transition hover:bg-primary/90 disabled:opacity-50"
+            className="w-full rounded-full bg-primary px-8 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             onClick={onGenerateRandom}
             disabled={attendeeNames.length === 0 || selectedSeatCount === 0}
           >
-            Generate Random Seating
+            Generate random seating
           </button>
         ) : (
           <button
+            type="button"
             onClick={onSubmit}
-            className="w-full rounded-full bg-primary px-8 py-4 text-lg font-bold text-primary-foreground shadow-soft transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-full bg-primary px-8 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isSubmitDisabled || isPending}
           >
-            {isPending ? 'Processing…' : 'Send to seating worker'}
+            {isPending ? 'Generating…' : 'Generate chart'}
           </button>
         )}
 
         <button
+          type="button"
           onClick={onBackToSettings}
-          className="text-sm font-medium text-muted-foreground hover:text-foreground transition"
+          className="text-sm font-medium text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          ← Back to settings
+          ← Back to layout
         </button>
       </div>
     </div>
