@@ -779,7 +779,7 @@ export function CreateArrangementPage({ mode = 'new' }: { mode?: Mode }) {
                   <legend className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
                     Method
                   </legend>
-                  {AI_GENERATION_ENABLED ? (
+                  {AI_GENERATION_ENABLED && isPlus ? (
                     <div className="inline-flex overflow-hidden rounded-full border border-line">
                       {(['programmatic', 'ai'] as const).map((method, index) => (
                         <button
@@ -799,6 +799,13 @@ export function CreateArrangementPage({ mode = 'new' }: { mode?: Mode }) {
                         </button>
                       ))}
                     </div>
+                  ) : AI_GENERATION_ENABLED ? (
+                    <>
+                      <p className="text-sm font-medium text-foreground">Algorithmic</p>
+                      <p className="text-xs font-medium text-primary">
+                        AI-assisted generation is available on the Plus plan.
+                      </p>
+                    </>
                   ) : (
                     <p className="text-sm font-medium text-foreground">Algorithmic</p>
                   )}

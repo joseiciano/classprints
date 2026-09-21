@@ -19,7 +19,7 @@ const freeFeatures = [
   '2 seating arrangements per week',
   '1 result option per run',
   'Results available for 30 days',
-  'Algorithmic and AI-assisted generation',
+  'Algorithmic generation',
 ];
 
 const plusFeatureFallback = [
@@ -29,7 +29,7 @@ const plusFeatureFallback = [
   'Saved reusable class profiles',
   'CSV export',
   'Result email support',
-  'Algorithmic and AI-assisted generation',
+  'AI-assisted generation',
 ];
 
 function FeatureList({
@@ -295,8 +295,8 @@ export function PricingPage() {
       )}
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
-        AI-assisted generation follows the same availability flag on both plans; it is not a
-        Plus-only feature.
+        AI-assisted generation is included with Plus; every plan uses the same optimization engine
+        for algorithmic charts.
       </p>
     </div>
   );
