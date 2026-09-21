@@ -7,19 +7,22 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const variantStyles = {
-  primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
-  ghost: 'hover:bg-accent/20 text-foreground',
-  mint: 'bg-secondary text-secondary-foreground hover:bg-secondary/90',
-  lavender: 'bg-accent text-accent-foreground hover:bg-accent/90',
-  playful: 'bg-primary text-primary-foreground hover:bg-primary/90',
-  outline: 'border border-border bg-transparent hover:bg-accent/10 text-foreground',
-  destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+  primary:
+    'border border-primary bg-primary text-primary-foreground hover:bg-pine-ink dark:hover:bg-primary/80',
+  ghost: 'border border-transparent bg-transparent text-foreground hover:bg-muted',
+  mint: 'border border-line-2 bg-transparent text-foreground hover:bg-muted',
+  lavender: 'border border-line-2 bg-muted text-foreground hover:bg-pine-soft',
+  playful:
+    'border border-primary bg-primary text-primary-foreground hover:bg-pine-ink dark:hover:bg-primary/80',
+  outline: 'border border-line-2 bg-transparent text-foreground hover:bg-muted',
+  destructive:
+    'border border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/85',
 };
 
 const sizeStyles = {
-  sm: 'px-4 py-2 text-sm',
-  md: 'px-6 py-3 text-base',
-  lg: 'px-8 py-4 text-lg',
+  sm: 'min-h-9 px-3.5 py-1.5 text-[13px]',
+  md: 'min-h-11 px-5 py-2.5 text-sm',
+  lg: 'min-h-11 px-6 py-3 text-[15px]',
 };
 
 export function Button({
@@ -30,7 +33,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    'rounded-xl font-semibold transition focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2';
+    'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50';
   const variantStyle = variantStyles[variant];
   const sizeStyle = sizeStyles[size];
 

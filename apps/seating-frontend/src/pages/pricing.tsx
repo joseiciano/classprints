@@ -1,56 +1,124 @@
-import { Check, Loader2 } from 'lucide-react';
-import { Button } from '../components/ui/button';
+import { useEffect, useState } from 'react';
+import { Check, Loader2, RotateCcw } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useAuth } from '../providers/auth-provider';
-import { useSubscription } from '../hooks/use-subscription';
-import { useState, useEffect } from 'react';
-import { fetchPlans } from '../lib/billing-api';
 import type { BillingPlan } from '@classprints/shared';
+import { Button } from '../components/ui/button';
+import { useSubscription } from '../hooks/use-subscription';
+import { fetchPlans } from '../lib/billing-api';
+import { useAuth } from '../providers/auth-provider';
 
 type BillingPeriod = 'monthly' | 'quarterly' | 'annual';
 
-const FREE_TIER = {
-  id: 'free',
-  name: 'Free',
-  price: 0,
-  period: 'month' as const,
-  description: 'Perfect for getting started with our tools.',
-  features: [
-    'Generate 2 seating arrangements per week.',
-    'Generate 1 arrangement per use.',
-    'View arrangements for up to 1 months.',
-  ],
-};
+const billingPeriods: { value: BillingPeriod; label: string }[] = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'annual', label: 'Annual' },
+];
+
+const freeFeatures = [
+  '2 seating arrangements per week',
+  '1 result option per run',
+  'Results available for 30 days',
+  'Algorithmic and AI-assisted generation',
+];
+
+const plusFeatureFallback = [
+  '10 seating arrangements per week',
+  'Up to 5 result options per run',
+  'Unlimited result visibility',
+  'Saved reusable class profiles',
+  'CSV export',
+  'Result email support',
+  'Algorithmic and AI-assisted generation',
+];
+
+function FeatureList({
+  features,
+  emphasized = false,
+}: {
+  features: string[];
+  emphasized?: boolean;
+}) {
+  return (
+    <ul className="mt-7 grid gap-3">
+      {features.map((feature) => (
+        <li key={feature} className="flex items-start gap-3 text-[15px] leading-6">
+          <Check
+            className={`mt-1 h-4 w-4 shrink-0 ${
+              emphasized ? 'text-primary-foreground' : 'text-primary'
+            }`}
+            aria-hidden="true"
+          />
+          <span>{feature}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PricingSkeleton() {
+  return (
+    <div className="grid gap-5 md:grid-cols-2" role="status" aria-live="polite">
+      <span className="sr-only">Loading current billing plans</span>
+      {[0, 1].map((item) => (
+        <div
+          key={item}
+          className="min-h-[430px] animate-pulse rounded-2xl border border-border bg-card p-7"
+          aria-hidden="true"
+        >
+          <div className="h-3 w-20 rounded-full bg-muted" />
+          <div className="mt-6 h-12 w-36 rounded-lg bg-muted" />
+          <div className="mt-8 grid gap-4">
+            {[0, 1, 2, 3, 4].map((line) => (
+              <div key={line} className="h-4 rounded-full bg-muted" />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function PricingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { subscription, checkout, isCheckingOut, isPlus } = useSubscription();
-  const isSignedIn = !!user;
+  const isSignedIn = Boolean(user);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
-    fetchPlans().then((fetchedPlans) => {
-      setPlans(fetchedPlans);
-      setIsLoadingPlans(false);
-    });
-  }, []);
+    let active = true;
+    setIsLoadingPlans(true);
+    setLoadError(false);
+
+    fetchPlans()
+      .then((fetchedPlans) => {
+        if (active) setPlans(fetchedPlans);
+      })
+      .catch(() => {
+        if (active) setLoadError(true);
+      })
+      .finally(() => {
+        if (active) setIsLoadingPlans(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [loadAttempt]);
 
   const handleAction = (planId: string) => {
     if (!isSignedIn) {
-      navigate({ to: '/sign-up' });
+      void navigate({ to: '/sign-up' });
       return;
     }
 
-    if (planId === 'free') {
-      navigate({ to: '/create-arrangement' });
-      return;
-    }
-
-    if (isPlus) {
-      navigate({ to: '/create-arrangement' });
+    if (planId === 'free' || isPlus) {
+      void navigate({ to: '/create-arrangement' });
       return;
     }
 
@@ -58,184 +126,178 @@ export function PricingPage() {
   };
 
   const getPlanForPeriod = (period: BillingPeriod): BillingPlan | undefined => {
-    if (period === 'monthly') return plans.find((p) => p.id === 'plus_monthly');
-    if (period === 'quarterly') return plans.find((p) => p.id === 'plus_quarterly');
-    if (period === 'annual') return plans.find((p) => p.id === 'plus_annual');
-    return undefined;
+    if (period === 'monthly') return plans.find((plan) => plan.id === 'plus_monthly');
+    if (period === 'quarterly') return plans.find((plan) => plan.id === 'plus_quarterly');
+    return plans.find((plan) => plan.id === 'plus_annual');
   };
 
   const currentPlan = getPlanForPeriod(billingPeriod);
-
   const isCurrentPlan = (planId: string): boolean => {
-    if (planId === 'free' && !isPlus) return true;
-    if (subscription?.planId && subscription.planId === planId) return true;
-    return false;
+    if (planId === 'free') return isSignedIn && !isPlus;
+    return subscription?.planId === planId;
   };
 
-  if (isLoadingPlans) {
-    return (
-      <div className="min-h-screen bg-background py-16 px-6 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-background py-16 px-6">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">Membership Plans</h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-            Choose the plan that works best for you. Upgrade or unsubscribe anytime.
-          </p>
+    <div className="mx-auto w-full max-w-[920px] px-4 py-12 text-foreground sm:px-6 sm:py-16 lg:py-20">
+      <header className="mx-auto mb-10 max-w-2xl text-center sm:mb-12">
+        <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-primary">
+          Simple plans
+        </p>
+        <h1 className="mt-3 font-display text-[clamp(2.5rem,5vw,3.5rem)] font-medium leading-tight tracking-[-0.02em]">
+          Plans that fit your classroom.
+        </h1>
+        <p className="mt-4 text-lg text-muted-foreground">
+          Start free. Upgrade for more weekly charts, reusable class profiles, and exports.
+        </p>
+      </header>
 
-          {/* Billing Period Toggle */}
-          <div className="inline-flex items-center gap-2 p-1 bg-muted rounded-lg">
+      <div className="mb-8 flex justify-center">
+        <div
+          className="inline-flex max-w-full overflow-x-auto rounded-full border border-border bg-muted p-1"
+          role="group"
+          aria-label="Billing period"
+        >
+          {billingPeriods.map((period) => (
             <button
-              onClick={() => setBillingPeriod('monthly')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                billingPeriod === 'monthly'
-                  ? 'bg-background text-foreground shadow-sm'
+              key={period.value}
+              type="button"
+              aria-pressed={billingPeriod === period.value}
+              onClick={() => setBillingPeriod(period.value)}
+              className={`min-h-10 whitespace-nowrap rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                billingPeriod === period.value
+                  ? 'bg-card text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Monthly
+              {period.label}
             </button>
-            <button
-              onClick={() => setBillingPeriod('quarterly')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                billingPeriod === 'quarterly'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Quarterly
-              <span className="ml-1 text-green-600 text-xs font-semibold">Save 22%</span>
-            </button>
-            <button
-              onClick={() => setBillingPeriod('annual')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                billingPeriod === 'annual'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Annual
-              <span className="ml-1 text-green-600 text-xs font-semibold">Save 42%</span>
-            </button>
-          </div>
+          ))}
         </div>
+      </div>
 
-        {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {/* Free Tier */}
-          <div
-            className={`relative p-8 rounded-3xl border-2 transition-all duration-300 hover:shadow-lg flex flex-col ${
-              isCurrentPlan('free') ? 'bg-card border-border' : 'bg-card border-border'
-            }`}
+      {isLoadingPlans ? (
+        <PricingSkeleton />
+      ) : loadError ? (
+        <section
+          className="rounded-[12px] border border-destructive/40 bg-destructive/10 px-6 py-10 text-center"
+          role="alert"
+        >
+          <h2 className="font-display text-2xl font-medium">We couldn’t load the paid plans.</h2>
+          <p className="mx-auto mt-2 max-w-lg text-muted-foreground">
+            Your current plan and billing are unaffected. Try again to review plan details before
+            subscribing.
+          </p>
+          <Button
+            variant="outline"
+            className="mx-auto mt-6 min-h-11 rounded-full"
+            onClick={() => setLoadAttempt((attempt) => attempt + 1)}
           >
-            <div className="flex-1">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-display font-bold mb-2">{FREE_TIER.name}</h2>
-                <div className="flex items-baseline justify-center gap-1 mb-3">
-                  <span className="text-4xl font-display font-bold">${FREE_TIER.price}</span>
-                  <span className="text-muted-foreground">/{FREE_TIER.period}</span>
-                </div>
-                <p className="text-muted-foreground text-sm">{FREE_TIER.description}</p>
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            Try again
+          </Button>
+        </section>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-2">
+          <article className="flex min-h-[430px] flex-col rounded-2xl border border-border bg-card p-7 shadow-sm sm:p-8">
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                  Free
+                </p>
+                {isCurrentPlan('free') ? (
+                  <span className="rounded-full bg-secondary px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-secondary-foreground">
+                    Current plan
+                  </span>
+                ) : null}
               </div>
-
-              <div className="space-y-4">
-                {FREE_TIER.features.map((feature) => (
-                  <div key={feature} className="flex items-center gap-3">
-                    <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center bg-primary/20">
-                      <Check className="w-3 h-3 text-primary" />
-                    </div>
-                    <span className="text-sm">{feature}</span>
-                  </div>
-                ))}
-              </div>
+              <p className="mt-3 font-display text-5xl font-medium tabular-nums">
+                $0 <span className="font-sans text-base text-muted-foreground">/ month</span>
+              </p>
+              <p className="mt-3 text-sm text-muted-foreground">
+                The essentials for building occasional classroom arrangements.
+              </p>
+              <FeatureList features={freeFeatures} />
             </div>
-
             <Button
-              variant="mint"
-              size="lg"
-              className="w-full mt-8"
+              variant="outline"
+              size="md"
+              className="mt-auto min-h-11 w-full justify-center rounded-full"
               disabled={isCurrentPlan('free')}
               onClick={() => handleAction('free')}
             >
-              {isCurrentPlan('free') ? 'Current Plan' : 'Get Started'}
+              {isCurrentPlan('free')
+                ? 'Current plan'
+                : isSignedIn
+                  ? 'Create a chart'
+                  : 'Start free'}
             </Button>
-          </div>
+          </article>
 
-          {/* Plus Tier */}
-          {currentPlan && (
-            <div
-              className={`relative p-8 rounded-3xl border-2 transition-all duration-300 hover:shadow-lg flex flex-col ${
-                billingPeriod !== 'monthly'
-                  ? 'bg-primary/5 border-primary shadow-lg'
-                  : 'bg-primary/5 border-primary shadow-lg'
-              }`}
-            >
-              {billingPeriod !== 'monthly' && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-1 rounded-full">
-                    Best Value
+          {currentPlan ? (
+            <article className="flex min-h-[430px] flex-col rounded-2xl border border-primary bg-primary p-7 text-primary-foreground shadow-sm sm:p-8">
+              <div>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-primary-foreground/75">
+                    {currentPlan.name}
+                  </p>
+                  {isCurrentPlan(currentPlan.id) ? (
+                    <span className="rounded-full border border-primary-foreground/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-primary-foreground">
+                      Current plan
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-3 font-display text-5xl font-medium tabular-nums">
+                  ${currentPlan.price}{' '}
+                  <span className="font-sans text-base text-primary-foreground/75">
+                    / {currentPlan.period}
                   </span>
-                </div>
-              )}
-
-              <div className="flex-1">
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-display font-bold mb-2">{currentPlan.name}</h2>
-                  <div className="flex items-baseline justify-center gap-1 mb-3">
-                    <span className="text-4xl font-display font-bold">${currentPlan.price}</span>
-                    <span className="text-muted-foreground">/{currentPlan.period}</span>
-                    {billingPeriod !== 'monthly' && (
-                      <span className="text-muted-foreground text-sm ml-2">
-                        ($
-                        {(currentPlan.price / (billingPeriod === 'quarterly' ? 3 : 12)).toFixed(2)}
-                        /month)
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground text-sm">{currentPlan.description}</p>
-                </div>
-
-                <div className="space-y-4">
-                  {currentPlan.features.map((feature) => (
-                    <div key={feature} className="flex items-center gap-3">
-                      <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center bg-primary">
-                        <Check className="w-3 h-3 text-primary-foreground" />
-                      </div>
-                      <span className="text-sm">{feature}</span>
-                    </div>
-                  ))}
-                </div>
+                </p>
+                <p className="mt-3 text-sm text-primary-foreground/80">{currentPlan.description}</p>
+                <FeatureList
+                  features={
+                    currentPlan.features?.length ? currentPlan.features : plusFeatureFallback
+                  }
+                  emphasized
+                />
               </div>
-
               <Button
-                variant="playful"
-                size="lg"
-                className="w-full mt-8"
-                disabled={isCurrentPlan(currentPlan.id)}
+                variant="outline"
+                size="md"
+                className="mt-auto min-h-11 w-full justify-center rounded-full border-primary-foreground/40 bg-card text-foreground hover:bg-secondary"
+                disabled={isCurrentPlan(currentPlan.id) || isCheckingOut}
                 onClick={() => handleAction(currentPlan.id)}
               >
-                {isCheckingOut && subscription?.planId !== currentPlan.id ? (
+                {isCheckingOut ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    Opening checkout…
                   </>
                 ) : isCurrentPlan(currentPlan.id) ? (
-                  'Current Plan'
+                  'Current plan'
+                ) : isPlus ? (
+                  'Continue with Plus'
                 ) : (
-                  'Upgrade Now'
+                  'Upgrade to Plus'
                 )}
               </Button>
-            </div>
+            </article>
+          ) : (
+            <article className="flex min-h-[430px] flex-col justify-center rounded-2xl border border-border bg-card p-8 text-center">
+              <h2 className="font-display text-2xl font-medium">
+                This billing period is unavailable.
+              </h2>
+              <p className="mt-2 text-muted-foreground">
+                Choose another period to see the currently available Plus plan.
+              </p>
+            </article>
           )}
         </div>
-      </div>
+      )}
+
+      <p className="mt-8 text-center text-sm text-muted-foreground">
+        AI-assisted generation follows the same availability flag on both plans; it is not a
+        Plus-only feature.
+      </p>
     </div>
   );
 }

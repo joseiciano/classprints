@@ -1,14 +1,21 @@
-import { useCallback } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { SignInFlow, type SignInFlowHandlers } from '@classprints/shared/auth';
-import LogoUrl from '@classprints/seating-shared/assets/logos/Letter-Circle-2x.svg';
-import { APPLICATION_NAME } from '../lib/constants';
 import { useAuth } from '../providers/auth-provider';
+
+function AuthPageLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className="mx-auto flex w-full max-w-[1120px] justify-center px-4 py-12 sm:px-6 sm:py-16">
+      {children}
+    </div>
+  );
+}
 
 export function SignInPage() {
   const navigate = useNavigate();
-  const search = useSearch({ from: '/sign-in' });
+  const search = useSearch({ strict: false }) as { verified?: boolean };
   const { signIn, user, initializing } = useAuth();
+
   const handleSignedIn = useCallback<NonNullable<SignInFlowHandlers['onSignedIn']>>(
     async ({ user }) => {
       if (!user.emailVerified) {
@@ -48,42 +55,38 @@ export function SignInPage() {
       initializing={initializing}
       onSignedIn={handleSignedIn}
       onAlreadyAuthenticated={handleAlreadyAuthenticated}
-      title="Sign in"
-      subtitle="Use your worker credentials to continue."
-      eyebrow="Seating Console"
-      notice={search.verified ? 'Email verified. Sign in to continue.' : undefined}
-      renderLogo={() => (
-        <div className="mx-auto flex flex-col items-center gap-3">
-          <img src={LogoUrl} alt="Logo" className="h-32 w-32 object-contain" />
-          <span
-            className="text-3xl font-semibold text-foreground"
-            style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}
-          >
-            {APPLICATION_NAME}
-          </span>
-        </div>
-      )}
-      containerClassName="mx-auto flex w-full max-w-lg flex-col gap-8 rounded-2xl border border-border/70 bg-card/80 p-8 shadow-card"
+      LayoutComponent={AuthPageLayout}
+      title={<span className="font-display font-medium">Welcome back.</span>}
+      subtitle="Sign in to return to your classroom charts and saved profiles."
+      eyebrow={<span className="font-mono text-primary">Classroom workspace</span>}
+      notice={search.verified ? 'Email verified. You can sign in now.' : undefined}
+      containerClassName="mx-auto flex w-full max-w-[480px] flex-col gap-4 rounded-[12px] border border-border bg-card p-6 shadow-sm sm:p-8 [&_button]:rounded-full [&_h1]:tracking-[-0.01em] [&_input]:rounded-lg [&_input]:bg-background"
       headerAlign="start"
-      titleAlign="center"
-      supportingTextAlign="center"
+      titleAlign="start"
+      supportingTextAlign="start"
       submitLabel="Sign in"
       submitPendingLabel="Signing in…"
       rememberDeviceLabel="Remember this device"
       renderForgotPasswordLink={null}
       renderSignUpLink={({ label }) => (
         <span>
-          Need access?{' '}
-          <Link to="/sign-up" className="font-semibold text-primary">
+          New to ClassPrints?{' '}
+          <Link
+            to="/sign-up"
+            className="font-semibold text-primary underline decoration-border underline-offset-4 hover:decoration-primary"
+          >
             {label}
           </Link>
         </span>
       )}
       renderSupportNotice={() => (
         <span>
-          Having trouble accessing the console?{' '}
-          <Link to="/" className="font-semibold text-primary">
-            Contact the ops team
+          Need help signing in?{' '}
+          <Link
+            to="/customer-service"
+            className="font-semibold text-primary underline decoration-border underline-offset-4 hover:decoration-primary"
+          >
+            Contact support
           </Link>
           .
         </span>

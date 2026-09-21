@@ -12,6 +12,11 @@ type GridSizeFieldsProps = {
   onColsBlur: () => void;
 };
 
+const FIELD_CLASS =
+  'w-full rounded-lg border border-line bg-background px-3 py-2 text-sm tabular-nums focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30';
+
+const LABEL_CLASS = 'font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground';
+
 export function GridSizeFields({
   idPrefix,
   minSize,
@@ -24,14 +29,11 @@ export function GridSizeFields({
   onColsBlur,
 }: GridSizeFieldsProps) {
   return (
-    <fieldset className="space-y-4">
-      <legend className="text-sm font-semibold text-foreground">Grid size</legend>
-      <div className="grid grid-cols-2 gap-4">
+    <fieldset className="space-y-3">
+      <legend className={LABEL_CLASS}>Grid size</legend>
+      <div className="grid grid-cols-2 gap-4 sm:max-w-xs">
         <div className="space-y-1">
-          <label
-            htmlFor={`${idPrefix}-rows`}
-            className="text-xs uppercase tracking-wide text-muted-foreground"
-          >
+          <label htmlFor={`${idPrefix}-rows`} className={LABEL_CLASS}>
             Rows
           </label>
           <input
@@ -42,14 +44,11 @@ export function GridSizeFields({
             value={rowsValue}
             onChange={onRowsChange}
             onBlur={onRowsBlur}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-base focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className={FIELD_CLASS}
           />
         </div>
         <div className="space-y-1">
-          <label
-            htmlFor={`${idPrefix}-cols`}
-            className="text-xs uppercase tracking-wide text-muted-foreground"
-          >
+          <label htmlFor={`${idPrefix}-cols`} className={LABEL_CLASS}>
             Columns
           </label>
           <input
@@ -60,7 +59,7 @@ export function GridSizeFields({
             value={colsValue}
             onChange={onColsChange}
             onBlur={onColsBlur}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-base focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className={FIELD_CLASS}
           />
         </div>
       </div>

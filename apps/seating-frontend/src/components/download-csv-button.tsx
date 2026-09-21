@@ -11,56 +11,59 @@ interface ArrangementResult {
 interface DownloadCsvButtonProps {
   results: ArrangementResult[];
   filename?: string;
+  label?: string;
+  className?: string;
 }
 
 export function DownloadCsvButton({
   results,
   filename = 'seating-arrangements.csv',
+  label = 'Export CSV',
+  className = '',
 }: DownloadCsvButtonProps) {
   const { isPlus } = useSubscription();
 
-  // Only show button for subscribed users
   if (!isPlus) {
     return null;
   }
 
   const downloadCsv = () => {
-    // Convert all arrangements to CSV with headers and separators
     const csvParts: string[] = [];
 
     results.forEach((result, index) => {
-      // Add arrangement header
       csvParts.push(`"Arrangement ${index + 1}"`);
-
-      // Add arrangement grid rows
       const gridRows = result.arrangement.map((row) =>
-        row.map((cell) => `"${cell || ''}"`).join(','),
+        row.map((cell) => `"${(cell ?? '').replaceAll('"', '""')}"`).join(','),
       );
       csvParts.push(...gridRows);
 
-      // Add two empty rows as separator (unless this is the last arrangement)
       if (index < results.length - 1) {
         csvParts.push('', '');
       }
     });
 
-    const csvContent = csvParts.join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvParts.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
+    link.href = url;
+    link.download = filename;
+    link.hidden = true;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <Button variant="outline" size="sm" onClick={downloadCsv} className="h-8 gap-2 text-xs">
-      <Download className="h-3.5 w-3.5" />
-      Export CSV
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={downloadCsv}
+      disabled={results.length === 0}
+      className={`min-h-11 justify-center rounded-full bg-card px-4 text-sm ${className}`}
+    >
+      <Download aria-hidden="true" className="h-4 w-4" />
+      {label}
     </Button>
   );
 }

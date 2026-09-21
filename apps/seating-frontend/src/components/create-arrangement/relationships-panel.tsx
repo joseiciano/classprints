@@ -19,6 +19,12 @@ interface RelationshipsPanelProps {
   onToggleRelationship: (targetName: string) => void;
 }
 
+const TYPE_LABELS: Record<RelationshipType, string> = {
+  conflicts: 'Conflicts',
+  'works-well': 'Works Well With',
+  'works-well-strong': 'Work Well With Strong',
+};
+
 export function RelationshipsPanel({
   selectedStudent,
   attendeeNames,
@@ -35,91 +41,86 @@ export function RelationshipsPanel({
   onRelationshipTypeChange,
   onToggleRelationship,
 }: RelationshipsPanelProps) {
+  const relationshipTypes: RelationshipType[] = ['conflicts', 'works-well', 'works-well-strong'];
+
+  const activeError =
+    activeRelationshipType === 'conflicts'
+      ? conflictError
+      : activeRelationshipType === 'works-well'
+        ? worksWellError
+        : worksWellStrongError;
+
+  const activeSummaryText =
+    activeRelationshipType === 'conflicts'
+      ? conflictSummaryText
+      : activeRelationshipType === 'works-well'
+        ? worksWellSummaryText
+        : worksWellStrongSummaryText;
+
+  const currentMap =
+    activeRelationshipType === 'conflicts'
+      ? conflictParseResult.conflicts
+      : activeRelationshipType === 'works-well'
+        ? worksWellParseResult.worksWellWith
+        : worksWellStrongParseResult.worksWellWith;
+
   return (
-    <div className="space-y-8">
-      <div className="space-y-6 rounded-2xl border bg-card/80 p-8 shadow-card h-fit">
-        <div className="flex flex-col gap-6">
-          <nav className="flex gap-1 rounded-xl bg-muted/30 p-1 border border-border w-fit">
-            {(['conflicts', 'works-well', 'works-well-strong'] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => onRelationshipTypeChange(type)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
-                  activeRelationshipType === type
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {type === 'conflicts'
-                  ? 'Conflicts'
-                  : type === 'works-well'
-                    ? 'Works Well With'
-                    : 'Work Well With Strong'}
-              </button>
-            ))}
-          </nav>
+    <div className="space-y-4 rounded-[12px] border border-line bg-muted/40 p-5">
+      <nav
+        aria-label="Relationship type"
+        className="inline-flex rounded-full border border-line bg-card p-1"
+      >
+        {relationshipTypes.map((type) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => onRelationshipTypeChange(type)}
+            aria-pressed={activeRelationshipType === type}
+            className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              activeRelationshipType === type
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {TYPE_LABELS[type]}
+          </button>
+        ))}
+      </nav>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-foreground">
-                {activeRelationshipType === 'conflicts'
-                  ? 'Conflicts'
-                  : activeRelationshipType === 'works-well'
-                    ? 'Works Well With'
-                    : 'Work Well With Strong'}
-              </label>
-            </div>
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-foreground">
+          {TYPE_LABELS[activeRelationshipType]}
+        </label>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {attendeeNames
-                .filter((name) => name !== selectedStudent)
-                .map((name) => {
-                  const currentMap =
-                    activeRelationshipType === 'conflicts'
-                      ? conflictParseResult.conflicts
-                      : activeRelationshipType === 'works-well'
-                        ? worksWellParseResult.worksWellWith
-                        : worksWellStrongParseResult.worksWellWith;
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {attendeeNames
+            .filter((name) => name !== selectedStudent)
+            .map((name) => {
+              const isRelated =
+                currentMap[selectedStudent]?.includes(name) ||
+                currentMap[name]?.includes(selectedStudent);
 
-                  const isRelated =
-                    currentMap[selectedStudent]?.includes(name) ||
-                    currentMap[name]?.includes(selectedStudent);
-
-                  return (
-                    <button
-                      key={name}
-                      onClick={() => onToggleRelationship(name)}
-                      className={`px-4 py-2 rounded-xl border transition text-sm font-medium text-center ${
-                        isRelated
-                          ? 'bg-primary/10 border-primary text-primary shadow-sm'
-                          : 'bg-card border-border hover:border-primary/50 text-foreground'
-                      }`}
-                    >
-                      {name}
-                    </button>
-                  );
-                })}
-            </div>
-
-            {activeRelationshipType === 'conflicts' && conflictError && (
-              <FormAlert tone="warning">{conflictError}</FormAlert>
-            )}
-            {activeRelationshipType === 'works-well' && worksWellError && (
-              <FormAlert tone="warning">{worksWellError}</FormAlert>
-            )}
-            {activeRelationshipType === 'works-well-strong' && worksWellStrongError && (
-              <FormAlert tone="warning">{worksWellStrongError}</FormAlert>
-            )}
-
-            <p className="text-xs text-muted-foreground">
-              {activeRelationshipType === 'conflicts'
-                ? conflictSummaryText
-                : activeRelationshipType === 'works-well'
-                  ? worksWellSummaryText
-                  : worksWellStrongSummaryText}
-            </p>
-          </div>
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => onToggleRelationship(name)}
+                  aria-pressed={isRelated}
+                  className={`rounded-lg border px-3 py-2 text-center text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    isRelated
+                      ? 'border-primary bg-secondary text-secondary-foreground'
+                      : 'border-line bg-card text-foreground hover:border-primary/50'
+                  }`}
+                >
+                  {name}
+                </button>
+              );
+            })}
         </div>
+
+        {activeError && <FormAlert tone="warning">{activeError}</FormAlert>}
+
+        <p className="text-xs text-muted-foreground">{activeSummaryText}</p>
       </div>
     </div>
   );

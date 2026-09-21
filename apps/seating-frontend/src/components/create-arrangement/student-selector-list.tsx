@@ -8,6 +8,8 @@ interface StudentSelectorListProps {
   onSelectStudent: (name: string | null) => void;
 }
 
+const BADGE_CLASS = 'font-mono text-[10px] uppercase tracking-[0.06em]';
+
 export function StudentSelectorList({
   attendeeNames,
   selectedStudentForContenders,
@@ -18,67 +20,47 @@ export function StudentSelectorList({
   onSelectStudent,
 }: StudentSelectorListProps) {
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold px-2">2. Configure Rules</h2>
-      <div className="flex flex-col gap-1 max-h-[600px] overflow-y-auto pr-2">
-        {attendeeNames.length === 0 ? (
-          <p className="text-sm italic text-muted-foreground px-2">
-            Add names above to start configuring rules.
-          </p>
-        ) : (
-          attendeeNames.map((name) => {
-            const isSelected = selectedStudentForContenders === name;
-            const hasConflicts = (conflictParseResult.conflicts[name]?.length ?? 0) > 0;
-            const hasWorksWell =
-              (worksWellParseResult.worksWellWith[name]?.length ?? 0) > 0 ||
-              (worksWellStrongParseResult.worksWellWith[name]?.length ?? 0) > 0;
-            const hasContenders = (seatContenders[name]?.length ?? 0) > 0;
+    <div className="space-y-1">
+      {attendeeNames.length === 0 ? (
+        <p className="px-1 text-xs italic text-muted-foreground">
+          Add names above to start configuring rules.
+        </p>
+      ) : (
+        attendeeNames.map((name) => {
+          const isSelected = selectedStudentForContenders === name;
+          const hasConflicts = (conflictParseResult.conflicts[name]?.length ?? 0) > 0;
+          const hasWorksWell =
+            (worksWellParseResult.worksWellWith[name]?.length ?? 0) > 0 ||
+            (worksWellStrongParseResult.worksWellWith[name]?.length ?? 0) > 0;
+          const hasContenders = (seatContenders[name]?.length ?? 0) > 0;
 
-            return (
-              <button
-                key={name}
-                onClick={() => onSelectStudent(isSelected ? null : name)}
-                className={`flex flex-col items-start px-4 py-3 rounded-xl border transition text-left ${
-                  isSelected
-                    ? 'bg-primary border-primary text-primary-foreground'
-                    : 'bg-card border-border hover:border-primary/50 text-foreground'
-                }`}
-              >
-                <span className="font-medium">{name}</span>
-                <div className="flex gap-2 mt-1">
-                  {hasConflicts && (
-                    <span
-                      className={`text-[10px] uppercase font-bold ${
-                        isSelected ? 'text-primary-foreground/80' : 'text-red-500'
-                      }`}
-                    >
-                      Conflicts
-                    </span>
-                  )}
-                  {hasWorksWell && (
-                    <span
-                      className={`text-[10px] uppercase font-bold ${
-                        isSelected ? 'text-primary-foreground/80' : 'text-green-500'
-                      }`}
-                    >
-                      Partners
-                    </span>
-                  )}
-                  {hasContenders && (
-                    <span
-                      className={`text-[10px] uppercase font-bold ${
-                        isSelected ? 'text-primary-foreground/80' : 'text-blue-500'
-                      }`}
-                    >
-                      Seats {seatContenders[name].length}
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })
-        )}
-      </div>
+          return (
+            <button
+              key={name}
+              onClick={() => onSelectStudent(isSelected ? null : name)}
+              aria-pressed={isSelected}
+              className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                isSelected
+                  ? 'bg-secondary text-secondary-foreground'
+                  : 'text-foreground hover:bg-muted'
+              }`}
+            >
+              <span className="truncate text-sm font-medium">{name}</span>
+              <span className="ml-auto flex shrink-0 items-center gap-2">
+                {hasConflicts && (
+                  <span className={`${BADGE_CLASS} text-destructive`}>Conflicts</span>
+                )}
+                {hasWorksWell && <span className={`${BADGE_CLASS} text-primary`}>Partners</span>}
+                {hasContenders && (
+                  <span className={`${BADGE_CLASS} text-muted-foreground`}>
+                    Seats {seatContenders[name].length}
+                  </span>
+                )}
+              </span>
+            </button>
+          );
+        })
+      )}
     </div>
   );
 }

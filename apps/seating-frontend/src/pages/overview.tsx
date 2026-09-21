@@ -1,194 +1,220 @@
-import { useNavigate } from '@tanstack/react-router';
-import { useAuth } from '../providers/auth-provider';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { Layout, Users, Wand2, ArrowRight, Zap, Layers, Calendar } from 'lucide-react';
-import { APPLICATION_NAME } from '../lib/constants';
+import { useAuth } from '../providers/auth-provider';
 
-const content = {
-  hero: {
-    badge: 'Custom Done Quick',
-    heading: {
-      part1: 'Seating Charts,',
-      part2: 'done quick.',
-    },
+const columns = ['1', '2', '3', '4', '5', '6', '7'];
+const sampleSeats = [
+  [
+    { initials: 'AV', name: 'Avery' },
+    null,
+    null,
+    { initials: 'JM', name: 'Jordan' },
+    { initials: 'RS', name: 'Riley' },
+    null,
+    null,
+  ],
+  [
+    null,
+    { initials: 'KL', name: 'Kai' },
+    { initials: 'TB', name: 'Taylor', needsReview: true },
+    null,
+    null,
+    null,
+    null,
+  ],
+  [
+    { initials: 'MD', name: 'Morgan' },
+    null,
+    null,
+    null,
+    null,
+    { initials: 'LP', name: 'Logan' },
+    null,
+  ],
+  [null, null, null, { initials: 'JC', name: 'Jamie', needsReview: true }, null, null, null],
+  [
+    null,
+    { initials: 'EW', name: 'Emerson' },
+    null,
+    null,
+    null,
+    null,
+    { initials: 'NO', name: 'Noah' },
+  ],
+] as const;
+
+const features = [
+  {
+    index: '01',
+    title: 'Classroom dynamics, accounted for',
     description:
-      'Manage complex seat allocations with ease. Our optimization engine handles the constraints so you can focus on the experience.',
-    buttons: {
-      primary: 'Get Started',
-      secondary: 'Sign In',
-    },
+      'Separate students who distract one another, place supportive peers together, and factor in individual seating needs.',
   },
-  features: {
-    heading: {
-      part1: 'Why use',
-      highlight: APPLICATION_NAME,
-      part2: '',
-    },
-    subheading: 'We simplify the tedious work for you.',
-    items: [
-      {
-        icon: Wand2,
-        title: 'Smart Optimization',
-        description:
-          'Our optimization tools uses sophisticated fine-tuned algorithsm to generate the best arrangements for you.',
-        color: 'bg-primary',
-      },
-      {
-        icon: Zap,
-        title: 'Advanced Features',
-        description:
-          'Premium members get access to advanced Quality-of-life features, such as saved configs, CSV exporting, and emails.',
-        color: 'bg-accent',
-      },
-      {
-        icon: Layers,
-        title: 'Operator Console',
-        description: 'Comprehensive overview of all seating jobs and arrangement states.',
-        color: 'bg-tertiary',
-      },
-    ],
+  {
+    index: '02',
+    title: 'Multiple ways to build',
+    description:
+      'Choose the arrangement method that fits your classroom while accounting for every relationship, preference, and constraint that matters.',
   },
-  cta: {
-    heading: 'Get Started Today',
-    description: 'Create an account today and let us take care of the extra work for you.',
-    buttons: {
-      primary: 'Create Arrangement',
-      secondary: 'Sign In',
-    },
+  {
+    index: '03',
+    title: 'Compare, choose, export',
+    description:
+      'Generate up to five candidate layouts, compare their scores, and export the best fit as CSV.',
   },
-};
+];
+
+const SAMPLE_OCCUPIED_COUNT = sampleSeats.reduce(
+  (total, row) => total + row.filter((seat) => seat !== null).length,
+  0,
+);
 
 export function OverviewPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isSignedIn = !!user;
+  const isSignedIn = Boolean(user);
 
   return (
-    <div className="relative min-h-screen bg-background overflow-hidden pb-24">
-      {/* Hero Section */}
-      <section className="relative z-10 px-6 pt-32 pb-16 md:pt-40 md:pb-24">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col lg:flex-row items-center gap-12">
-            <div className="flex-1 text-center lg:text-left">
-              {/* <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-6 animate-fade-in">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-primary">{content.hero.badge}</span>
-              </div> */}
-              <h1 className="text-4xl md:text-6xl font-display font-bold mb-6 animate-fade-in">
-                {content.hero.heading.part1}{' '}
-                <span className="text-primary">{content.hero.heading.part2}</span>
-              </h1>
-              <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl animate-fade-in">
-                {content.hero.description}
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-in">
-                <Button
-                  variant="playful"
-                  size="lg"
-                  className="group"
-                  onClick={() => navigate({ to: isSignedIn ? '/create-arrangement' : '/sign-up' })}
-                >
-                  {isSignedIn ? 'Create Arrangement' : content.hero.buttons.primary}
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-                <Button variant="mint" size="lg" onClick={() => navigate({ to: '/charts' })}>
-                  <Layout className="w-5 h-5" />
-                  {content.hero.buttons.secondary}
-                </Button>
-              </div>
-            </div>
-
-            {/* Hero Illustration */}
-            <div className="flex-1 relative">
-              <div className="relative w-72 h-72 md:w-96 md:h-96 mx-auto">
-                {/* Main seating icon */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-40 h-40 md:w-56 md:h-56 bg-primary rounded-3xl shadow-2xl flex items-center justify-center rotate-6 hover:rotate-0 transition-transform duration-500">
-                    <Users className="w-20 h-20 md:w-28 md:h-28 text-primary-foreground" />
-                  </div>
-                </div>
-                {/* Floating elements */}
-                <div className="absolute top-4 left-4 w-12 h-12 bg-tertiary rounded-xl flex items-center justify-center shadow-soft animate-bounce">
-                  <Wand2 className="w-6 h-6 text-tertiary-foreground" />
-                </div>
-                <div className="absolute top-12 right-8 w-10 h-10 bg-secondary rounded-full flex items-center justify-center shadow-soft animate-bounce delay-150">
-                  <Zap className="w-5 h-5 text-secondary-foreground" />
-                </div>
-                <div className="absolute bottom-12 left-8 w-14 h-14 bg-accent rounded-2xl flex items-center justify-center shadow-soft animate-bounce delay-300">
-                  <Calendar className="w-7 h-7 text-accent-foreground" />
-                </div>
-                <div className="absolute bottom-4 right-4 w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center shadow-soft animate-bounce delay-500">
-                  <Layers className="w-5 h-5 text-primary" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="relative z-10 px-6 py-24 bg-card">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-center mb-4">
-            {content.features.heading.part1}{' '}
-            <span className="text-primary underline decoration-double">
-              {content.features.heading.highlight}
-            </span>{' '}
-            {content.features.heading.part2}
-          </h2>
-          <p className="text-muted-foreground text-center mb-16 max-w-2xl mx-auto">
-            {content.features.subheading}
+    <div className="w-full text-foreground">
+      <section className="mx-auto grid w-full max-w-[1120px] items-center gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 lg:py-24">
+        <div>
+          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-primary">
+            Smarter classroom seating
           </p>
-          <div className="grid md:grid-cols-3 gap-8">
-            {content.features.items.map((feature) => (
-              <div
-                key={feature.title}
-                className="group p-8 bg-background rounded-3xl shadow-soft hover:shadow-lg transition-all duration-300 hover:-translate-y-2"
-              >
-                <div
-                  className={`w-16 h-16 ${feature.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}
-                >
-                  <feature.icon className="w-8 h-8 text-primary-foreground" />
-                </div>
-                <h3 className="text-xl font-display font-bold mb-3">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
-              </div>
-            ))}
+          <h1 className="mt-4 max-w-[700px] font-display text-[clamp(2.625rem,5.4vw,4rem)] font-medium leading-[1.04] tracking-[-0.02em]">
+            Every student, in the <em className="text-primary">right</em> seat.
+          </h1>
+          <p className="mt-6 max-w-[48ch] text-lg leading-8 text-muted-foreground">
+            ClassPrints turns your class roster, classroom dynamics, and room layout into an
+            optimized seating chart—algorithmic or AI-assisted—in seconds.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Button
+              size="md"
+              className="min-h-11 justify-center rounded-full px-5"
+              onClick={() => navigate({ to: isSignedIn ? '/create-arrangement' : '/sign-up' })}
+            >
+              {isSignedIn ? 'Create a new chart' : 'Create your first chart'}
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button
+              variant="outline"
+              size="md"
+              className="min-h-11 justify-center rounded-full px-5"
+              onClick={() => navigate({ to: '/pricing' })}
+            >
+              See pricing
+            </Button>
           </div>
+          <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+            Start free today · Need more? See{' '}
+            <Link
+              to="/pricing"
+              className="text-primary underline decoration-border underline-offset-4 hover:decoration-primary"
+            >
+              premium plans
+            </Link>
+          </p>
         </div>
-      </section>
 
-      {/* CTA Section */}
-      <section className="relative z-10 px-6 py-24">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="p-12 bg-background rounded-[3rem] border border-border shadow-soft">
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              {content.cta.heading}
-            </h2>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              {content.cta.description}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              {isSignedIn ? (
-                <Button
-                  variant="playful"
-                  size="lg"
-                  onClick={() => navigate({ to: '/create-arrangement' })}
+        <figure className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6">
+          <figcaption className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Sample · Classroom 204
+            </span>
+            <span className="rounded-full bg-secondary px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-secondary-foreground">
+              Ready
+            </span>
+          </figcaption>
+          <div className="overflow-x-auto pb-2">
+            <div
+              className="mx-auto grid w-max grid-cols-[20px_repeat(7,44px)] gap-1.5"
+              role="img"
+              aria-label={`Sample five-row by seven-column classroom seating chart. ${SAMPLE_OCCUPIED_COUNT} seats are occupied and two occupied seats need review.`}
+            >
+              <span aria-hidden="true" />
+              {columns.map((column) => (
+                <span
+                  key={column}
+                  aria-hidden="true"
+                  className="grid h-5 place-items-center font-mono text-[9px] text-muted-foreground"
                 >
-                  {content.cta.buttons.primary}
-                </Button>
-              ) : (
-                <>
-                  <Button variant="playful" size="lg" onClick={() => navigate({ to: '/sign-up' })}>
-                    Create Account
-                  </Button>
-                  <Button variant="ghost" size="lg" onClick={() => navigate({ to: '/sign-in' })}>
-                    {content.cta.buttons.secondary}
-                  </Button>
-                </>
-              )}
+                  {column}
+                </span>
+              ))}
+              {sampleSeats.flatMap((row, rowIndex) => [
+                <span
+                  key={`row-${rowIndex}`}
+                  aria-hidden="true"
+                  className="grid h-10 place-items-center font-mono text-[9px] text-muted-foreground"
+                >
+                  {String.fromCharCode(65 + rowIndex)}
+                </span>,
+                ...row.map((seat, columnIndex) => {
+                  const needsReview =
+                    seat !== null && 'needsReview' in seat ? Boolean(seat.needsReview) : false;
+                  return (
+                    <span
+                      key={`${rowIndex}-${columnIndex}`}
+                      aria-hidden="true"
+                      title={seat?.name}
+                      className={`grid h-10 w-11 place-items-center rounded-lg border text-[11px] font-semibold ${
+                        needsReview
+                          ? 'border-destructive bg-destructive/10 text-destructive'
+                          : seat
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-dashed border-border bg-background text-muted-foreground'
+                      }`}
+                    >
+                      {seat?.initials ?? '—'}
+                    </span>
+                  );
+                }),
+              ])}
             </div>
           </div>
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-sm bg-primary" aria-hidden="true" /> Occupied
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 rounded-sm border border-destructive bg-destructive/10"
+                aria-hidden="true"
+              />{' '}
+              Needs review
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 rounded-sm border border-dashed border-border"
+                aria-hidden="true"
+              />{' '}
+              Open seat
+            </span>
+          </div>
+        </figure>
+      </section>
+
+      <section className="border-y border-border" aria-labelledby="landing-features">
+        <div className="mx-auto grid w-full max-w-[1120px] px-4 py-8 sm:px-6 sm:py-12 md:grid-cols-3">
+          <h2 id="landing-features" className="sr-only">
+            Why teachers use ClassPrints
+          </h2>
+          {features.map((feature, index) => (
+            <article
+              key={feature.index}
+              className={`py-7 md:px-8 md:py-4 ${
+                index > 0 ? 'border-t border-border md:border-l md:border-t-0' : ''
+              } ${index === 0 ? 'md:pl-0' : ''}`}
+            >
+              <p className="font-mono text-[11px] tracking-[0.1em] text-primary">{feature.index}</p>
+              <h3 className="mt-4 font-display text-xl font-medium">{feature.title}</h3>
+              <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
+                {feature.description}
+              </p>
+            </article>
+          ))}
         </div>
       </section>
     </div>

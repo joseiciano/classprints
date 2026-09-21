@@ -4,16 +4,17 @@ interface StudentEmptyStateProps {
 
 export function StudentEmptyState({ onSubmitTabClick }: StudentEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center h-[400px] rounded-2xl border border-dashed border-border bg-muted/20 text-muted-foreground">
-      <div className="text-center space-y-4">
-        <p>Select a student from the list to set their seat contenders or relationships.</p>
-        <button
-          onClick={onSubmitTabClick}
-          className="rounded-full border border-primary px-6 py-2 text-sm font-semibold text-primary hover:bg-primary/5 transition"
-        >
-          Skip to Submit
-        </button>
-      </div>
+    <div className="flex h-56 flex-col items-center justify-center gap-4 rounded-[12px] border border-dashed border-line bg-muted/40 text-center text-sm text-muted-foreground">
+      <p className="max-w-xs">
+        Select a student from the list to set their relationships or seat contenders.
+      </p>
+      <button
+        type="button"
+        onClick={onSubmitTabClick}
+        className="rounded-full border border-primary px-5 py-1.5 text-sm font-semibold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Skip to submit
+      </button>
     </div>
   );
 }
