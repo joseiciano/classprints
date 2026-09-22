@@ -10,6 +10,7 @@ import { SeatingService, SeatingConfigService } from './seating.service';
 import type { SeatingHonoEnv, SeatingWorkerBindings } from '../types/env';
 import type { AuthenticatedUser } from '@classprints/server/auth';
 import { BillingService, type BillingServiceConfig } from '@classprints/server/billing';
+import { isHttpError } from '../lib/http-error';
 
 const IS_LLM_ENABLED = true;
 
@@ -238,6 +239,10 @@ const handleRouteError = (error: unknown, c: Context<SeatingHonoEnv>) => {
       },
       400,
     );
+  }
+
+  if (isHttpError(error)) {
+    return c.json({ error: error.message }, error.status);
   }
 
   if (error instanceof SyntaxError) {

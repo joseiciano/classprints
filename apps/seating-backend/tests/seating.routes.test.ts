@@ -2,7 +2,11 @@ import type { Queue } from '@cloudflare/workers-types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/index';
 import type { InsertSeatingJob, SeatingRepository } from '../src/seating/seating.db';
-import type { SeatingJob, SeatingResult } from '@classprints/seating-shared';
+import {
+  SUBSCRIPTION_LIMITS,
+  type SeatingJob,
+  type SeatingResult,
+} from '@classprints/seating-shared';
 import type { BillingService } from '@classprints/server/billing';
 import type * as BillingModule from '@classprints/server/billing';
 
@@ -106,12 +110,14 @@ vi.mock('../src/seating/seating.db', async () => {
 });
 
 // Mock BillingService
+const billingTier = vi.hoisted(() => ({ tier: 'plus' as 'free' | 'plus' }));
+
 vi.mock('@classprints/server/billing', async () => {
   const actual = await vi.importActual<typeof BillingModule>('@classprints/server/billing');
   return {
     ...actual,
     BillingService: class MockBillingService {
-      getSubscription = vi.fn().mockResolvedValue({ tier: 'plus' });
+      getSubscription = vi.fn().mockImplementation(async () => ({ tier: billingTier.tier }));
     },
   };
 });
@@ -134,6 +140,7 @@ describe('Seating Routes', () => {
 
   beforeEach(() => {
     repo.reset();
+    billingTier.tier = 'plus';
     queueSend = vi.fn().mockResolvedValue(undefined);
   });
 
@@ -222,6 +229,105 @@ describe('Seating Routes', () => {
     const data = await res.json();
     expect(data.results).toHaveLength(1);
     expect(data.results[0].fitnessScore).toBeCloseTo(0.95);
+  });
+  it('returns generated results to a free-tier job owner', async () => {
+    billingTier.tier = 'free';
+    await app.fetch(
+      new Request('http://localhost/api/v1/seating', {
+        method: 'POST',
+        body: JSON.stringify(createPayload()),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      createEnv() as never,
+    );
+
+    const job = repo.firstJob();
+    if (!job) throw new Error('job missing');
+    repo.seedResult({
+      id: 1,
+      jobId: job.id,
+      arrangement: [['Alice', 'Bob']],
+      fitnessScore: 0.95,
+      arrangementHash: 'hash',
+      createdAt: Date.now(),
+    });
+
+    const res = await app.fetch(
+      new Request(`http://localhost/api/v1/seating/${job.externalId}/results`),
+      createEnv() as never,
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.jobId).toBe(job.externalId);
+    expect(data.results).toHaveLength(1);
+    expect(data.results[0].arrangement).toEqual([['Alice', 'Bob']]);
+    expect(data.results[0].fitnessScore).toBeCloseTo(0.95);
+  });
+  it('rejects results older than the free-tier visibility window', async () => {
+    billingTier.tier = 'free';
+    const now = Date.parse('2026-09-21T00:00:00.000Z');
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    try {
+      await app.fetch(
+        new Request('http://localhost/api/v1/seating', {
+          method: 'POST',
+          body: JSON.stringify(createPayload()),
+          headers: { 'Content-Type': 'application/json' },
+        }),
+        createEnv() as never,
+      );
+
+      const job = repo.firstJob();
+      if (!job) throw new Error('job missing');
+      const staleCreatedAt =
+        now - (SUBSCRIPTION_LIMITS.free.visibilityDays + 1) * 24 * 60 * 60 * 1000;
+      job.createdAt = staleCreatedAt;
+      repo.seedResult({
+        id: 1,
+        jobId: job.id,
+        arrangement: [['Alice', 'Bob']],
+        fitnessScore: 0.95,
+        arrangementHash: 'stale-result',
+        createdAt: staleCreatedAt,
+      });
+
+      const res = await app.fetch(
+        new Request(`http://localhost/api/v1/seating/${job.externalId}/results`),
+        createEnv() as never,
+      );
+      expect(res.status).toBe(403);
+      await expect(res.json()).resolves.toEqual({
+        error: "This chart is outside the Free plan's 30-day visibility window.",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('returns ownership errors as HTTP 403 with their domain message', async () => {
+    await app.fetch(
+      new Request('http://localhost/api/v1/seating', {
+        method: 'POST',
+        body: JSON.stringify(createPayload()),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      createEnv() as never,
+    );
+
+    const job = repo.firstJob();
+    if (!job) throw new Error('job missing');
+    job.userId = 'different-user-id';
+
+    const res = await app.fetch(
+      new Request(`http://localhost/api/v1/seating/${job.externalId}/results`),
+      createEnv() as never,
+    );
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toEqual({
+      error: 'Forbidden: job does not belong to user',
+    });
   });
 
   it('lists recent jobs', async () => {

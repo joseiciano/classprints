@@ -184,15 +184,18 @@ export class SeatingService {
       throw new HttpError(403, 'Forbidden: job does not belong to user');
     }
 
-    // Entitlement: subscription check for exporting results
     const subscription = await this.deps.billing.getSubscription(userId);
     const tier = subscription.tier as keyof typeof SUBSCRIPTION_LIMITS;
-
-    if (tier === 'free') {
-      throw new HttpError(
-        403,
-        'Plan limit exceeded: CSV export and full results access are only available on the Plus tier.',
-      );
+    const visibilityDays = SUBSCRIPTION_LIMITS[tier].visibilityDays;
+    if (visibilityDays !== null) {
+      const visibilityWindow = visibilityDays * 24 * 60 * 60 * 1000;
+      const threshold = (this.deps.now?.() ?? Date.now()) - visibilityWindow;
+      if (job.createdAt < threshold) {
+        throw new HttpError(
+          403,
+          `This chart is outside the Free plan's ${visibilityDays}-day visibility window.`,
+        );
+      }
     }
 
     const results = await this.deps.repo.listResults(job.id);
