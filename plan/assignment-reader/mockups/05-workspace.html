@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assignment Reader · 05 Review & grading workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="assets/mockup.css">
+</head>
+<body class="mockup">
+
+  <header class="screen-head">
+    <span class="wf-tag">Wireframe · not visual design</span>
+    <div class="screen-title">Review & grading workspace — <em>verify and grade in one place</em></div>
+    <p class="screen-sub">PRD §5 + §6, resolved decision 11: one workspace per document. The original stays beside the editable draft while the teacher records the optional score and comments — there is no separate grading screen, and the verification gate lives in the states, not in navigation.</p>
+  </header>
+
+  <main class="frame">
+    <div class="frame-bar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span class="path">class/grade-3-room-12/assignments/fractions-4/submissions/priya-shah/workspace</span>
+      <span class="flow-name">PRD §5 review+grading · decision 11</span>
+    </div>
+    <div class="frame-body">
+
+      <div class="appbar">
+        <span class="brand"><span class="mark">A</span> Assignment Reader</span>
+        <span class="who"><span>Elena Ellis</span><span class="avatar">EE</span></span>
+      </div>
+
+      <div class="crumbs">
+        <b>Grade 3 · Room 12</b> <span class="sep"></span> <b>Fractions worksheet 4 — Equivalent fractions</b>
+        <span class="sep"></span> <b>Priya Shah</b> <span class="sep"></span> <span>Review & grade</span>
+      </div>
+
+      <!-- ============ document identity bar ============ -->
+      <div class="panel" style="margin-bottom: 22px;">
+        <div class="panel-head" style="border-bottom: none;">
+          <a href="02-assignment.html" class="btn ghost sm">← Submissions</a>
+          <span class="stamp green">Student work</span>
+          <span class="panel-title">Priya Shah · Submission</span>
+          <span class="chip st-ready"><span class="dot"></span> Ready</span>
+          <span class="chip plain">3 pages</span>
+          <span class="chip plain">Fractions worksheet 4 · Max 10</span>
+          <span style="margin-left: auto;" class="btn-row">
+            <button class="btn ghost sm">Open materials ⇱</button>
+            <button class="btn primary">Grade</button>
+          </span>
+        </div>
+      </div>
+
+      <div class="split-review">
+
+        <!-- ============ left: original photo ============ -->
+        <div style="padding: 22px 26px; background: var(--paper-sink); border-right: 1.5px dashed var(--ink-line); position: relative;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <span class="h-small">Original · page 1 of 3</span>
+            <span class="chip st-ready"><span class="dot"></span> Transcribed</span>
+            <span class="mono" style="margin-left:auto;">IMG_2842.jpg</span>
+          </div>
+
+          <div class="photo tilt zoomable cropped">
+            <span class="photo-tag">source of truth</span>
+            <div class="hand">
+              Name: Priya S. &nbsp; Date: Mar 6<br>
+              <b>Part A — Shade and compare</b><br>
+              1. &nbsp; 1/2 and 2/4 &nbsp;&nbsp; equal<br>
+              <span class="cross">2. 1/3 < 1/4</span> &nbsp;→ fixed: 1/3 > 1/4<br>
+              3. &nbsp; 2/6 = 1/3 &nbsp;&nbsp; equal
+            </div>
+          </div>
+
+          <div class="btn-row" style="margin-top: 16px;">
+            <button class="btn sm">⤢ Zoom</button>
+            <button class="btn sm ghost">Rotate</button>
+            <button class="btn sm ghost">Open full page</button>
+            <span class="pager" style="margin-left: auto;">
+              <button class="off" aria-label="previous page">‹</button>
+              <span>1 / 3</span>
+              <button aria-label="next page">›</button>
+            </span>
+          </div>
+
+          <div class="note" data-n="6" style="margin-top: 16px;">
+            <b>The list is the queue.</b> The back arrow exits to the assignment's submission list without a state change — tracking and "who's next" live there (acceptance 10), never on the workspace.
+          </div>
+        </div>
+
+        <!-- ============ right: editor + grading rail ============ -->
+        <div style="padding: 22px 26px; position: relative;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <span class="h-small">Transcription · editable</span>
+            <span class="chip st-ready"><span class="dot"></span> Ready · verified</span>
+            <span class="mono faint" style="margin-left:auto;">verified Mar 7 · by E. Ellis</span>
+          </div>
+
+          <div class="editor">
+            <div class="toolbar">
+              <button class="tbtn on"><b>B</b></button>
+              <button class="tbtn"><i>I</i></button>
+              <button class="tbtn"><u>U</u></button>
+              <span class="tsep"></span>
+              <button class="tbtn">≡ List</button>
+              <button class="tbtn">⇥ Indent</button>
+              <span class="tsep"></span>
+              <button class="tbtn">ƒ x/y</button>
+              <button class="tbtn">∑ Math</button>
+              <span class="tsep"></span>
+              <button class="tbtn">🖼 Region</button>
+              <span class="mono faint" style="margin-left: auto;">WYSIWYG</span>
+            </div>
+            <div class="canvas">
+              <h4>Part A — Shade and compare</h4>
+              <p>1.&nbsp; 1/2 and 2/4 — <b>equal</b> (shaded the same)</p>
+              <p>2.&nbsp; 1/3 and 1/4 — <b>1/3 is larger</b></p>
+              <p>3.&nbsp; 2/6 and 1/3 — <b>equal</b></p>
+              <p class="faint small" style="border-left: 3px solid var(--c-archived); padding-left: 10px;">
+                ⌇ Priya's shaded fraction bars kept as an image region — not transcribed. Compare with the original.
+              </p>
+            </div>
+          </div>
+
+          <div class="note" data-n="5" style="margin-top: 14px;">
+            <b>Edits stay authoritative.</b> Corrections made here are the digital version of record; retries and model changes never overwrite them without explicit consent (principle 2, decision 6).
+          </div>
+
+          <!-- grading rail -->
+          <div class="panel" style="margin-top: 16px;">
+            <div class="panel-head">
+              <span class="panel-title">Grading</span>
+              <span class="mono faint" style="margin-left:auto;">Ready ✓ Mar 7 15:02 — grading unlocked</span>
+            </div>
+            <div class="panel-body">
+              <div class="cols" style="grid-template-columns: 1fr 1fr; gap: 18px;">
+                <div>
+                  <div class="field" style="margin-bottom: 8px;">
+                    <label>Score</label>
+                    <div class="btn-row">
+                      <input class="input" placeholder="e.g. 8.5" style="max-width: 130px;">
+                      <span class="mono">/</span>
+                      <input class="input" value="10" style="max-width: 68px;" aria-label="Assignment maximum score">
+                    </div>
+                    <div class="small faint" style="margin-top: 6px;">Maximum score — set or change the upper bound here; scores above it are rejected</div>
+                  </div>
+                  <div class="field" style="margin-bottom: 0;">
+                    <label>Comments</label>
+                    <textarea class="input" rows="2" placeholder="Optional — e.g. Strong fraction sense; watch simplification of 6/8."></textarea>
+                  </div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <button class="btn primary">Grade</button>
+                  <p class="small faint" style="margin-top: auto;">One control: press Grade to set the graded state, press again to sunset it and return the submission to Ready. Score and comments are both optional.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="note" data-n="2" style="margin-top: 14px;">
+            <b>The gate is a state, not a place.</b> Grade unlocks only at Ready, and Ready requires review of the full document (PRD §5, decision 5). Before that, the rail shows the commitment locked with its reason.
+          </div>
+          <div class="note-stack" style="margin-top: 10px;">
+            <div class="note" data-n="3">
+              <b>Score rules.</b> Up to two decimals; values above the assignment maximum are rejected with a clear error; display is “8.5 / 10” when a max is defined and the value alone otherwise — no percentage conversion (decision 4).
+            </div>
+            <div class="note" data-n="4">
+              <b>Grading is the teacher's judgment.</b> Score and comments attach to the submission, never to the transcription; no automatic assessment in this release (PRD §6, persona 3). Grade is one toggle — press to set the graded state, press again to sunset it; a sunset submission stops appearing as graded.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ materials rail ============ -->
+      <div class="panel paper" style="margin-top: 26px;">
+        <div class="panel-head">
+          <span class="stamp">Assignment materials</span>
+          <span class="panel-title">Fractions worksheet 4 · v2 (replaced Mar 3)</span>
+          <span class="chip st-ready"><span class="dot"></span> Ready</span>
+          <span class="small faint">opened beside this review</span>
+        </div>
+        <div class="panel-body">
+          <div class="pages-strip">
+            <div class="thumb selected">
+              <div class="photo"><div class="hand" style="font-size:11px; line-height:15px; padding:8px 8px 8px 24px;">Name ___ Date ___<br><b>Equivalent Fractions</b><br>Shade the fraction wall…</div></div>
+              <div class="thumb-meta"><span>p1 · instructions</span><span class="st-ready mono">✓</span></div>
+            </div>
+            <div class="thumb">
+              <div class="photo"><div class="hand" style="font-size:11px; line-height:15px; padding:8px 8px 8px 24px;">Fraction wall<br>1 &nbsp;1/2 &nbsp;1/3 …</div></div>
+              <div class="thumb-meta"><span>p2 · fraction wall</span><span class="st-ready mono">✓</span></div>
+            </div>
+            <div style="align-self: center; max-width: 260px;">
+              <div class="note" data-n="7">
+                <b>Context beside judgment.</b> Materials open on demand without leaving the workspace (acceptance 7) — stamped context, never graded, excluded from every count (principle 5).
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ identity + states strip ============ -->
+      <div class="panel" style="margin-top: 22px;">
+        <div class="panel-head">
+          <span class="stamp green">Student work</span>
+          <span class="panel-title">One screen, three states</span>
+          <span class="small faint">assignment materials use the same workspace without the grading rail — Ready is their terminal state</span>
+        </div>
+        <div class="panel-body" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: center;">
+          <div>
+            <span class="chip st-review"><span class="dot"></span> Needs review</span>
+            <p class="small faint" style="margin-top:6px;">Compare and correct; commitment 1 ahead.</p>
+          </div>
+          <div>
+            <span class="chip st-ready"><span class="dot"></span> Ready ✓ <span class="small">— you are here</span></span>
+            <p class="small faint" style="margin-top:6px;">Verified against the original; grading unlocked.</p>
+          </div>
+          <div>
+            <span class="chip st-graded"><span class="dot"></span> Graded</span>
+            <p class="small faint" style="margin-top:6px;">Commitment 2 — explicit, teacher's own judgment.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="note accent" data-n="1" style="margin-top: 20px;">
+        <b>Why one screen.</b> Verification and grading are one attention loop — the teacher checks the original while judging the work (PRD resolved decision 11). Separate screens duplicated context and added navigation; the verification gate survives as a state requirement, not a change of place.
+      </div>
+
+    </div>
+  </main>
+
+  <nav class="nav-next">
+    <a href="index.html">⌂ Overview</a>
+    <a href="01-dashboard.html">01 Dashboard</a>
+    <a href="02-assignment.html">02 Assignment</a>
+    <a href="03-upload.html">03 Upload</a>
+    <a href="04-processing.html">04 Processing</a>
+    <a href="05-workspace.html" class="on">05 Workspace</a>
+  </nav>
+  <nav class="nav-next">
+    <a href="04-processing.html">← Processing</a>
+    <a href="index.html">⌂ Overview →</a>
+  </nav>
+
+  <footer class="foot">
+    <span>Assignment Reader · product-doc.md markups</span>
+    <span>Screen 5 / 5</span>
+  </footer>
+
+</body>
+</html>

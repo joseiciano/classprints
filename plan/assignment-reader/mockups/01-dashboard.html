@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assignment Reader · 01 Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="assets/mockup.css">
+</head>
+<body class="mockup">
+
+  <header class="screen-head">
+    <span class="wf-tag">Wireframe · not visual design</span>
+    <div class="screen-title">Classes and assignments — <em>the work that needs attention</em></div>
+    <p class="screen-sub">PRD capabilities 1 and 6: Elena moves between teacher-managed classes, sees submission status at a glance, and opens the next assignment without maintaining a separate tracking sheet.</p>
+  </header>
+
+  <main class="frame">
+    <div class="frame-bar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span class="path">classes/grade-3-room-12</span>
+      <span class="flow-name">PRD §1 Class hierarchy · §6 Tracking</span>
+    </div>
+    <div class="frame-body">
+
+      <div class="appbar">
+        <span class="brand"><span class="mark">A</span> Assignment Reader</span>
+        <span class="who"><span>Elena Ellis</span><span class="avatar">EE</span></span>
+      </div>
+
+      <div class="crumbs">
+        <b>Grade 3 · Room 12</b> <span class="sep"></span> <span>Active</span>
+      </div>
+
+      <!-- ============ class switcher and actions ============ -->
+      <div class="card ink-border" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:22px;">
+        <div class="seg">
+          <button class="on">Grade 3 · Room 12</button>
+          <button>Grade 3 · Science Club</button>
+        </div>
+        <span class="btn-row" style="margin-left:auto;">
+          <button class="btn ghost sm">New class</button>
+          <button class="btn ghost sm">Rename</button>
+          <button class="btn ghost sm">Archive</button>
+        </span>
+      </div>
+
+      <!-- ============ class overview ============ -->
+      <div class="h-small" style="margin-bottom:10px;">Class overview</div>
+      <div class="cols" style="grid-template-columns:repeat(2, minmax(0, 1fr)); margin-bottom:14px;">
+        <div class="card ink-border">
+          <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:0;">
+              <div class="h-panel">Grade 3 · Room 12</div>
+              <p class="small muted" style="margin-top:4px;">24 students · 3 assignments</p>
+            </div>
+            <span class="chip plain">Active class</span>
+          </div>
+          <div class="legend" style="margin-top:14px;">
+            <span class="chip st-review"><span class="dot"></span> 3 need review</span>
+            <span class="chip st-ready"><span class="dot"></span> 1 ready</span>
+            <span class="chip st-graded"><span class="dot"></span> 1 graded</span>
+          </div>
+        </div>
+
+        <div class="card st-archived">
+          <div style="display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:0;">
+              <div class="h-panel">Grade 3 · Science Club</div>
+              <p class="small" style="margin-top:4px;">Read-only class · historical work remains available</p>
+            </div>
+            <span class="chip st-archived"><span class="dot"></span> ARCHIVED</span>
+          </div>
+          <p class="small" style="margin-top:14px;">Open assignments and records for reference; uploads and edits are unavailable.</p>
+        </div>
+      </div>
+
+      <div class="cols" style="grid-template-columns:repeat(2, minmax(0, 1fr)); margin-bottom:26px;">
+        <div class="note" data-n="3">
+          <b>A deliberately small roster.</b> Students are teacher-managed records, not accounts: no authentication, invitations, enrollment sync, or school information system integration (PRD §1; out of scope).
+        </div>
+        <div class="note accent" data-n="5">
+          <b>Outstanding work surfaces at both levels.</b> Class and assignment rollups answer Elena's Persona 1 need: “I need to see what is unfinished without maintaining another spreadsheet” (PRD Persona 1; §6).
+        </div>
+      </div>
+
+      <!-- ============ Room 12 assignments ============ -->
+      <div class="panel" style="margin-bottom:22px;">
+        <div class="panel-head">
+          <span class="panel-title">Grade 3 · Room 12 · Assignments</span>
+          <span class="chip plain">3 assignments</span>
+          <span class="small faint" style="margin-left:auto;">Updated Mar 7</span>
+        </div>
+        <div class="panel-body" style="padding:0;">
+
+          <!-- canonical expanded assignment -->
+          <div class="rowline" style="align-items:flex-start; padding:18px 16px; background:var(--accent-wash);">
+            <div class="grow">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <div class="h-panel">Fractions worksheet 4 — Equivalent fractions</div>
+                <span class="chip plain">Expanded</span>
+                <span class="chip plain">Max 10</span>
+              </div>
+              <div class="legend" style="margin-top:12px;">
+                <span class="stamp">Context · not graded</span>
+                <span class="chip st-ready"><span class="dot"></span> Materials Ready</span>
+                <span class="chip st-review"><span class="radio on"></span> Needs to Review · 1</span>
+                <span class="chip st-graded"><span class="radio on"></span> Graded · 1</span>
+                <span class="chip st-failed"><span class="radio on"></span> Submission Errors · 1</span>
+              </div>
+              <div style="display:grid; grid-template-columns:minmax(120px, 1fr) auto; gap:10px; align-items:center; margin-top:14px; max-width:520px;">
+                <div class="meter"><i style="width:25%;"></i></div>
+                <span class="mono muted">25% graded</span>
+              </div>
+              <p class="small faint" style="margin-top:8px;">Maya Rodriguez needs review · Priya Shah ready · Jack Thompson graded 8.5 / 10 · Sam Okafor failed · Noah Kim not started</p>
+            </div>
+            <div class="btn-row">
+              <button class="btn sm">Open</button>
+              <button class="btn primary sm">New submission</button>
+            </div>
+          </div>
+
+          <div class="rowline">
+            <div class="grow">
+              <div class="h-panel">Paragraph of the week — Mar 6</div>
+              <div class="legend" style="margin-top:8px;">
+                <span class="chip st-review"><span class="dot"></span> Materials Needs review</span>
+                <span class="chip st-review"><span class="radio on"></span> Needs to Review · 5</span>
+                <span class="chip st-graded"><span class="radio on"></span> Graded · 3</span>
+                <span class="chip plain"><span class="radio"></span> Submission Errors · 0</span>
+              </div>
+            </div>
+            <div style="width:180px;">
+              <div class="meter amber"><i style="width:37%;"></i></div>
+              <div class="mono muted" style="margin-top:5px; text-align:right;">37% graded</div>
+            </div>
+            <button class="btn sm">Open</button>
+          </div>
+
+          <div class="rowline">
+            <div class="grow">
+              <div class="h-panel">Timed facts — Division</div>
+              <div class="legend" style="margin-top:8px;">
+                <span class="chip plain">no materials</span>
+                <span class="chip st-review"><span class="radio on"></span> Needs to Review · 2</span>
+                <span class="chip st-graded"><span class="radio on"></span> Graded · 8</span>
+                <span class="chip plain"><span class="radio"></span> Submission Errors · 0</span>
+              </div>
+            </div>
+            <div style="width:180px;">
+              <div class="meter"><i style="width:80%;"></i></div>
+              <div class="mono muted" style="margin-top:5px; text-align:right;">80% graded</div>
+            </div>
+            <button class="btn sm">Open</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="note accent" data-n="1" style="margin-bottom:26px; max-width:none;">
+        <b>Progress counts student submissions only.</b> Assignment materials provide context and never enter grading totals, even when their own review state is Needs review or Ready (PRD §6; launch acceptance 10; state model).
+      </div>
+
+      <!-- ============ new assignment ============ -->
+      <div class="card ink-border" style="margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
+          <div class="h-panel">New assignment</div>
+          <span class="small faint">Grade 3 · Room 12</span>
+        </div>
+        <div class="cols" style="grid-template-columns:minmax(0, 2fr) minmax(180px, 1fr); gap:16px;">
+          <div class="field">
+            <label for="assignment-name">Name</label>
+            <input id="assignment-name" class="input" value="___">
+          </div>
+          <div class="field">
+            <label for="maximum-score">Max score</label>
+            <input id="maximum-score" class="input" value="10">
+            <span class="small faint">optional · decimals to 2 places, e.g. 8.5</span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary">Create assignment</button>
+          <button class="btn ghost">Cancel</button>
+        </div>
+      </div>
+
+      <div class="note" data-n="4" style="margin-bottom:26px;">
+        <b>Maximum score is optional and enforced when present.</b> Scores accept up to two decimal places; values above the maximum are rejected with a clear error, and no percentage is calculated (resolved decision 4).
+      </div>
+
+      <!-- ============ archived class record ============ -->
+      <div class="panel st-archived">
+        <div class="panel-head">
+          <span class="chip st-archived"><span class="dot"></span> ARCHIVED</span>
+          <span class="panel-title">Grade 3 · Science Club — archived · read-only</span>
+        </div>
+        <div class="panel-body">
+          <p>Assignments, materials, and submissions remain viewable; no new uploads or edits are allowed.</p>
+          <p class="small" style="margin-top:8px;">Historical grading records and review history are retained rather than silently removed.</p>
+          <div class="btn-row" style="margin-top:14px;">
+            <button class="btn ghost sm">View archived assignments</button>
+            <button class="btn ghost sm" disabled>New upload unavailable</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="note danger" data-n="2" style="margin-top:14px;">
+        <b>Archive means preserved and read-only.</b> Existing assignments, materials, submissions, grading records, and review history remain viewable, while uploads and edits stop (resolved decision 7).
+      </div>
+
+    </div>
+  </main>
+
+  <nav class="nav-next">
+    <a href="index.html">⌂ Overview</a>
+    <a href="01-dashboard.html" class="on">01 Dashboard</a>
+    <a href="02-assignment.html">02 Assignment</a>
+    <a href="03-upload.html">03 Upload</a>
+    <a href="04-processing.html">04 Processing</a>
+    <a href="05-workspace.html">05 Workspace</a>
+  </nav>
+  <nav class="nav-next">
+    <a href="index.html">← Overview</a>
+    <a href="02-assignment.html">Assignment →</a>
+  </nav>
+
+  <footer class="foot">
+    <span>Assignment Reader · product-doc.md markups</span>
+    <span>Screen 1 / 5</span>
+  </footer>
+
+</body>
+</html>
