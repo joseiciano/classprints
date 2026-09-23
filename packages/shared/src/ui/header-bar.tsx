@@ -22,7 +22,7 @@ export const HeaderBar = ({
   const positionClass = fixed ? 'absolute' : 'relative';
   const headerClasses = `top-0 left-0 right-0 z-50 ${className}`.trim();
   const navClasses =
-    `relative z-50 mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4 ${navClassName}`.trim();
+    `relative z-50 mx-auto flex w-full max-w-[1120px] items-center justify-between px-6 py-4 ${navClassName}`.trim();
   const leftClasses = `flex items-center gap-2 ${leftClassName}`.trim();
   const rightClasses = `flex items-center gap-4 ${rightClassName}`.trim();
 

@@ -432,7 +432,7 @@ function AuthenticatedLayout() {
             <Menu aria-hidden="true" className="h-5 w-5" />
           </button>
         </header>
-        <main className="mx-auto min-w-0 max-w-[1180px] animate-rise px-4 py-6 sm:px-6 lg:px-[42px] lg:py-[34px] lg:pb-[60px]">
+        <main className="mx-auto min-w-0 max-w-[1120px] animate-rise px-4 py-6 sm:px-6 lg:px-[42px] lg:py-[34px] lg:pb-[60px]">
           <Outlet />
         </main>
       </div>

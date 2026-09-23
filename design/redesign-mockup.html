@@ -31,6 +31,7 @@
     --red-soft: #f3dfda;
     --radius: 10px;
     --shadow: 0 1px 2px rgb(32 29 24 / .05), 0 12px 32px -18px rgb(32 29 24 / .25);
+    --layout-max: 1120px;
   }
   body.dark {
     --paper: #17150f;
@@ -141,7 +142,7 @@
   .appnav-wrap { position: sticky; top: 45px; z-index: 90; background: var(--paper-2); border-bottom: 1px solid var(--line); }
   .appnav {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    max-width: 1120px; margin: 0 auto; padding: 0 24px; min-height: 64px;
+    max-width: var(--layout-max); margin: 0 auto; padding: 0 24px; min-height: 64px;
   }
   .appnav .brand { font-size: 16px; margin-right: 10px; }
   .appnav .navi {
@@ -163,7 +164,7 @@
 
   .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 26px; flex-wrap: wrap; }
   .page-head h1 { font-size: 32px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .main { max-width: 1120px; margin: 0 auto; padding: 34px 24px 60px; min-width: 0; }
+  .main { max-width: var(--layout-max); margin: 0 auto; padding: 34px 24px 60px; min-width: 0; }
   .head-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .crumbs { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; color: var(--ink-3); font-size: 13.5px; flex-wrap: wrap; }
   .crumbs b { color: var(--ink); font-weight: 600; }
@@ -331,8 +332,8 @@
 
   /* ── overview (public page) ──────────────────────── */
   .site-header { position: relative; z-index: 40; background: color-mix(in srgb, var(--paper) 95%, transparent); backdrop-filter: blur(6px); }
-  .mnav { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 24px; min-height: 74px; }
-  .hero { max-width: 1120px; margin: 0 auto; padding: 70px 24px 70px; display: grid; grid-template-columns: 1.05fr .95fr; gap: 60px; align-items: center; }
+  .mnav { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: var(--layout-max); margin: 0 auto; padding: 0 24px; min-height: 74px; }
+  .hero { max-width: var(--layout-max); margin: 0 auto; padding: 70px 24px 70px; display: grid; grid-template-columns: 1.05fr .95fr; gap: 60px; align-items: center; }
   @media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
   .hero h1 { font-size: clamp(40px, 5vw, 58px); line-height: 1.05; }
   .hero h1 em { font-style: italic; color: var(--pine); }
@@ -354,7 +355,7 @@
   .seat-legend span { display: inline-flex; align-items: center; gap: 8px; }
   .seat-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
   .feature-row { border-top: 1px solid var(--line-2); }
-  .features { max-width: 1120px; margin: 0 auto; padding: 26px 24px 60px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+  .features { max-width: var(--layout-max); margin: 0 auto; padding: 26px 24px 60px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
   @media (max-width: 900px) { .features { grid-template-columns: 1fr; } }
   .feature { padding: 34px 34px 10px 0; }
   .feature + .feature { border-left: 1px solid var(--line); padding-left: 34px; }
@@ -366,7 +367,7 @@
   /* staging FooterBar: border-t, inner 1120/24 row, © left + links right */
   .footer-bar { border-top: 1px solid var(--line); background: transparent; margin-top: auto; }
   .footer-bar .in {
-    max-width: 1120px; margin: 0 auto; padding: 24px 24px;
+    max-width: var(--layout-max); margin: 0 auto; padding: 24px 24px;
     display: flex; flex-direction: column; gap: 12px;
     color: var(--ink-3); font-size: 13px; flex-wrap: wrap;
   }

@@ -23,7 +23,7 @@ const linkClass =
 
 export function TermsOfServicePage() {
   return (
-    <div className="mx-auto grid w-full max-w-[1000px] items-start gap-8 px-4 py-10 text-foreground sm:px-6 sm:py-14 md:grid-cols-[210px_minmax(0,680px)] md:gap-[72px] lg:py-16">
+    <div className="mx-auto grid w-full max-w-[1120px] items-start gap-8 px-4 py-10 text-foreground sm:px-6 sm:py-14 md:grid-cols-[210px_minmax(0,680px)] md:gap-[72px] lg:py-16">
       <aside className="md:sticky md:top-24" aria-label="Terms of Service contents">
         <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
           On this page
