@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ClassPrints · Classes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <a class="sidebar__brand" href="index.html"><span class="brand-mark">A</span><span class="brand-name">Assignment Reader</span></a>
+      <nav class="sidebar__nav">
+        <div class="nav-group"><div class="nav-label">Management</div><a class="nav-link" href="01-classes.html" aria-current="page"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4zM8 8h8M8 12h5M8 16h3"/></svg></span>Classes</a></div>
+        <div class="nav-group"><div class="nav-label">Account</div><a class="nav-link" href="#"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.7 2.4 2.9-.1.8 2.8 2.5 1.4-1.1 2.7 1.1 2.7-2.5 1.4-.8 2.8-2.9-.1L12 22l-1.7-2.4-2.9.1-.8-2.8-2.5-1.4 1.1-2.7-1.1-2.7 2.5-1.4.8-2.8 2.9.1zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></span>Settings</a><a class="nav-link" href="#"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h16M6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9A2.5 2.5 0 0 1 6.5 5zM8 14h4"/></svg></span>Pricing</a></div>
+      </nav>
+      <div class="sidebar__account"><div class="account-card"><span class="avatar">EE</span><span class="account-name"><strong>Elena Ellis</strong><span>Grade 3 teacher</span></span></div></div>
+    </aside>
+    <main class="main">
+      <header class="mobile-topbar"><a class="mobile-topbar__brand" href="index.html"><span class="brand-mark">A</span><span class="brand-name">Assignment Reader</span></a><nav class="mobile-topbar__nav" aria-label="Mobile navigation"><a href="index.html">Overview</a><a href="01-classes.html" aria-current="page">Classes</a><a href="02-class-dashboard.html">Dashboard</a><a href="03-assignment.html">Assignment</a></nav></header>
+      <div class="main__inner">
+        <div class="topline"><div class="topline__context"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5h14v14M8 8h8M8 12h5"/></svg><span>Management / Classes</span></div><div class="topline__user">Elena Ellis <span class="avatar">EE</span></div></div>
+        <div class="breadcrumbs"><a href="index.html">Overview</a><span class="slash">/</span><span>Classes</span></div>
+        <header class="page-heading"><div class="page-heading__copy"><div class="eyebrow">Teacher workspace</div><h1>Classes</h1><p>Keep rosters and assignment work grouped by class. Select a class to open its dashboard.</p></div><div class="page-heading__actions"><button class="btn primary" type="button"><span class="btn-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>New class</button></div></header>
+
+        <section class="panel" aria-labelledby="classes-heading">
+          <div class="panel__head"><div><h2 id="classes-heading">All classes</h2><span class="subhead">12 classes · showing 1–10</span></div><div class="search push"><label class="search__field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.2"/><path d="m16 16 4.5 4.5"/></svg><input type="search" placeholder="Search classes" aria-label="Search date, class, students, assignments, or status"></label><button class="btn primary sm" type="button">Search</button></div></div>
+          <div class="table-wrap"><table><thead><tr><th scope="col"><a class="sort" href="#" aria-sort="descending">Date</a></th><th scope="col"><a class="sort" href="#">Class</a></th><th scope="col"><a class="sort" href="#">Students</a></th><th scope="col"><a class="sort" href="#">Assignments</a></th><th scope="col"><a class="sort" href="#">Status</a></th></tr></thead><tbody>
+            <tr class="active-row"><td class="mono">3/7/26</td><td><a href="02-class-dashboard.html"><strong>Grade 3 · Room 12</strong></a></td><td>24</td><td>3</td><td><span class="chip plain"><span class="dot"></span>Active</span></td></tr>
+            <tr><td class="mono">3/6/26</td><td><strong>Grade 3 · Science Club</strong></td><td>22</td><td>5</td><td><span class="chip st-archived"><span class="dot"></span>Archived</span></td></tr>
+            <tr><td class="mono">2/28/26</td><td><strong>Grade 4 · Room 8</strong></td><td>26</td><td>8</td><td><span class="chip plain"><span class="dot"></span>Active</span></td></tr>
+          </tbody></table></div>
+          <div class="panel__footer"><span class="small faint">24 students in active class · archive preserves records as read-only</span><div class="pagination"><div class="pagination__buttons"><button class="btn ghost sm" type="button" disabled>Previous</button><button class="btn sm" type="button" aria-current="page">1</button><button class="btn ghost sm" type="button">2</button><button class="btn ghost sm" type="button">Next</button></div></div></div>
+        </section>
+
+        <section class="grid-3" style="margin-top:22px" aria-label="Class summary">
+          <article class="card"><div class="eyebrow">Active classes</div><h2 style="margin-top:8px">11</h2><p class="small muted" style="margin-top:4px">Ready for new work</p></article>
+          <article class="card"><div class="eyebrow">Students tracked</div><h2 style="margin-top:8px">264</h2><p class="small muted" style="margin-top:4px">Teacher-managed records</p></article>
+          <article class="card paper-panel"><div class="eyebrow">Archive policy</div><p class="small muted" style="margin-top:9px">Archived classes keep assignments, source pages, and grading history available in read-only mode.</p></article>
+        </section>
+
+        <nav class="screen-nav" aria-label="Screen navigation"><a href="index.html">Overview</a><a href="01-classes.html" aria-current="page">01 Classes</a><a href="02-class-dashboard.html">02 Dashboard</a><a href="03-assignment.html">03 Assignment</a><a href="04-upload.html">04 Upload</a><a href="05-processing.html">05 Processing</a><a href="06-workspace.html">06 Workspace</a></nav>
+        <footer class="site-footer"><span>© 2026 ClassPrints</span><span><a href="#">Terms</a> · <a href="#">Privacy</a> · <a href="#">Support</a></span></footer>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

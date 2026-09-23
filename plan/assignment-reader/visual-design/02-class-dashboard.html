@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ClassPrints · Grade 3 Room 12 dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <a class="sidebar__brand" href="index.html"><span class="brand-mark">A</span><span class="brand-name">Assignment Reader</span></a>
+      <nav class="sidebar__nav"><div class="nav-group"><div class="nav-label">Management</div><a class="nav-link" href="01-classes.html" aria-current="page"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4zM8 8h8M8 12h5M8 16h3"/></svg></span>Classes</a></div><div class="nav-group"><div class="nav-label">Account</div><a class="nav-link" href="#"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.7 2.4 2.9-.1.8 2.8 2.5 1.4-1.1 2.7 1.1 2.7-2.5 1.4-.8 2.8-2.9-.1L12 22l-1.7-2.4-2.9.1-.8-2.8-2.5-1.4 1.1-2.7-1.1-2.7 2.5-1.4.8-2.8 2.9.1zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></span>Settings</a><a class="nav-link" href="#"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h16M6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9A2.5 2.5 0 0 1 6.5 5zM8 14h4"/></svg></span>Pricing</a></div></nav>
+      <div class="sidebar__account"><div class="account-card"><span class="avatar">EE</span><span class="account-name"><strong>Elena Ellis</strong><span>Grade 3 teacher</span></span></div></div>
+    </aside>
+    <main class="main">
+      <header class="mobile-topbar"><a class="mobile-topbar__brand" href="index.html"><span class="brand-mark">A</span><span class="brand-name">Assignment Reader</span></a><nav class="mobile-topbar__nav" aria-label="Mobile navigation"><a href="index.html">Overview</a><a href="01-classes.html">Classes</a><a href="02-class-dashboard.html" aria-current="page">Dashboard</a><a href="03-assignment.html">Assignment</a></nav></header>
+      <div class="main__inner">
+        <div class="topline"><div class="topline__context"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5h14v14M8 8h8M8 12h5"/></svg><span>Management / Class dashboard</span></div><div class="topline__user">Elena Ellis <span class="avatar">EE</span></div></div>
+        <div class="breadcrumbs"><a href="01-classes.html">Classes</a><span class="slash">/</span><span>Grade 3 · Room 12</span></div>
+        <header class="page-heading"><div class="page-heading__copy"><div class="eyebrow">Class dashboard</div><h1>Grade 3 · Room 12</h1><p>24 students · active class. Assignments and seating charts share this class context.</p></div><div class="page-heading__actions"><button class="btn ghost" type="button">Rename</button><button class="btn ghost" type="button">Archive class</button><button class="btn primary" type="button"><span class="btn-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>New assignment</button></div></header>
+
+        <section class="panel" aria-labelledby="dashboard-tabs">
+          <div class="panel__head"><div class="segmented" id="dashboard-tabs" role="tablist" aria-label="Class sections"><button type="button" role="tab" aria-selected="true">Assignments</button><button type="button" role="tab" aria-selected="false">Seating Charts</button></div><span class="subhead push">Updated Mar 7, 2026</span></div>
+          <div class="panel__body" style="padding-bottom:16px"><div class="search" style="justify-content:flex-end"><label class="search__field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.2"/><path d="m16 16 4.5 4.5"/></svg><input type="search" placeholder="Search assignments" aria-label="Search date, assignment, or status"></label><button class="btn primary sm" type="button">Search</button></div></div>
+          <div class="table-wrap"><table><thead><tr><th scope="col"><a class="sort" href="#" aria-sort="descending">Date</a></th><th scope="col"><a class="sort" href="#">Assignment</a></th><th scope="col"><a class="sort" href="#">Status</a></th></tr></thead><tbody>
+            <tr class="active-row"><td class="mono">3/7/26</td><td><a href="03-assignment.html"><strong>Fractions worksheet 4 — Equivalent fractions</strong></a><div class="table-meta"><span>5 students · max score 10</span></div></td><td><span class="chip st-review"><span class="dot"></span>Needs review</span></td></tr>
+            <tr><td class="mono">3/6/26</td><td><strong>Paragraph of the week</strong><div class="table-meta"><span>24 students</span></div></td><td><span class="chip st-review"><span class="dot"></span>Needs review</span></td></tr>
+            <tr><td class="mono">3/5/26</td><td><strong>Timed facts — Division</strong><div class="table-meta"><span>24 students · max score 20</span></div></td><td><span class="chip st-graded"><span class="dot"></span>Graded</span></td></tr>
+          </tbody></table></div>
+          <div class="panel__footer"><span class="small faint">12 assignments · showing 1–10</span><div class="pagination__buttons"><button class="btn ghost sm" type="button">Previous</button><button class="btn sm" type="button" aria-current="page">1</button><button class="btn ghost sm" type="button">2</button><button class="btn ghost sm" type="button">Next</button></div></div>
+        </section>
+
+        <section class="panel" style="margin-top:22px" aria-labelledby="seating-heading">
+          <div class="panel__head"><div><h2 id="seating-heading">Seating Charts</h2><span class="subhead">Saved layouts for this class</span></div><span class="chip plain push">Section available from tab</span></div>
+          <div class="table-wrap"><table><thead><tr><th scope="col"><a class="sort" href="#">Date</a></th><th scope="col"><a class="sort" href="#">Class</a></th><th scope="col"><a class="sort" href="#">Student Count</a></th></tr></thead><tbody>
+            <tr><td class="mono">3/4/26</td><td><strong>Grade 3 · Room 12 · Spring pairs</strong></td><td>24 students</td></tr>
+            <tr><td class="mono">2/10/26</td><td><strong>Grade 3 · Room 12 · Discussion groups</strong></td><td>24 students</td></tr>
+          </tbody></table></div>
+          <div class="panel__footer"><span class="small faint">2 saved charts · sortable by date, class, or student count</span><button class="btn ghost sm" type="button">Open seating charts</button></div>
+        </section>
+
+        <nav class="screen-nav" aria-label="Screen navigation"><a href="index.html">Overview</a><a href="01-classes.html">01 Classes</a><a href="02-class-dashboard.html" aria-current="page">02 Dashboard</a><a href="03-assignment.html">03 Assignment</a><a href="04-upload.html">04 Upload</a><a href="05-processing.html">05 Processing</a><a href="06-workspace.html">06 Workspace</a></nav>
+        <footer class="site-footer"><span>© 2026 ClassPrints</span><span><a href="#">Terms</a> · <a href="#">Privacy</a> · <a href="#">Support</a></span></footer>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
