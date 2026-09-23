@@ -71,7 +71,7 @@
                     <td style="padding:12px 16px;">Grade 3 · Room 12</td>
                     <td style="padding:12px 16px;">24</td>
                     <td style="padding:12px 16px;">3</td>
-                    <td style="padding:12px 16px;"><span class="chip st-ready"><span class="dot"></span> Active</span></td>
+                    <td style="padding:12px 16px;"><span class="chip plain"><span class="dot"></span> Active</span></td>
                   </tr>
                   <tr style="border-bottom:1px solid var(--ink-line);">
                     <td style="padding:12px 16px;" class="mono">3/6/26</td>
@@ -95,10 +95,16 @@
           </div>
 
           <div class="note" data-n="1">
-            <b>One sidebar entry, one table.</b> "Classes" opens this list (critique 1); clicking a class row opens its dashboard, where assignments and seating charts sit behind tabs. Columns: Date · Class · Students · Assignments · Status (Active | Archived) — sortable headers, connected search across all columns, pagination at 10 rows. No per-class or per-assignment lists live in the sidebar.
+            <b>One sidebar entry, one table.</b> "Classes" opens this list (PRD navigation); clicking a class row opens its dashboard, where assignments and seating charts sit behind tabs. Columns: Date · Class · Students · Assignments · Status (Active | Archived) — sortable headers, connected search across all columns, pagination at 10 rows. No per-class or per-assignment lists live in the sidebar.
+          </div>
+          <div class="note accent" data-n="2" style="margin-top:14px;">
+            <b>The hierarchy is teacher-owned.</b> Each class contains teacher-managed roster students and assignments; students are records, not signed-in users (PRD capability 1). The counts summarize that hierarchy without creating separate navigation entries.
           </div>
           <div class="note danger" data-n="3" style="margin-top:14px;">
             <b>Archive stays preserved and read-only.</b> The archived class is still a row in the list: assignments, materials, submissions, grading records remain viewable while uploads and edits stop (resolved decision 7).
+          </div>
+          <div class="note" data-n="4" style="margin-top:14px;">
+            <b>Archive is not deletion.</b> Archiving preserves the class and descendants in read-only form, while class deletion is a separate explicit action that removes relational data and original images (resolved decisions 3 and 7).
           </div>
 
 
@@ -118,8 +124,8 @@
     <a href="05-workspace.html">05 Workspace</a>
   </nav>
   <nav class="nav-next">
-    <a href="01-dashboard.html">← Dashboard</a>
-    <a href="02-assignment.html">Assignment →</a>
+    <a href="index.html">← Overview</a>
+    <a href="01-dashboard.html">Dashboard →</a>
   </nav>
 
   <footer class="foot">

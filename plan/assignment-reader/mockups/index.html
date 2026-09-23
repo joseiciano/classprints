@@ -43,6 +43,9 @@
             <div class="note" data-n="3">
               <b>Sample content is one canonical scenario</b> (see legend below) so states stay comparable across screens — Maya's 3-page submission is mid-transcription on every screen that shows it.
             </div>
+            <div class="note accent" data-n="4">
+              <b>Processing, review, and grading stay separate.</b> The PRD state model permits completed pages to open while siblings still process, but the document receives no review state until every page completes; only student submissions can become Graded.
+            </div>
           </div>
         </div>
         <div>
@@ -51,7 +54,8 @@
             <span class="chip st-uploading"><span class="dot"></span> Uploading</span>
             <span class="chip st-queued"><span class="dot"></span> Queued</span>
             <span class="chip st-processing"><span class="dot pulse"></span> Transcribing</span>
-            <span class="chip st-ready"><span class="dot"></span> Completed / Ready to grade</span>
+            <span class="chip plain"><span class="dot"></span> Completed</span>
+            <span class="chip st-ready"><span class="dot"></span> Ready to grade</span>
             <span class="chip st-review"><span class="dot"></span> Needs review</span>
             <span class="chip st-failed"><span class="dot"></span> Error</span>
             <span class="chip st-graded"><span class="dot"></span> Graded</span>
@@ -73,6 +77,7 @@
             <a href="01b-class-assignments.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:190px;">
               <span class="mono faint">01a</span><b>Select class</b><span class="small faint">hierarchy: Classes → class → assignment</span>
             </a>
+            <span class="mono faint">→</span>
             <a href="01-dashboard.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:190px;">
               <span class="mono faint">01</span><b>Select assignment</b><span class="small faint">per-class tables behind tabs: Assignments | Seating Charts</span>
             </a>
@@ -87,7 +92,7 @@
             </div>
             <span class="mono faint">→</span>
             <a href="03-upload.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:220px;">
-              <span class="mono faint">03</span><b>Upload &amp; order pages</b><span class="small faint">JPG/JPEG/HEIC · ≤20 pages · order before transcribe</span>
+              <span class="mono faint">03</span><b>Upload &amp; order pages</b><span class="small faint">JPEG/PNG/HEIC · ≤20 pages · order before transcribe</span>
             </a>
             <span class="mono faint">→</span>
             <a href="04-processing.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:200px;">
@@ -99,7 +104,7 @@
             <div class="card" style="min-width:220px; border-style: dashed;">
               <span class="mono faint">04</span><br><b>Processing result</b><br>
               <div style="display:grid; gap:6px; margin-top:6px;">
-                <span class="chip st-ready"><span class="dot"></span> Success → Needs review</span>
+                <span class="chip plain"><span class="dot"></span> Completed → Needs review</span>
                 <span class="chip st-failed"><span class="dot"></span> Error → Needs attention</span>
               </div>
               <span class="small faint">failed pages retry or replace → back to queue</span>
@@ -110,7 +115,7 @@
             </a>
             <span class="mono faint">→</span>
             <div class="card" style="min-width:170px; display:flex; flex-direction:column; gap:6px;">
-              <span class="mono faint">05</span><span class="chip st-ready"><span class="dot"></span> Ready</span>
+              <span class="mono faint">05</span><span class="chip st-ready"><span class="dot"></span> Ready to grade</span>
               <span class="small faint">teacher verified the draft</span>
             </div>
           </div>
@@ -141,7 +146,7 @@
             <span class="chip st-uploading"><span class="dot"></span> Uploading</span><span class="mono faint">→</span>
             <span class="chip st-queued"><span class="dot"></span> Queued</span><span class="mono faint">→</span>
             <span class="chip st-processing"><span class="dot pulse"></span> Transcribing</span><span class="mono faint">→</span>
-            <span class="chip st-ready"><span class="dot"></span> Completed</span>
+            <span class="chip plain"><span class="dot"></span> Completed</span>
           </div>
           <p class="small faint" style="margin-top:8px;">Runs page by page — each page carries its own state; a completed page is reviewable while siblings process. Error ⇒ retry page (default) or confirmed whole-document retranscription.</p>
         </div>
@@ -178,7 +183,7 @@
         </a>
         <a href="02-assignment.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px;">
           <span class="mono faint">02</span><b class="h-panel">Assignment detail</b>
-          <span class="small muted">The materials document (stamped context) and student submissions grouped by status with search + Filters &amp; sort, per-page chips and scores.</span>
+          <span class="small muted">The materials document (stamped context) and canonical Submissions table (Date · Name · Status) with search, status tabs, sortable headers, pagination, and submission scores.</span>
           <span class="mono faint" style="margin-top:auto;">PRD §2 §3 §6 · decisions 3 8 9</span>
         </a>
         <a href="03-upload.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px;">
@@ -194,7 +199,7 @@
         <a href="05-workspace.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px; outline: 2px solid var(--accent); outline-offset: 2px;">
           <span class="mono faint">05 · core</span><b class="h-panel">Review &amp; grading workspace</b>
           <span class="small muted">One screen per document: original beside the editable draft, per-question rows for correct / incorrect / points / comment, and — for submissions — score, comments, and return-to-review in the same place. Grading unlocks when the document is ready to grade.</span>
-          <span class="mono faint" style="margin-top:auto;">PRD §5 §6 · decisions 4 5 11</span>
+          <span class="mono faint" style="margin-top:auto;">PRD §5 §6 · decisions 4 5 11 12</span>
         </a>
       </div>
 
@@ -209,7 +214,7 @@
           <div class="rowline"><b style="min-width: 120px;">Class</b><span>Grade 3 · Room 12; a second class Grade 3 · Science Club shown archived & read-only</span></div>
           <div class="rowline"><b style="min-width: 120px;">Assignment</b><span>"Fractions worksheet 4 — Equivalent fractions" · max score 10 · materials v2 (replaced Mar 3, v1 retained read-only)</span></div>
           <div class="rowline"><b style="min-width: 120px;">Materials</b><span>2 pages (instructions, fraction wall) — verified context, stamped <span class="stamp faint" style="transform:scale(0.85);">Context · not graded</span></span></div>
-          <div class="rowline"><b style="min-width: 120px;">Submissions</b><span>Maya Rodriguez — 3 pages, needs review, p3 still transcribing · Priya Shah — ready to grade · Jack Thompson — Graded 8.5 / 10 · Sam Okafor — p2 error (retry) · Noah Kim — not started</span></div>
+          <div class="rowline"><b style="min-width: 120px;">Submissions</b><span>Maya Rodriguez — 3 pages, 2 complete and p3 transcribing (no document review state yet) · Priya Shah — Ready to grade · Jack Thompson — Graded 8.5 / 10 · Sam Okafor — p2 Error (retry) · Noah Kim — Not started</span></div>
         </div>
       </div>
 

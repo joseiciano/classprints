@@ -36,7 +36,7 @@ Read this fully before writing any file. The design system is already built: `pl
       <span class="flow-name">{PRD capability #}</span>
     </div>
     <div class="frame-body">
-      {app chrome: .appbar with .brand (mark "A", text "Assignment Reader") + .who (name Elena Ellis + .avatar EE); one shared sidebar on every app screen — Management group with a single "Classes" entry (→ 01-dashboard.html, the class dashboard; highlight on 01b with the accent wash + left border), then an Account group with Settings and Pricing (inert links; theme toggle lives on the Settings row)}
+      {app chrome: .appbar with .brand (mark "A", text "Assignment Reader") + .who (name Elena Ellis + .avatar EE); one shared sidebar on every app screen — Management group with a single "Classes" entry (→ 01b-class-assignments.html, the class list; keep it highlighted throughout class descendants with the accent wash + left border), then an Account group with Settings and Pricing (inert links)}
       {screen content}
     </div>
   </main>
@@ -56,15 +56,15 @@ Read this fully before writing any file. The design system is already built: `pl
   </nav>
 
   <footer class="foot">
-    <span>Assignment Reader · product-doc.md markups</span>
-    <span>{Screen number / N}</span>
+    <span>© 2026 ClassPrints</span>
+    <span><a href="#">Terms</a> &nbsp; <a href="#">Privacy</a> &nbsp; <a href="#">Support</a></span>
   </footer>
 
 </body>
 </html>
 ```
 
-Mark YOUR screen's link in the first `nav-next` with class `on` (keep both navs).
+Mark YOUR screen's link in the first `nav-next` with class `on`. Screens 01a–05 keep both navs; the overview uses only the first navigation block.
 
 4. Use ONLY the classes provided in `mockup.css` (plus minimal inline style for layout tweaks like grid templates — allowed sparingly). Read `mockup.css` first to learn available components: `.frame .appbar .split .cols .panel .card .chip .st-* .note .note-float .stamp .photo .hand .thumb .pager .btn .btn-row .editor .meter .steps .seg .modal .veil .field .input .rowline .legend .kbd .crumbs .h-small` etc.
 5. **Annotations are the point.** Every screen MUST include numbered `.note` callouts (`<div class="note" data-n="1">…</div>`) whose text cites PRD behavior explicitly (e.g. "PRD 4: page becomes reviewable as soon as its own draft completes"). Notes either sit inline in the layout or absolutely-positioned `.note-float` pinned near the element they annotate (top/right offsets via inline style; keep inside frame bounds).
@@ -75,7 +75,7 @@ Mark YOUR screen's link in the first `nav-next` with class `on` (keep both navs)
 
 - Teacher: **Elena Ellis**, class **Grade 3 · Room 12** (also has class "Grade 3 · Science Club" archived example if needed).
 - Assignment: **"Fractions worksheet 4 — Equivalent fractions"**, max score **10**, 2 assignment-material pages uploaded, verified context (v2, replaced Mar 3 — v1 noted where versions matter).
-- Students: **Maya Rodriguez** (use 3-page submission, Needs review, page 2 completed + editable while page 3 still transcribing OR errored depending on your screen), **Jack Thompson** (Graded, 8.5 / 10, comment "Showed strong fraction sense — watch simplification of 6/8."), **Priya Shah** (Ready to grade), **Sam Okafor** (Error page retry shown), **Noah Kim** (not started / no submission).
+- Students: **Maya Rodriguez** (use a 3-page submission with no document review state while page 3 is still transcribing or errored; completed pages remain immediately reviewable and editable), **Jack Thompson** (Graded, 8.5 / 10, comment "Showed strong fraction sense — watch simplification of 6/8."), **Priya Shah** (Ready to grade), **Sam Okafor** (Error page retry shown), **Noah Kim** (not started / no submission).
 - Materials doc: 2 pages — Page 1 = worksheet instructions ("Name ___ Date ___ Equivalent Fractions..."), Page 2 = fraction wall reference.
 - Maya's submission pages: p1 instructions copy + her work, p2 fraction problems, p3 word problem.
 - Workspace exemplar (05): **Priya Shah** — Ready to grade, grading rail unlocked (score empty, Mark graded available, Return to Needs review).
@@ -84,7 +84,7 @@ Mark YOUR screen's link in the first `nav-next` with class `on` (keep both navs)
 
 ## Status color semantics (PRD state model)
 
-- Uploading / Queued / Transcribing → `.st-uploading`, `.st-queued`, `.st-processing` (add `.chip .dot.pulse` for live states)
+- Uploading / Queued / Transcribing → `.st-uploading`, `.st-queued`, `.st-processing` (add `.chip .dot.pulse` for live states); Completed → `.chip.plain` so processing completion remains visually distinct from review readiness.
 - Needs review → `.st-review`; Ready to grade → `.st-ready`; Graded → `.st-graded`; Error (system upload/parsing failures) → `.st-failed`; Archived/read-only → `.st-archived`. The standalone "Ready" review-state label is retired — use "Ready to grade" for submissions awaiting grading.
 - Assignment materials get a `.stamp` (e.g. `CONTEXT · NOT GRADED`) wherever they appear near submissions.
 
@@ -96,9 +96,9 @@ Mark YOUR screen's link in the first `nav-next` with class `on` (keep both navs)
 | `01b-class-assignments.html` | Class Assignments: the sidebar "Classes" target — canonical table (Date · Class · Students · Assignments · Status Active/Archived) with connected search, sortable headers, pagination; selecting a class goes to the dashboard |
 | `01-dashboard.html` | Class dashboard: section tab (Assignments | Seating Charts) beside Rename / Archive class / New assignment; two canonical tables — Assignments (Date · Assignment · Status) and Seating Charts (Date · Class · Student Count); connected search right-anchored, sortable headers, pagination at 10; row click opens the item |
 | `02-assignment.html` | Assignment detail: materials doc ("Open materials") + submissions as canonical table (Date · Name · Status) with status tabs |
-| `03-upload.html` | Upload flow: inline ordered page list (drag + × per row), Supports JPG/JPEG/HEIC, 20-page/10MB limits; confirm returns to assignment page |
+| `03-upload.html` | Upload flow: inline ordered page list (drag + × per row), Supports JPEG/PNG/HEIC, 20-page/10MB limits; confirm returns to assignment page |
 | `04-processing.html` | Async processing: per-page canonical table (Date · Name · Status), error page + retry modal, retranscribe consent; operator config lives in docs, not this screen |
-| `05-workspace.html` | Review + grading in one workspace (PRD §5 §6, decision 11): side-by-side original ↔ editable draft, per-question grading rows (correct / incorrect / points / comment), grading rail with Ready-to-grade gate, return-in-place |
+| `05-workspace.html` | Review + grading in one workspace (PRD §5 §6, decisions 11 and 12): side-by-side original ↔ editable draft, per-question grading rows (correct / incorrect / points / comment), grading rail with Ready to grade gate, return-in-place |
 
 ## Review checklist per agent (do this, report "checked" in final message)
 

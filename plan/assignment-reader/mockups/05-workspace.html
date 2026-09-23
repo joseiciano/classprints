@@ -57,7 +57,8 @@
               <span class="chip plain">Fractions worksheet 4 · Max 10</span>
               <span style="margin-left: auto;" class="btn-row">
                 <button class="btn ghost sm">Open materials ⇱</button>
-                <button class="btn primary">Grade</button>
+                <button class="btn ghost sm">Return to Needs review</button>
+                <button class="btn primary">Mark graded</button>
               </span>
             </div>
           </div>
@@ -80,8 +81,8 @@
                     <button class="btn sm on-comment" type="button">✓ Correct</button>
                     <button class="btn ghost sm" type="button">✗ Incorrect</button>
                     <span class="field" style="display:flex; align-items:center; gap:6px; margin-bottom:0;">
-                      <input class="input" value="1" style="width:56px; padding:5px 8px;" aria-label="Points for Q1">
-                      <span class="small faint">/ 1 pt</span>
+                      <input class="input" value="1" style="width:56px; padding:5px 8px;" aria-label="Awarded points for Q1" inputmode="decimal">
+                      <span class="small faint">points</span>
                     </span>
                     <button class="btn ghost sm" type="button">Comment</button>
                   </div>
@@ -97,8 +98,8 @@
                     <button class="btn ghost sm" type="button">✓ Correct</button>
                     <button class="btn sm" type="button">✗ Incorrect</button>
                     <span class="field" style="display:flex; align-items:center; gap:6px; margin-bottom:0;">
-                      <input class="input" value="0" style="width:56px; padding:5px 8px;" aria-label="Points for Q2">
-                      <span class="small faint">/ 1 pt</span>
+                      <input class="input" value="0" style="width:56px; padding:5px 8px;" aria-label="Awarded points for Q2" inputmode="decimal">
+                      <span class="small faint">points</span>
                     </span>
                     <button class="btn ghost sm" type="button">Comment</button>
                   </div>
@@ -114,8 +115,8 @@
                     <button class="btn ghost sm" type="button">✓ Correct</button>
                     <button class="btn ghost sm" type="button">✗ Incorrect</button>
                     <span class="field" style="display:flex; align-items:center; gap:6px; margin-bottom:0;">
-                      <input class="input" placeholder="—" style="width:56px; padding:5px 8px;" aria-label="Points for Q3">
-                      <span class="small faint">/ 1 pt</span>
+                      <input class="input" placeholder="—" style="width:56px; padding:5px 8px;" aria-label="Awarded points for Q3" inputmode="decimal">
+                      <span class="small faint">points</span>
                     </span>
                     <button class="btn ghost sm" type="button">Comment</button>
                   </div>
@@ -125,7 +126,7 @@
           </div>
 
           <div class="note accent" data-n="8" style="margin-bottom: 22px;">
-            <b>Each question is its own row.</b> Parsed Q&amp;A becomes one row per question so Elena can mark correct, mark incorrect, award points, and open a per-question comment — the submission-level score stays the teacher's judgment, computed from rows only when she chooses (critique 1; PRD §6).
+            <b>Each question is its own row.</b> Parsed Q&amp;A becomes one row per question so Elena can mark correct, mark incorrect, award optional points, and open a per-question comment. Question judgments and awarded points stay on their rows; the optional submission score remains the teacher's separate judgment and is not derived automatically from those rows (PRD §6; resolved decision 12).
           </div>
 
           <div class="split-review">
@@ -134,7 +135,7 @@
             <div style="padding: 22px 26px; background: var(--paper-sink); border-right: 1.5px dashed var(--ink-line); position: relative;">
               <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
                 <span class="h-small">Original · page 1 of 3</span>
-                <span class="chip st-ready"><span class="dot"></span> Transcribed</span>
+                <span class="chip plain"><span class="dot"></span> Completed</span>
                 <span class="mono" style="margin-left:auto;">IMG_2842.jpg</span>
               </div>
 
@@ -185,7 +186,7 @@
                   <button class="tbtn">ƒ x/y</button>
                   <button class="tbtn">∑ Math</button>
                   <span class="tsep"></span>
-                  <button class="tbtn">🖼 Region</button>
+                  <button class="tbtn">Region</button>
                   <span class="mono faint" style="margin-left: auto;">WYSIWYG</span>
                 </div>
                 <div class="canvas">
@@ -213,7 +214,7 @@
                   <div class="cols" style="grid-template-columns: 1fr 1fr; gap: 18px;">
                     <div>
                       <div class="field" style="margin-bottom: 8px;">
-                        <label>Score</label>
+                        <label>Submission score</label>
                         <div class="btn-row">
                           <input class="input" placeholder="e.g. 8.5" style="max-width: 130px;">
                           <span class="mono">/</span>
@@ -227,22 +228,23 @@
                       </div>
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 10px;">
-                      <button class="btn primary">Grade</button>
-                      <p class="small faint" style="margin-top: auto;">One control: press Grade to set the graded state, press again to sunset it and return the submission to Ready to grade. Score and comments are both optional.</p>
+                      <button class="btn primary">Mark graded</button>
+                      <button class="btn ghost">Return to Needs review</button>
+                      <p class="small faint" style="margin-top: auto;">Mark graded commits the reviewed submission as graded. Return to Needs review clears graded state and graded-list visibility while retaining draft score, comments, and question judgments. Submission score and comments are optional.</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div class="note" data-n="2" style="margin-top: 14px;">
-                <b>The gate is a state, not a place.</b> Grade unlocks only when the document is reviewed (Ready to grade) — a state requirement, not a change of place (PRD §5, decision 5). Before that, the rail shows the commitment locked with its reason.
+                <b>The gate is a state, not a place.</b> Mark graded is available only when the document is reviewed (Ready to grade) — a state requirement, not a change of place (PRD §5, decision 5). Before that, the rail shows the commitment locked with its reason.
               </div>
               <div class="note-stack" style="margin-top: 10px;">
                 <div class="note" data-n="3">
                   <b>Score rules.</b> Up to two decimals; values above the assignment maximum are rejected with a clear error; display is “8.5 / 10” when a max is defined and the value alone otherwise — no percentage conversion (decision 4).
                 </div>
                 <div class="note" data-n="4">
-                  <b>Grading is the teacher's judgment.</b> Score and comments attach to the submission, never to the transcription; no automatic assessment in this release (PRD §6, persona 3). Grade is one toggle — press to set the graded state, press again to sunset it; a sunset submission stops appearing as graded.
+                  <b>Grading is the teacher's judgment.</b> Submission score and comments attach to the submission, never to the transcription; per-question judgments and awarded points remain separate, with no automatic assessment in this release (PRD §6, persona 3). Mark graded commits the graded state. Return to Needs review clears graded state and graded-list visibility but retains draft score, comments, and question judgments for later revision.
                 </div>
               </div>
             </div>
