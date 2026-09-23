@@ -19,7 +19,7 @@
   <main class="frame">
     <div class="frame-bar">
       <span class="dots"><i></i><i></i><i></i></span>
-      <span class="path">class/grade-3-room-12/assignments/fractions-4/upload</span>
+      <span class="path">assignments/grade-3-room-12/fractions-4/upload</span>
       <span class="flow-name">PRD §2 Materials · §3 Submissions</span>
     </div>
     <div class="frame-body">
@@ -29,168 +29,125 @@
         <span class="who"><span>Elena Ellis</span><span class="avatar">EE</span></span>
       </div>
 
-      <div class="crumbs">
-        <b>Grade 3 · Room 12</b> <span class="sep"></span>
-        <b>Fractions worksheet 4 — Equivalent fractions</b> <span class="sep"></span>
-        <span>Upload</span>
-      </div>
-
-      <div class="steps">
-        <div class="step done"><span class="n">1</span><span>Choose what</span></div>
-        <span class="link"></span>
-        <div class="step now"><span class="n">2</span><span>Photos</span></div>
-        <span class="link"></span>
-        <div class="step now"><span class="n">3</span><span>Order</span></div>
-        <span class="link"></span>
-        <div class="step"><span class="n">4</span><span>Transcribe</span></div>
-      </div>
-
-      <!-- ============ document type variants ============ -->
-      <div class="cols" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 22px;">
+      <div class="split" style="align-items:start;">
+        <aside style="position:sticky; top:18px;">
+          <nav class="panel" style="padding:8px 0;" aria-label="Primary">
+            <span class="h-small" style="padding:10px 16px 2px; display:block;">Management</span>
+            <a href="01b-class-assignments.html" class="rowline" style="padding:10px 16px; text-decoration:none; color:var(--ink); font-weight:700; background:var(--accent-wash); border-left:3px solid var(--accent);">Classes</a>
+            <span class="h-small" style="padding:16px 16px 2px; display:block;">Account</span>
+            <a href="#" class="rowline" style="padding:10px 16px; text-decoration:none; color:var(--ink); font-weight:700;">Settings</a>
+            <a href="#" class="rowline" style="padding:10px 16px; text-decoration:none; color:var(--ink); font-weight:700;">Pricing</a>
+          </nav>
+        </aside>
         <div class="col">
-          <div class="panel paper">
-            <div class="panel-head">
-              <span class="panel-title">Assignment materials</span>
-              <span class="stamp">Context · not graded</span>
+
+          <div class="crumbs">
+            <b>Assignments</b> <span class="sep"></span> <b>Grade 3 · Room 12</b> <span class="sep"></span>
+            <b>Fractions worksheet 4 — Equivalent fractions</b> <span class="sep"></span>
+            <span>Upload</span>
+          </div>
+
+          <!-- ============ document type variants ============ -->
+          <div class="cols" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 22px;">
+            <div class="col">
+              <div class="panel paper">
+                <div class="panel-head">
+                  <span class="panel-title">Assignment materials</span>
+                  <span class="stamp">Context · not graded</span>
+                </div>
+                <div class="panel-body">
+                  <p class="small muted">teacher-authored pages · optional · no student attached</p>
+                  <div class="note" data-n="6" style="margin-top: 14px;">
+                    <b>Context, never evidence for a grade.</b> Materials enter the same ordered-document pipeline, but carry the context stamp and are never graded or included in grading counts (principle 5; PRD §2).
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="panel-body">
-              <p class="small muted">teacher-authored pages · optional · no student attached</p>
-              <div class="note" data-n="6" style="margin-top: 14px;">
-                <b>Context, never evidence for a grade.</b> Materials enter the same ordered-document pipeline, but carry the context stamp and are never graded or included in grading counts (principle 5; PRD §2).
+
+            <div class="col">
+              <div class="panel">
+                <div class="panel-head">
+                  <span class="panel-title">Student submission</span>
+                  <span class="chip plain">Student work</span>
+                </div>
+                <div class="panel-body">
+                  <div class="field">
+                    <label for="student-picker">Student</label>
+                    <select class="input focus" id="student-picker" aria-label="Student">
+                      <option selected>Maya Rodriguez</option>
+                      <option>Jack Thompson</option>
+                      <option>Priya Shah</option>
+                      <option>Sam Okafor</option>
+                      <option>Noah Kim</option>
+                    </select>
+                  </div>
+                  <p class="small muted">one submission per student per assignment</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="col">
-          <div class="panel">
+          <!-- ============ shared upload surface ============ -->
+          <div class="panel" style="border-style: dashed; margin-bottom: 22px;">
             <div class="panel-head">
-              <span class="panel-title">Student submission</span>
-              <span class="chip plain">Student work</span>
+              <span class="panel-title">Add photographed pages</span>
+              <span class="small faint" style="margin-left:auto;">Supports JPG, JPEG, HEIC</span>
             </div>
             <div class="panel-body">
-              <div class="field">
-                <label for="student-picker">Student</label>
-                <select class="input focus" id="student-picker" aria-label="Student">
-                  <option selected>Maya Rodriguez</option>
-                  <option>Jack Thompson</option>
-                  <option>Priya Shah</option>
-                  <option>Sam Okafor</option>
-                  <option>Noah Kim</option>
-                </select>
+              <div class="diagram" style="text-align: center; margin-bottom: 16px;">
+                <p class="h-panel">Drop page photographs here</p>
+                <p class="small muted" style="margin: 4px 0 12px;">or choose images from this device</p>
+                <button class="btn" type="button">Choose images</button>
               </div>
-              <p class="small muted">one submission per student per assignment</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- ============ shared upload surface ============ -->
-      <div class="panel" style="border-style: dashed; margin-bottom: 22px;">
-        <div class="panel-head">
-          <span class="panel-title">Add photographed pages</span>
-          <span class="chip plain">JPEG accepted</span>
-          <span class="chip plain">PNG accepted</span>
-          <span class="chip plain">HEIC accepted</span>
-          <span class="chip plain">10 MB max per image</span>
-          <span class="chip st-failed">PDF not accepted</span>
-        </div>
-        <div class="panel-body">
-          <div class="diagram" style="text-align: center; margin-bottom: 16px;">
-            <p class="h-panel">Drop page photographs here</p>
-            <p class="small muted" style="margin: 4px 0 12px;">or choose images from this device</p>
-            <button class="btn" type="button">Choose images</button>
-          </div>
+              <div class="card" style="padding: 0;">
+                <div class="rowline mono">
+                  <span class="grip" style="color:var(--ink-faint);">⠿</span>
+                  <span class="grow" style="padding-left:8px;">IMG_2841.heic &nbsp; 3.2 MB</span>
+                  <span class="chip st-ready">✓ uploaded</span>
+                  <span class="faint">→ IMG_2841.jpg</span>
+                  <button class="btn ghost sm" type="button" aria-label="Remove IMG_2841" style="padding:3px 8px;">×</button>
+                </div>
+                <div class="rowline mono">
+                  <span class="grip" style="color:var(--ink-faint);">⠿</span>
+                  <span class="grow" style="padding-left:8px;">IMG_2842.jpg &nbsp; 2.8 MB</span>
+                  <span class="chip st-ready">✓ uploaded</span>
+                  <button class="btn ghost sm" type="button" aria-label="Remove IMG_2842" style="padding:3px 8px;">×</button>
+                </div>
+                <div class="rowline mono">
+                  <span class="grip" style="color:var(--ink-faint);">⠿</span>
+                  <span class="grow" style="padding-left:8px;">IMG_2843.jpg &nbsp; 12.4 MB</span>
+                  <span class="chip st-failed">✗ over limit</span>
+                  <button class="btn danger sm" type="button">Replace</button>
+                  <button class="btn ghost sm" type="button" aria-label="Remove IMG_2843" style="padding:3px 8px;">×</button>
+                </div>
+              </div>
 
-          <div class="card" style="padding: 0;">
-            <div class="rowline mono">
-              <span class="grow">IMG_2841.heic &nbsp; 3.2 MB</span>
-              <span class="chip st-ready">✓ uploaded</span>
-              <span class="faint">→ IMG_2841.jpg</span>
-            </div>
-            <div class="rowline mono">
-              <span class="grow">IMG_2842.jpg &nbsp; 2.8 MB</span>
-              <span class="chip st-ready">✓ uploaded</span>
-            </div>
-            <div class="rowline mono">
-              <span class="grow">IMG_2843.jpg &nbsp; 12.4 MB</span>
-              <span class="chip st-failed">✗ over limit</span>
-              <button class="btn danger sm" type="button">Replace</button>
+              <div class="cols" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 16px;">
+                <div class="note" data-n="1">
+                  <b>Order lives in this list.</b> Rows drag into reading order and each row has an × to remove — no separate Page Order card (critique 5). Order is confirmed before transcription (PRD §2/§3).
+                </div>
+                <div class="note" data-n="3">
+                  <b>The same limits apply to both document types.</b> Each material or submission document allows 20 pages, with a 10 MB maximum for each image (resolved decision 2). Oversized pages can be replaced or removed without recreating anything.
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="cols" style="grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 16px;">
-            <div class="note" data-n="1">
-              <b>One standard image format.</b> HEIC is accepted, then normalized to JPEG server-side so the workspace and transcription provider receive one standard format (resolved decision 1).
+          <!-- ============ confirmation and asynchronous handoff ============ -->
+          <div class="diagram" style="margin-top: 22px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <p><b>Transcription starts after you confirm the page order.</b></p>
+            <div class="btn-row" style="margin-left: auto;">
+              <button class="btn ghost" type="button">Back</button>
+              <button class="btn" type="button">Confirm &amp; start transcription</button>
             </div>
-            <div class="note danger" data-n="2">
-              <b>PDF is rejected this release.</b> Rasterization and multi-page import conflict with the photograph-and-order model (resolved decision 1 rationale).
-            </div>
-            <div class="note" data-n="3">
-              <b>The same limits apply to both document types.</b> Each material or submission document allows 20 pages, with a 10 MB maximum for each image (resolved decision 2).
-            </div>
-          </div>
-
-          <div class="note danger" data-n="5" style="margin-top: 12px;">
-            <b>Repair only the failed page.</b> Oversized or failed pages can be retried or replaced without recreating the assignment or the rest of its document (PRD §2/§3).
-          </div>
-        </div>
-      </div>
-
-      <!-- ============ ordered pages ============ -->
-      <div class="panel paper">
-        <div class="panel-head">
-          <span class="panel-title">Page order</span>
-          <span class="chip plain">4 / 20 pages</span>
-          <span class="small faint">Drag photographed pages into reading order</span>
-        </div>
-        <div class="panel-body">
-          <div class="pages-strip">
-            <div class="thumb">
-              <span class="grip">⠿</span>
-              <div class="photo"><div class="hand" style="font-size: 11px; line-height: 15px; padding: 8px 8px 8px 24px;"><b>Equivalent Fractions</b><br>Name: Maya R.<br>1/2 = ?/8</div></div>
-              <div class="thumb-meta"><span>Page 1</span><span class="mono">IMG 1</span></div>
-            </div>
-            <div class="thumb">
-              <span class="grip">⠿</span>
-              <div class="photo"><div class="hand" style="font-size: 11px; line-height: 15px; padding: 8px 8px 8px 24px;">Part B<br>2/3 = 8/12<br>3/4 = 12/16</div></div>
-              <div class="thumb-meta"><span>Page 2</span><span class="mono">IMG 2</span></div>
-            </div>
-            <div class="thumb dragging" style="border-style: dashed;">
-              <span class="grip">⠿</span>
-              <div class="photo"><div class="hand" style="font-size: 11px; line-height: 15px; padding: 8px 8px 8px 24px;">Maya cut her sandwich into 4 equal pieces and ate 2...</div></div>
-              <div class="thumb-meta"><span>Page 3</span><span class="mono">moving</span></div>
-            </div>
-            <div class="thumb">
-              <span class="grip">⠿</span>
-              <div class="photo"><div class="hand" style="font-size: 11px; line-height: 15px; padding: 8px 8px 8px 24px;">Check your work<br>6/8 = 3/4<br>Teacher notes</div></div>
-              <div class="thumb-meta"><span>Page 4</span><span class="mono">IMG 4</span></div>
-            </div>
-          </div>
-
-          <div class="btn-row" style="margin-top: 16px;">
-            <button class="btn sm" type="button">Add more</button>
-            <button class="btn ghost sm" type="button">Remove ×</button>
           </div>
 
           <div class="note accent" data-n="4" style="margin-top: 16px;">
-            <b>Order before transcription.</b> Page order is teacher-controlled and must be confirmed before transcription begins for materials and submissions alike (PRD §2/§3).
+            <b>Confirm returns to the assignment.</b> After confirming, Elena lands back on the assignment page; the newly submitted document shows a live processing state there, so progress never requires this view (PRD §2/§3; critique 1).
           </div>
-        </div>
-      </div>
 
-      <!-- ============ confirmation and asynchronous handoff ============ -->
-      <div class="diagram" style="margin-top: 22px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-        <p><b>Transcription starts after you confirm the page order.</b></p>
-        <div class="btn-row" style="margin-left: auto;">
-          <button class="btn ghost" type="button">Back</button>
-          <button class="btn primary" type="button">Confirm &amp; start transcription</button>
         </div>
-      </div>
-
-      <div class="card" style="margin-top: 14px; display: flex; align-items: center; gap: 12px;">
-        <span class="chip st-queued"><span class="dot pulse"></span> Queued</span>
-        <p class="small muted">You can leave this view — progress appears on the assignment and dashboard.</p>
       </div>
 
     </div>
@@ -198,6 +155,7 @@
 
   <nav class="nav-next">
     <a href="index.html">⌂ Overview</a>
+    <a href="01b-class-assignments.html">01a Class Assignments</a>
     <a href="01-dashboard.html">01 Dashboard</a>
     <a href="02-assignment.html">02 Assignment</a>
     <a href="03-upload.html" class="on">03 Upload</a>
@@ -210,8 +168,8 @@
   </nav>
 
   <footer class="foot">
-    <span>Assignment Reader · product-doc.md markups</span>
-    <span>Screen 3 / 5</span>
+    <span>© 2026 ClassPrints</span>
+    <span><a href="#">Terms</a> &nbsp; <a href="#">Privacy</a> &nbsp; <a href="#">Support</a></span>
   </footer>
 
 </body>

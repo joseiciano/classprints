@@ -188,6 +188,15 @@
   .field.err { border-color: var(--red); background: var(--red-soft); }
   .field-msg { color: var(--red); font-size: 12.5px; margin-top: 5px; }
   .field-hint { color: var(--ink-3); font-size: 12.5px; margin-top: 5px; }
+  .search-group { display: inline-flex; align-items: stretch; max-width: 100%; }
+  .search-group .field { border-radius: 8px 0 0 8px; border-right: 0; width: auto; }
+  .search-group .field:focus { outline: none; border-color: var(--pine); }
+  .search-group .search-go {
+    border-radius: 0 8px 8px 0; border: 1px solid var(--pine); background: var(--pine); color: #fdfbf5;
+    font: inherit; font-weight: 600; font-size: 14px; padding: 9px 16px; cursor: pointer; white-space: nowrap;
+    transition: background .15s ease;
+  }
+  .search-group .search-go:hover { background: var(--pine-hover); }
   .lab { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
 
   .doc-row {
@@ -281,6 +290,32 @@
   .scorebar.amber i { background: var(--amber); }
   .scorebar.red i { background: var(--red); }
 
+  /* ── sortable assignments table ── */
+  table.assoc {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+  }
+  table.assoc th, table.assoc td { text-align: left; padding: 10px 12px; border-bottom: 1px dashed var(--line); }
+  table.assoc tbody tr:last-child td { border-bottom: 0; }
+  table.assoc tbody tr { cursor: pointer; transition: background .12s ease; }
+  table.assoc tbody tr:hover { background: rgb(46 92 73 / .05); }
+  table.assoc th {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-3); user-select: none; cursor: pointer; white-space: nowrap;
+  }
+  table.assoc th:hover { color: var(--ink); }
+  table.assoc th .arrow { font-size: 9px; margin-left: 4px; color: var(--pine); }
+  table.assoc td .mono { text-transform: none; letter-spacing: 0; }
+  .tbl-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px 0; flex-wrap: wrap; }
+  .pager2 { display: inline-flex; align-items: center; gap: 6px; font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink-2); }
+  .pager2 button {
+    min-width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line-2);
+    background: var(--card); color: var(--ink-2); font: inherit; font-size: 12px; cursor: pointer; padding: 0 8px;
+    transition: all .12s ease;
+  }
+  .pager2 button:hover { border-color: var(--pine); color: var(--pine); }
+  .pager2 button[disabled] { opacity: .4; cursor: default; pointer-events: none; }
+  .pager2 button.on { background: var(--pine); border-color: var(--pine); color: #fff; }
+
   .note-bar { display: flex; align-items: center; gap: 12px; background: var(--pine-soft); border: 1px solid color-mix(in srgb, var(--pine) 25%, transparent); border-radius: 10px; padding: 12px 16px; font-size: 14px; color: var(--ink-2); flex-wrap: wrap; }
   .note-bar.amber { background: var(--amber-soft); border-color: color-mix(in srgb, var(--amber) 30%, transparent); }
 
@@ -313,6 +348,7 @@
   .seatmap .rowlbl, .seatmap .collbl { font-family: "IBM Plex Mono", monospace; font-size: 9px; color: var(--ink-3); display: grid; place-items: center; }
   .seat { width: 44px; height: 40px; border-radius: 8px; display: grid; place-items: center; font-size: 11px; font-weight: 600; border: 1px dashed var(--line-2); color: var(--ink-3); }
   .seat.f { background: var(--pine); border: 1px solid var(--pine); color: #fdfbf5; }
+  .seat.nr { background: var(--red-soft); border: 1px solid var(--red); color: var(--red); }
   .seat.f.c { background: var(--terra); border-color: var(--terra); }
   .seat.empty { border-style: dashed; opacity: .55; }
   .seat-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 14px; font-size: 12px; color: var(--ink-2); }
@@ -403,6 +439,7 @@
 <div class="mock-bar">
   <span class="lbl">CLASSPRINTS · ASSIGNMENT READER · MOCKUP</span>
   <button data-go="overview" class="on">Overview</button>
+  <button data-go="classes">Class assignments</button>
   <button data-go="dashboard">Dashboard</button>
   <button data-go="assignment">Assignment</button>
   <button data-go="upload">Upload</button>
@@ -420,7 +457,6 @@
       <nav aria-label="Public navigation">
         <a>Pricing</a>
         <a>Sign in</a>
-        <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z"/></svg><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button>
         <a class="btn btn-pine btn-sm" style="min-height:36px;justify-content:center">Get started</a>
       </nav>
     </div>
@@ -439,10 +475,10 @@
     </div>
     <div class="hero-art">
       <div class="cap"><span class="mono">Sample · Classroom 204</span><span class="chip ready">Ready</span></div>
-      <div class="seatmap-wrap"><div class="seatmap" id="cp-seats" style="grid-template-columns: 18px repeat(7, 44px);"></div></div>
+      <div class="seatmap-wrap"><div class="seatmap" id="cp-seats" style="grid-template-columns: 20px repeat(7, 44px);" role="img" aria-label="Sample five-row by seven-column classroom seating chart. 10 seats are occupied and two occupied seats need review."></div></div>
       <div class="seat-legend">
         <span><i style="background:var(--pine)"></i> Occupied</span>
-        <span><i style="border:1px solid var(--terra);background:color-mix(in srgb, var(--terra) 10%, transparent)"></i> Needs review</span>
+        <span><i style="border:1px solid var(--red);background:var(--red-soft)"></i> Needs review</span>
         <span><i style="border:1px dashed var(--line-2)"></i> Open seat</span>
       </div>
     </div>
@@ -463,6 +499,82 @@
   </footer>
 </section>
 
+
+<!-- ═══ CLASS ASSIGNMENTS ═══ -->
+<section class="screen" id="s-classes">
+  <div class="shell">
+    <div class="mobile-bar"><span class="brand"><span class="mark"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5" opacity=".45"/><rect x="4" y="13" width="7" height="7" rx="1.5" opacity=".45"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></span> ClassPrints</span><button class="burger" onclick="toggleDrawer()" aria-label="Toggle navigation">&#9776;</button></div>
+    <aside class="side">
+      <span class="brand"><span class="mark"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5" opacity=".45"/><rect x="4" y="13" width="7" height="7" rx="1.5" opacity=".45"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></span> ClassPrints</span>
+      <nav>
+        <span class="grp">Management</span>
+        <a class="navi on" data-go="classes"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Classes</a>
+        <span class="grp">Account</span>
+        <div class="navi-row" style="display:flex;align-items:center;gap:2px"><a class="navi" style="flex:1"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10 1.4 1.4m0-12.8-1.4 1.4m-10 10-1.4 1.4"/></svg> Settings</a><button class="theme-btn" style="margin-right:4px" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z"/></svg><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button></div>
+        <a class="navi"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> Pricing</a>
+      </nav>
+      <div class="foot">
+        <span class="avatar">EE</span>
+        <span class="who"><b>Elena Ellis</b><span>jose@classprints.io</span></span>
+        <span class="plan-tag">PLUS</span>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div class="crumbs"><b>Classes</b></div>
+      <div class="page-head">
+        <div>
+          <h1>Class assignments</h1>
+          <div class="sub">Select a class, then view its assignments or seating charts — the sidebar "Classes" entry lands here</div>
+        </div>
+        <div class="head-actions"><button class="btn btn-ghost btn-sm">New class</button></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><h3>Classes</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto"><span class="search-group"><input id="classList-search" class="field" placeholder="Search date, class, students, assignments, or status…" style="width:300px"/><button class="search-go" id="classList-search-go" type="button">Search</button></span></div></div>
+        <div class="panel-b" style="padding:0 0 8px">
+          <table class="assoc" id="classList-table">
+            <thead>
+              <tr>
+                <th data-key="date" data-dir="desc">Date <span class="arrow">▾</span></th>
+                <th data-key="name">Class <span class="arrow"></span></th>
+                <th data-key="students">Students <span class="arrow"></span></th>
+                <th data-key="assignments">Assignments <span class="arrow"></span></th>
+                <th data-key="status">Status <span class="arrow"></span></th>
+              </tr>
+            </thead>
+            <tbody id="classList-body">
+            <tr data-date="3/7/26" data-name="Grade 3 · Room 12" data-students="24" data-assignments="3" data-status="active" data-go="dashboard"><td class="mono">3/7/26</td><td>Grade 3 · Room 12</td><td>24</td><td>3</td><td><span class="chip ready">Active</span></td></tr>
+            <tr data-date="3/6/26" data-name="Grade 3 · Science Club" data-students="22" data-assignments="5" data-status="archived"><td class="mono">3/6/26</td><td>Grade 3 · Science Club</td><td>22</td><td>5</td><td><span class="chip draft">Archived</span></td></tr>
+            <tr data-date="3/4/26" data-name="Grade 3 · Math Circle" data-students="26" data-assignments="4" data-status="active"><td class="mono">3/4/26</td><td>Grade 3 · Math Circle</td><td>26</td><td>4</td><td><span class="chip ready">Active</span></td></tr>
+            <tr data-date="3/1/26" data-name="Grade 3 · Art Explorers" data-students="20" data-assignments="2" data-status="archived"><td class="mono">3/1/26</td><td>Grade 3 · Art Explorers</td><td>20</td><td>2</td><td><span class="chip draft">Archived</span></td></tr>
+            <tr data-date="2/26/26" data-name="Grade 3 · Reading Buddies" data-students="25" data-assignments="6" data-status="active"><td class="mono">2/26/26</td><td>Grade 3 · Reading Buddies</td><td>25</td><td>6</td><td><span class="chip ready">Active</span></td></tr>
+            <tr data-date="2/22/26" data-name="Grade 3 · Music Together" data-students="18" data-assignments="3" data-status="archived"><td class="mono">2/22/26</td><td>Grade 3 · Music Together</td><td>18</td><td>3</td><td><span class="chip draft">Archived</span></td></tr>
+            <tr data-date="2/18/26" data-name="Grade 4 · Room 9" data-students="27" data-assignments="8" data-status="active"><td class="mono">2/18/26</td><td>Grade 4 · Room 9</td><td>27</td><td>8</td><td><span class="chip ready">Active</span></td></tr>
+            <tr data-date="2/14/26" data-name="Grade 4 · Nature Club" data-students="24" data-assignments="5" data-status="archived"><td class="mono">2/14/26</td><td>Grade 4 · Nature Club</td><td>24</td><td>5</td><td><span class="chip draft">Archived</span></td></tr>
+            <tr data-date="2/10/26" data-name="Grade 4 · Robotics" data-students="22" data-assignments="4" data-status="active"><td class="mono">2/10/26</td><td>Grade 4 · Robotics</td><td>22</td><td>4</td><td><span class="chip ready">Active</span></td></tr>
+            <tr data-date="2/5/26" data-name="Grade 4 · Spanish Club" data-students="23" data-assignments="3" data-status="active"><td class="mono">2/5/26</td><td>Grade 4 · Spanish Club</td><td>23</td><td>3</td><td><span class="chip ready">Active</span></td></tr>
+            <tr data-date="1/30/26" data-name="Grade 4 · Chess Club" data-students="16" data-assignments="2" data-status="archived"><td class="mono">1/30/26</td><td>Grade 4 · Chess Club</td><td>16</td><td>2</td><td><span class="chip draft">Archived</span></td></tr>
+            <tr data-date="1/24/26" data-name="Grade 4 · Drama Troupe" data-students="19" data-assignments="3" data-status="archived"><td class="mono">1/24/26</td><td>Grade 4 · Drama Troupe</td><td>19</td><td>3</td><td><span class="chip draft">Archived</span></td></tr>
+            </tbody>
+          </table>
+          <div class="tbl-foot">
+            <span class="mono" id="classList-count">12 classes · showing 1–10</span>
+            <span class="pager2" id="classList-pager">
+              <button data-page="prev" disabled>‹ Prev</button>
+              <button data-page="1" class="on">1</button>
+              <button data-page="2">2</button>
+              <button data-page="next">Next ›</button>
+            </span>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+</section>
+
 <!-- ═══ DASHBOARD ═══ -->
 <section class="screen" id="s-dashboard">
   <div class="shell">
@@ -470,121 +582,102 @@
     <aside class="side">
       <span class="brand"><span class="mark"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5" opacity=".45"/><rect x="4" y="13" width="7" height="7" rx="1.5" opacity=".45"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></span> ClassPrints</span>
       <nav>
-        <a class="navi" data-go="overview"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg> Overview</a>
-        <a class="navi"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg> Charts <span class="cnt">24</span></a>
-        <a class="navi"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 12h14M5 19h9"/></svg> Configs <span class="cnt">6</span></a>
-        <span class="grp">Assignment Reader</span>
-        <a class="navi on"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Grade 3 · Room 12 <span class="cnt gen">2 due</span></a>
-        <a class="navi"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Grade 3 · Science Club <span class="cnt">read-only</span></a>
-        <span class="grp" style="padding-left:24px">Assignments · Room 12</span>
-        <a class="navi" style="padding-left:22px"><svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/></svg> Fractions worksheet 4 <span class="cnt gen">1</span></a>
-        <a class="navi" style="padding-left:22px"><svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/></svg> Paragraph of the week <span class="cnt gen">5</span></a>
-        <a class="navi" style="padding-left:22px"><svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/></svg> Timed facts — Division <span class="cnt">2</span></a>
-        <span class="grp" style="padding-left:24px">Roster</span>
-        <a class="navi" style="padding-left:26px"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M4 19c0-3 2.2-5 5-5s5 2 5 5"/></svg> 24 students</a>
+        <span class="grp">Management</span>
+        <a class="navi on" data-go="classes"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Classes</a>
+        <span class="grp">Account</span>
+        <div class="navi-row" style="display:flex;align-items:center;gap:2px"><a class="navi" style="flex:1"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10 1.4 1.4m0-12.8-1.4 1.4m-10 10-1.4 1.4"/></svg> Settings</a><button class="theme-btn" style="margin-right:4px" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z"/></svg><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button></div>
+        <a class="navi"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> Pricing</a>
       </nav>
       <div class="foot">
         <span class="avatar">EE</span>
         <span class="who"><b>Elena Ellis</b><span>jose@classprints.io</span></span>
         <span class="plan-tag">PLUS</span>
-        <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z"/></svg><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button>
       </div>
     </aside>
 
     <div class="main">
+      <div class="crumbs"><a data-go="classes" style="cursor:pointer"><b>Classes</b></a> <span>›</span> <b>Grade 3 · Room 12</b></div>
       <div class="page-head">
         <div>
           <h1>Grade 3 · Room 12</h1>
           <div class="sub">24 students · 3 assignments · updated Mar 7</div>
         </div>
         <div class="head-actions">
+          <div class="tabs" id="dash-tabs">
+            <button class="on" data-tab="assignments">Assignments</button>
+            <button data-tab="seating">Seating Charts</button>
+          </div>
           <button class="btn btn-ghost btn-sm">Rename</button>
           <button class="btn btn-ghost btn-sm">Archive class</button>
           <button class="btn btn-pine">New assignment</button>
         </div>
       </div>
 
-      <div class="stats">
-        <div class="stat"><span class="mono">Needs review</span><b>2</b><div class="sub" style="color:var(--ink-3);font-size:12.5px">materials + submissions across 3 assignments</div></div>
-        <div class="stat"><span class="mono">Ready to grade</span><b>1</b><div class="sub" style="color:var(--ink-3);font-size:12.5px">reviewed, awaiting grading</div></div>
-        <div class="stat"><span class="mono">Graded · this week</span><b>4</b><div class="sub" style="color:var(--ink-3);font-size:12.5px">materials never count toward grading</div></div>
-      </div>
-
-      <div class="doc-row" data-go="assignment">
-        <div class="page-card"><div class="pg"></div><div class="cap"><span>2 pages</span><span class="st ready"></span></div></div>
-        <div>
-          <h3>Fractions worksheet 4 — Equivalent fractions</h3>
-          <div class="meta">Max score 10 · materials ready (v2) · created Mar 5</div>
-        </div>
-        <div class="chips">
-          <span class="chip gen"><span class="radio on"></span>Needs to Review · 1</span>
-          <span class="chip graded"><span class="radio on"></span>Graded · 1</span>
-          <span class="chip fail"><span class="radio on"></span>Submission Errors · 1</span>
-        </div>
-        <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
-      </div>
-
-      <div class="doc-row" data-go="assignment">
-        <div class="page-card"><div class="pg"></div><div class="cap"><span>1 page</span><span class="st run"></span></div></div>
-        <div>
-          <h3>Paragraph of the week — Mar 6</h3>
-          <div class="meta">No maximum score · materials need review · created Mar 6</div>
-        </div>
-        <div class="chips">
-          <span class="chip gen"><span class="radio on"></span>Needs to Review · 5</span>
-          <span class="chip graded"><span class="radio on"></span>Graded · 3</span>
-          <span class="chip draft"><span class="radio"></span>Submission Errors · 0</span>
-        </div>
-        <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
-      </div>
-
-      <div class="doc-row" data-go="assignment">
-        <div class="page-card"><div class="cap" style="border:0;justify-content:center;height:64px;align-items:center;display:flex"><span class="mono" style="font-size:9px">no materials</span></div></div>
-        <div>
-          <h3>Timed facts — Division</h3>
-          <div class="meta">No maximum score · created Feb 28</div>
-        </div>
-        <div class="chips">
-          <span class="chip gen"><span class="radio on"></span>Needs to Review · 2</span>
-          <span class="chip graded"><span class="radio on"></span>Graded · 8</span>
-          <span class="chip draft"><span class="radio"></span>Submission Errors · 0</span>
-        </div>
-        <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
-      </div>
-
-      <div class="panel" style="margin-top:20px">
-        <div class="panel-h"><h3>Seating charts <span class="chip draft">ClassPrints</span></h3><a class="mono" data-go="overview" style="cursor:pointer">manage in Charts →</a></div>
-        <div class="panel-b">
-          <div class="rosterline"><span class="grow"><b>Period 3 — Algebra II</b> <span class="mono" style="text-transform:none;letter-spacing:0">· updated Sep 9</span></span><span class="chip ready">Ready</span><span class="chip draft">31 students</span><a class="btn btn-ghost btn-sm" data-go="overview">Open chart</a></div>
-          <div class="rosterline"><span class="grow"><b>Homeroom 7C — Fall</b> <span class="mono" style="text-transform:none;letter-spacing:0">· updated Aug 30</span></span><span class="chip ready">Ready</span><span class="chip draft">27 students</span><a class="btn btn-ghost btn-sm" data-go="overview">Open chart</a></div>
-          <p style="font-size:13px;color:var(--ink-3);margin-top:10px">One account, both tools — seating lives in ClassPrints Charts; reading and grading live here in Assignment Reader.</p>
-        </div>
-      </div>
-
-      <div class="panel" style="margin-top:26px">
-        <div class="panel-h"><h3>New assignment</h3><span class="mono">Grade 3 · Room 12</span></div>
-        <div class="panel-b" style="display:grid;grid-template-columns:1fr 200px;gap:14px">
-          <div>
-            <label class="lab">Name</label>
-            <input class="field" placeholder="e.g. Fractions worksheet 5 — Comparing" />
-          </div>
-          <div>
-            <label class="lab">Max score · optional</label>
-            <input class="field" value="10" />
-            <div class="field-hint">Decimals to 2 places, e.g. 8.5 — scores above the maximum are rejected</div>
-          </div>
-          <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center">
-            <button class="btn btn-pine btn-sm">Create assignment</button>
-            <button class="btn btn-ghost btn-sm">Cancel</button>
-            <span class="mono" style="margin-left:auto">roster stays simple — no student accounts, no sync</span>
+      <div class="panel" id="dash-assignments">
+        <div class="panel-h"><h3>Assignments</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto"><span class="search-group"><input id="assign-search" class="field" placeholder="Search date, assignment, or status…" style="width:280px"/><button class="search-go" id="assign-search-go" type="button">Search</button></span></div></div>
+        <div class="panel-b" style="padding:0 0 8px">
+          <table class="assoc" id="assign-table">
+            <thead>
+              <tr>
+                <th data-key="date" data-dir="desc">Date <span class="arrow">▾</span></th>
+                <th data-key="name">Assignment <span class="arrow"></span></th>
+                <th data-key="status">Status <span class="arrow"></span></th>
+              </tr>
+            </thead>
+            <tbody id="assign-body">
+            <tr data-date="3/7/26" data-name="Fractions worksheet 4 — Equivalent fractions" data-status="need review" data-go="assignment"><td class="mono">3/7/26</td><td>Fractions worksheet 4 — Equivalent fractions</td><td><span class="chip gen">Need review</span></td></tr>
+            <tr data-date="3/6/26" data-name="Paragraph of the week" data-status="need review"><td class="mono">3/6/26</td><td>Paragraph of the week</td><td><span class="chip gen">Need review</span></td></tr>
+            <tr data-date="3/5/26" data-name="Timed facts — Division" data-status="graded"><td class="mono">3/5/26</td><td>Timed facts — Division</td><td><span class="chip graded">Graded</span></td></tr>
+            <tr data-date="3/4/26" data-name="Reading log — week 9" data-status="need review"><td class="mono">3/4/26</td><td>Reading log — week 9</td><td><span class="chip gen">Need review</span></td></tr>
+            <tr data-date="3/3/26" data-name="Science vocab quiz 6" data-status="graded"><td class="mono">3/3/26</td><td>Science vocab quiz 6</td><td><span class="chip graded">Graded</span></td></tr>
+            <tr data-date="3/2/26" data-name="Multiplication drill 12" data-status="need review"><td class="mono">3/2/26</td><td>Multiplication drill 12</td><td><span class="chip gen">Need review</span></td></tr>
+            <tr data-date="2/28/26" data-name="Writing prompt — my hero" data-status="graded"><td class="mono">2/28/26</td><td>Writing prompt — my hero</td><td><span class="chip graded">Graded</span></td></tr>
+            <tr data-date="2/27/26" data-name="Geometry shapes hunt" data-status="need review"><td class="mono">2/27/26</td><td>Geometry shapes hunt</td><td><span class="chip gen">Need review</span></td></tr>
+            <tr data-date="2/26/26" data-name="Spelling test 14" data-status="graded"><td class="mono">2/26/26</td><td>Spelling test 14</td><td><span class="chip graded">Graded</span></td></tr>
+            <tr data-date="2/25/26" data-name="Social studies — map skills" data-status="graded"><td class="mono">2/25/26</td><td>Social studies — map skills</td><td><span class="chip graded">Graded</span></td></tr>
+            <tr data-date="2/24/26" data-name="Fractions worksheet 3 — Number lines" data-status="need review"><td class="mono">2/24/26</td><td>Fractions worksheet 3 — Number lines</td><td><span class="chip gen">Need review</span></td></tr>
+            <tr data-date="2/21/26" data-name="Timed facts — Addition" data-status="graded"><td class="mono">2/21/26</td><td>Timed facts — Addition</td><td><span class="chip graded">Graded</span></td></tr>
+            </tbody>
+          </table>
+          <div class="tbl-foot">
+            <span class="mono" id="assign-count">12 assignments · showing 1–10</span>
+            <span class="pager2" id="assign-pager">
+              <button data-page="prev" disabled>‹ Prev</button>
+              <button data-page="1" class="on">1</button>
+              <button data-page="2">2</button>
+              <button data-page="next">Next ›</button>
+            </span>
           </div>
         </div>
       </div>
 
-      <div class="note-bar" style="margin-top:18px">
-        <span class="chip draft">Archived</span>
-        <span><b>Grade 3 · Science Club</b> — read-only: assignments, materials, and submissions remain viewable; no new uploads or edits. Removing a student keeps their submissions and grading history.</span>
+      <div class="panel" style="margin-top:20px" id="dash-seating" hidden>
+        <div class="panel-h"><h3>Seating charts</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto"><span class="search-group"><input id="seat-search" class="field" placeholder="Search date, class, or students…" style="width:260px"/><button class="search-go" id="seat-search-go" type="button">Search</button></span></div></div>
+        <div class="panel-b" style="padding:0 0 8px">
+          <table class="assoc" id="seat-table">
+            <thead>
+              <tr>
+                <th data-key="date" data-dir="desc">Date <span class="arrow">▾</span></th>
+                <th data-key="name">Class <span class="arrow"></span></th>
+                <th data-key="students">Student Count <span class="arrow"></span></th>
+              </tr>
+            </thead>
+            <tbody id="seat-body">
+            <tr data-date="9/9/25" data-name="Period 3 — Algebra II" data-students="31"><td class="mono">9/9/25</td><td>Period 3 — Algebra II</td><td>31</td></tr>
+            <tr data-date="8/30/25" data-name="Homeroom 7C — Fall" data-students="27"><td class="mono">8/30/25</td><td>Homeroom 7C — Fall</td><td>27</td></tr>
+            </tbody>
+          </table>
+          <div class="tbl-foot">
+            <span class="mono" id="seat-count">2 seating charts · showing 1–2</span>
+            <span class="pager2" id="seat-pager">
+              <button data-page="prev" disabled>‹ Prev</button>
+              <button data-page="1" class="on">1</button>
+              <button data-page="next" disabled>Next ›</button>
+            </span>
+          </div>
+        </div>
       </div>
+
     </div>
   </div>
 </section>
@@ -596,26 +689,21 @@
     <aside class="side">
       <span class="brand"><span class="mark"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5" opacity=".45"/><rect x="4" y="13" width="7" height="7" rx="1.5" opacity=".45"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></span> ClassPrints</span>
       <nav>
-        <a class="navi" data-go="overview"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg> Overview</a>
-        <a class="navi" data-go="dashboard"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg> Charts</a>
-        <span class="grp" style="padding-left:12px">Assignment Reader</span>
-        <a class="navi" data-go="dashboard"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Grade 3 · Room 12</a>
-        <span class="grp" style="padding-left:24px">On this screen</span>
-        <a class="navi on" style="padding-left:22px"><svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/></svg> Materials</a>
-        <a class="navi" style="padding-left:22px"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M4 19c0-3 2.2-5 5-5s5 2 5 5"/></svg> Submissions</a>
+        <span class="grp">Management</span>
+        <a class="navi on" data-go="classes"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Classes</a>
         <span class="grp">Account</span>
-        <a class="navi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10 1.4 1.4m0-12.8-1.4 1.4m-10 10-1.4 1.4"/></svg> Settings</a>
+        <div class="navi-row" style="display:flex;align-items:center;gap:2px"><a class="navi" style="flex:1"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10 1.4 1.4m0-12.8-1.4 1.4m-10 10-1.4 1.4"/></svg> Settings</a><button class="theme-btn" style="margin-right:4px" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z"/></svg><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button></div>
+        <a class="navi"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> Pricing</a>
       </nav>
       <div class="foot">
         <span class="avatar">EE</span>
         <span class="who"><b>Elena Ellis</b><span>jose@classprints.io</span></span>
         <span class="plan-tag">PLUS</span>
-        <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z"/></svg><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button>
       </div>
     </aside>
 
     <div class="main">
-      <div class="crumbs"><b>Grade 3 · Room 12</b> <span>›</span> <b>Fractions worksheet 4 — Equivalent fractions</b></div>
+      <div class="crumbs"><a data-go="classes" style="cursor:pointer"><b>Classes</b></a> <span>›</span> <a data-go="dashboard" style="cursor:pointer"><b>Grade 3 · Room 12</b></a> <span>›</span> <b>Fractions worksheet 4 — Equivalent fractions</b></div>
       <div class="page-head">
         <div>
           <h1>Fractions worksheet 4 <span class="chip draft">Max 10</span></h1>
@@ -629,8 +717,8 @@
 
       <div class="panel">
         <div class="panel-h">
-          <h3>Assignment materials <span class="chip ctx">Context · not graded</span> <span class="chip ready">Ready · v2</span></h3>
-          <span class="mono">replaced Mar 3 · v1 viewable read-only</span>
+          <h3>Assignment materials <span class="chip ctx">Context · not graded</span></h3>
+          <span class="mono">replaced Mar 3</span>
         </div>
         <div class="panel-b">
           <div class="pagestrip">
@@ -639,7 +727,7 @@
             <div style="flex:1;min-width:220px;align-self:center">
               <p style="font-size:14px;color:var(--ink-2)">Worksheet instructions and the fraction wall — photographed, ordered, transcribed. <b>Context for every review; never a submission, never graded, excluded from all counts.</b></p>
               <div class="btn-row" style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
-                <button class="btn btn-pine btn-sm" data-go="workspace">Open review</button>
+                <button class="btn btn-pine btn-sm" data-go="workspace">Open materials</button>
                 <button class="btn btn-ghost btn-sm">Replace materials</button>
                 <button class="btn btn-ghost btn-sm">Retranscribe document</button>
                 <button class="btn btn-ghost btn-sm danger">Delete</button>
@@ -652,75 +740,41 @@
       <div class="panel" style="margin-top:20px">
         <div class="panel-h">
           <h3>Submissions</h3>
+          <span class="search-group" style="margin-left:auto"><input id="subs-search" class="field" placeholder="Search date, name, or status…" style="width:240px"/><button class="search-go" id="subs-search-go" type="button">Search</button></span>
           <div class="tabs">
             <button class="on">All 5</button>
             <button>Needs review 1</button>
-            <button>Ready 1</button>
+            <button>Ready to grade 1</button>
             <button>Graded 1</button>
-            <button>Failed 1</button>
+            <button>Error 1</button>
             <button>Not started 1</button>
           </div>
         </div>
-        <div class="panel-b">
-
-          <div class="doc-row" style="cursor:default" data-go="workspace">
-            <div class="page-card"><div class="pg"></div><div class="cap"><span>3 pages</span><span class="st ready"></span></div></div>
-            <div>
-              <h3>Maya Rodriguez</h3>
-              <div class="meta">3 pages · started Mar 6 · page 2 completed and editable</div>
-            </div>
-            <div class="chips">
-              <span class="chip gen">Needs review</span>
-              <span class="chip gen"><span class="pulse"></span>p3 transcribing</span>
-            </div>
-            <button class="btn btn-pine btn-sm">Open review</button>
+        <div class="panel-b" style="padding:0 0 8px">
+          <table class="assoc" id="subs-table">
+            <thead>
+              <tr>
+                <th data-key="date" data-dir="desc">Date <span class="arrow">▾</span></th>
+                <th data-key="name">Name <span class="arrow"></span></th>
+                <th data-key="status">Status <span class="arrow"></span></th>
+              </tr>
+            </thead>
+            <tbody id="subs-body">
+            <tr data-date="3/6/26" data-name="Maya Rodriguez" data-status="need review" data-go="workspace"><td class="mono">3/6/26</td><td>Maya Rodriguez</td><td><span class="chip gen">Needs review</span> <span class="chip gen"><span class="pulse"></span>p3 transcribing</span></td></tr>
+            <tr data-date="3/6/26" data-name="Priya Shah" data-status="ready to grade" data-go="workspace"><td class="mono">3/6/26</td><td>Priya Shah</td><td><span class="chip ready">Ready to grade</span></td></tr>
+            <tr data-date="3/5/26" data-name="Jack Thompson" data-status="graded" data-go="workspace"><td class="mono">3/5/26</td><td>Jack Thompson</td><td><span class="chip graded">Graded · 8.5 / 10</span></td></tr>
+            <tr data-date="3/6/26" data-name="Sam Okafor" data-status="error" data-go="processing"><td class="mono">3/6/26</td><td>Sam Okafor</td><td><span class="chip fail">p2 error — retry</span></td></tr>
+            <tr data-date="3/6/26" data-name="Noah Kim" data-status="not started"><td class="mono">3/6/26</td><td>Noah Kim</td><td><span class="chip draft">Not started</span></td></tr>
+            </tbody>
+          </table>
+          <div class="tbl-foot">
+            <span class="mono" id="subs-count">5 submissions · showing 1–5</span>
+            <span class="pager2" id="subs-pager">
+              <button data-page="prev" disabled>‹ Prev</button>
+              <button data-page="1" class="on">1</button>
+              <button data-page="next" disabled>Next ›</button>
+            </span>
           </div>
-
-          <div class="doc-row" style="cursor:default" data-go="workspace">
-            <div class="page-card"><div class="pg"></div><div class="cap"><span>3 pages</span><span class="st ready"></span></div></div>
-            <div>
-              <h3>Priya Shah</h3>
-              <div class="meta">3 pages · started Mar 6</div>
-            </div>
-            <div class="chips"><span class="chip ready">Ready</span></div>
-            <button class="btn btn-pine btn-sm" data-go="workspace">Grade</button>
-          </div>
-
-          <div class="doc-row" style="cursor:default" data-go="workspace">
-            <div class="page-card"><div class="pg"></div><div class="cap"><span>3 pages</span><span class="st ready"></span></div></div>
-            <div>
-              <h3>Jack Thompson</h3>
-              <div class="meta">“Strong fraction sense — watch simplification of 6/8.”</div>
-            </div>
-            <div class="chips">
-              <span class="chip graded">Graded · 8.5 / 10</span>
-            </div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-ghost btn-sm" data-go="workspace">View</button>
-              <button class="btn btn-ghost btn-sm danger" data-go="workspace">Return to needs review</button>
-            </div>
-          </div>
-
-          <div class="doc-row" style="cursor:default" data-go="processing">
-            <div class="page-card"><div class="pg"></div><div class="cap"><span>3 pages</span><span class="st fail"></span></div></div>
-            <div>
-              <h3>Sam Okafor</h3>
-              <div class="meta">3 pages · started Mar 6</div>
-            </div>
-            <div class="chips"><span class="chip fail">p2 failed — retry</span></div>
-            <button class="btn btn-ghost btn-sm danger" data-go="processing">Review failure</button>
-          </div>
-
-          <div class="doc-row" style="cursor:default">
-            <div class="page-card" style="border-style:dashed"><div class="cap" style="border:0;height:64px;display:flex;align-items:center;justify-content:center"><span class="mono" style="font-size:9px">—</span></div></div>
-            <div>
-              <h3>Noah Kim</h3>
-              <div class="meta">Submissions can be created whether or not materials exist</div>
-            </div>
-            <div class="chips"><span class="chip draft">Not started</span></div>
-            <button class="btn btn-ghost btn-sm">Create submission</button>
-          </div>
-
         </div>
       </div>
     </div>
@@ -734,23 +788,21 @@
     <aside class="side">
       <span class="brand"><span class="mark"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5" opacity=".45"/><rect x="4" y="13" width="7" height="7" rx="1.5" opacity=".45"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></span> ClassPrints</span>
       <nav>
-        <a class="navi" data-go="overview"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg> Overview</a>
-        <a class="navi" data-go="dashboard"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg> Charts</a>
-        <span class="grp" style="padding-left:12px">Assignment Reader</span>
-        <a class="navi" data-go="assignment"><svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/></svg> Assignment</a>
-        <a class="navi on"><svg viewBox="0 0 24 24"><path d="M12 16V5m0 0-4 4m4-4 4 4M5 19h14"/></svg> Upload</a>
-        <a class="navi" data-go="processing"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg> Processing</a>
+        <span class="grp">Management</span>
+        <a class="navi on" data-go="classes"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Classes</a>
+        <span class="grp">Account</span>
+        <div class="navi-row" style="display:flex;align-items:center;gap:2px"><a class="navi" style="flex:1"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10 1.4 1.4m0-12.8-1.4 1.4m-10 10-1.4 1.4"/></svg> Settings</a><button class="theme-btn" style="margin-right:4px" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z"/></svg><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button></div>
+        <a class="navi"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> Pricing</a>
       </nav>
       <div class="foot">
         <span class="avatar">EE</span>
         <span class="who"><b>Elena Ellis</b><span>jose@classprints.io</span></span>
         <span class="plan-tag">PLUS</span>
-        <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z"/></svg><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button>
       </div>
     </aside>
 
     <div class="main">
-      <div class="crumbs"><b>Grade 3 · Room 12</b> <span>›</span> <b>Fractions worksheet 4</b> <span>›</span> <b>Upload</b></div>
+      <div class="crumbs"><a data-go="classes" style="cursor:pointer"><b>Classes</b></a> <span>›</span> <a data-go="dashboard" style="cursor:pointer"><b>Grade 3 · Room 12</b></a> <span>›</span> <a data-go="assignment" style="cursor:pointer"><b>Fractions worksheet 4</b></a> <span>›</span> <b>Upload</b></div>
       <div class="page-head">
         <div>
           <h1>Upload photographed pages</h1>
@@ -760,13 +812,6 @@
           <span class="chip draft">20 pages max / document</span>
           <span class="chip draft">10 MB / image</span>
         </div>
-      </div>
-
-      <div class="timeline">
-        <span class="tstep done"><i>1</i> Choose what</span><span class="tsep"></span>
-        <span class="tstep now"><i>2</i> Photos</span><span class="tsep"></span>
-        <span class="tstep now"><i>3</i> Order</span><span class="tsep"></span>
-        <span class="tstep"><i>4</i> Transcribe</span>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
@@ -790,60 +835,44 @@
       <div class="panel">
         <div class="panel-h">
           <h3>Add photographed pages</h3>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <span class="chip ready">JPEG</span>
-            <span class="chip ready">PNG</span>
-            <span class="chip ready">HEIC → JPEG server-side</span>
-            <span class="chip draft">PDF not accepted</span>
-          </div>
+          <span class="mono">Supports JPG, JPEG, HEIC</span>
         </div>
         <div class="panel-b">
           <div style="border:1.5px dashed var(--line-2);border-radius:12px;padding:34px;text-align:center">
             <h3 style="font-size:18px">Drop page photographs here</h3>
-            <p style="color:var(--ink-3);font-size:13.5px;margin:6px 0 14px">or choose images from this device · HEIC normalizes to JPEG before storage and transcription</p>
+            <p style="color:var(--ink-3);font-size:13.5px;margin:6px 0 14px">or choose images from this device</p>
             <button class="btn btn-pine btn-sm">Choose images</button>
           </div>
           <div class="rosterline mono" style="text-transform:none;letter-spacing:0">
-            <span>IMG_2841.heic · 3.2 MB</span><span style="color:var(--ink-3)">→ IMG_2841.jpg</span>
-            <span class="chip ready" style="margin-left:auto">Uploaded</span>
+            <span style="cursor:grab" title="Drag to reorder">⠿</span>
+            <span class="grow" style="text-align:left">IMG_2841.heic · 3.2 MB <span style="color:var(--ink-3)">→ IMG_2841.jpg</span></span>
+            <span class="chip ready">Uploaded</span>
+            <button class="btn btn-ghost btn-sm" aria-label="Remove IMG_2841" style="padding:4px 10px">×</button>
           </div>
           <div class="rosterline mono" style="text-transform:none;letter-spacing:0">
-            <span>IMG_2842.jpg · 2.8 MB</span>
-            <span class="chip ready" style="margin-left:auto">Uploaded</span>
+            <span style="cursor:grab" title="Drag to reorder">⠿</span>
+            <span class="grow" style="text-align:left">IMG_2842.jpg · 2.8 MB</span>
+            <span class="chip ready">Uploaded</span>
+            <button class="btn btn-ghost btn-sm" aria-label="Remove IMG_2842" style="padding:4px 10px">×</button>
           </div>
           <div class="rosterline mono" style="text-transform:none;letter-spacing:0">
-            <span>IMG_2843.jpg · 12.4 MB</span>
+            <span style="cursor:grab" title="Drag to reorder">⠿</span>
+            <span class="grow" style="text-align:left">IMG_2843.jpg · 12.4 MB</span>
             <span class="chip fail">Over 10 MB limit</span>
-            <button class="btn btn-ghost btn-sm" style="margin-left:auto">Replace</button>
+            <button class="btn btn-ghost btn-sm">Replace</button>
+            <button class="btn btn-ghost btn-sm" aria-label="Remove IMG_2843" style="padding:4px 10px">×</button>
           </div>
-          <p style="font-size:13px;color:var(--ink-3);margin-top:10px">Failed or oversized pages are retried or replaced here — the class, student, and assignment context is never recreated for a bad page.</p>
-        </div>
-      </div>
-
-      <div class="panel" style="margin-top:20px">
-        <div class="panel-h"><h3>Page order <span class="chip draft">4 / 20 pages</span></h3><span class="mono">drag into reading order — transcription waits for your confirmation</span></div>
-        <div class="panel-b">
-          <div class="pagestrip">
-            <div class="page-card"><span class="grip">⠿ 1</span><div class="pg"></div><div class="cap"><span>Name · Date</span><span class="st ready"></span></div></div>
-            <div class="page-card"><span class="grip">⠿ 2</span><div class="pg"></div><div class="cap"><span>Part B work</span><span class="st ready"></span></div></div>
-            <div class="page-card dragging"><span class="grip">⠿ 3</span><div class="pg"></div><div class="cap"><span>moving…</span><span class="st ready"></span></div></div>
-            <div class="page-card"><span class="grip">⠿ 4</span><div class="pg"></div><div class="cap"><span>Word problem</span><span class="st ready"></span></div></div>
-            <div style="align-self:center;display:flex;gap:10px">
-              <button class="btn btn-ghost btn-sm">Add more</button>
-              <button class="btn btn-ghost btn-sm danger">Remove ×</button>
-            </div>
-          </div>
-        </div>
+                  </div>
       </div>
 
       <div class="note-bar" style="margin-top:20px">
         <button class="btn btn-ghost btn-sm">Back</button>
         <span style="flex:1">Transcription starts after you confirm the page order.</span>
-        <button class="btn btn-pine" data-go="processing">Confirm & start transcription</button>
+        <button class="btn btn-ghost" data-go="assignment">Confirm & start transcription</button>
       </div>
       <div class="note-bar amber" style="margin-top:12px">
         <span class="chip gen"><span class="pulse"></span>Queued</span>
-        <span>You can leave this view — upload and processing progress appears on the assignment and dashboard.</span>
+        <span>Confirming returns to the assignment — the document just submitted shows its live processing state in the list there.</span>
       </div>
     </div>
   </div>
@@ -856,23 +885,21 @@
     <aside class="side">
       <span class="brand"><span class="mark"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5" opacity=".45"/><rect x="4" y="13" width="7" height="7" rx="1.5" opacity=".45"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></span> ClassPrints</span>
       <nav>
-        <a class="navi" data-go="overview"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg> Overview</a>
-        <a class="navi" data-go="dashboard"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg> Charts</a>
-        <span class="grp" style="padding-left:12px">Assignment Reader</span>
-        <a class="navi" data-go="upload"><svg viewBox="0 0 24 24"><path d="M12 16V5m0 0-4 4m4-4 4 4M5 19h14"/></svg> Upload</a>
-        <a class="navi on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg> Processing</a>
-        <a class="navi" data-go="workspace"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="16" rx="1"/><rect x="13" y="4" width="7" height="16" rx="1"/></svg> Workspace</a>
+        <span class="grp">Management</span>
+        <a class="navi on" data-go="classes"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Classes</a>
+        <span class="grp">Account</span>
+        <div class="navi-row" style="display:flex;align-items:center;gap:2px"><a class="navi" style="flex:1"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10 1.4 1.4m0-12.8-1.4 1.4m-10 10-1.4 1.4"/></svg> Settings</a><button class="theme-btn" style="margin-right:4px" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z"/></svg><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button></div>
+        <a class="navi"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> Pricing</a>
       </nav>
       <div class="foot">
         <span class="avatar">EE</span>
         <span class="who"><b>Elena Ellis</b><span>jose@classprints.io</span></span>
         <span class="plan-tag">PLUS</span>
-        <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z"/></svg><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button>
       </div>
     </aside>
 
     <div class="main">
-      <div class="crumbs"><b>Fractions worksheet 4</b> <span>›</span> <b>Maya Rodriguez</b> <span>›</span> <b>Processing</b></div>
+      <div class="crumbs"><a data-go="classes" style="cursor:pointer"><b>Classes</b></a> <span>›</span> <a data-go="dashboard" style="cursor:pointer"><b>Grade 3 · Room 12</b></a> <span>›</span> <a data-go="assignment" style="cursor:pointer"><b>Fractions worksheet 4</b></a> <span>›</span> <a data-go="assignment" style="cursor:pointer"><b>Maya Rodriguez</b></a> <span>›</span> <b>Processing</b></div>
       <div class="page-head">
         <div>
           <h1>Transcription progress <span class="chip gen"><span class="pulse"></span>2 of 3 pages</span></h1>
@@ -882,7 +909,7 @@
       </div>
 
       <div class="panel">
-        <div class="panel-h"><h3>Document state</h3><span class="chip fail">Failed branch → per-page retry</span></div>
+        <div class="panel-h"><h3>Document state</h3><span class="chip fail">Error branch → per-page retry</span></div>
         <div class="panel-b">
           <div class="timeline" style="margin-bottom:8px">
             <span class="tstep done"><i>1</i> Uploading</span><span class="tsep"></span>
@@ -890,60 +917,46 @@
             <span class="tstep now"><i>3</i> Transcribing</span><span class="tsep"></span>
             <span class="tstep done"><i>4</i> Completed</span>
             <span class="tsep" style="flex:.4"></span>
-            <span class="chip fail">Failed · retry page / replace</span>
-          </div>
-          <p style="font-size:13px;color:var(--ink-3)">Materials and every submission keep their own processing states — one document never blocks or changes another.</p>
-        </div>
-      </div>
-
-      <div class="panel" style="margin-top:20px">
-        <div class="panel-h"><h3>Maya Rodriguez · 3-page submission</h3><span class="mono">left the upload view? progress also shows on the assignment and dashboard</span></div>
-        <div class="panel-b">
-          <div class="doc-row" style="cursor:default" data-go="workspace">
-            <div class="page-card"><div class="pg"></div><div class="cap"><span>page 1</span><span class="st ready"></span></div></div>
-            <div>
-              <h3>Instructions copy + Maya's work</h3>
-              <div class="scorebar" style="width:200px"><i style="width:100%"></i></div>
-              <div class="meta">editable draft available</div>
-            </div>
-            <span class="chip ready">Completed</span>
-            <button class="btn btn-pine btn-sm" data-go="workspace">Review now</button>
-          </div>
-          <div class="doc-row" style="cursor:default" data-go="workspace">
-            <div class="page-card"><div class="pg"></div><div class="cap"><span>page 2</span><span class="st ready"></span></div></div>
-            <div>
-              <h3>Fraction problems</h3>
-              <div class="scorebar" style="width:200px"><i style="width:100%"></i></div>
-              <div class="meta">editable draft available</div>
-            </div>
-            <span class="chip ready">Completed</span>
-            <button class="btn btn-pine btn-sm" data-go="workspace">Review now</button>
-          </div>
-          <div class="doc-row" style="cursor:default">
-            <div class="page-card"><div class="pg"></div><div class="cap"><span>page 3</span><span class="st run"></span></div></div>
-            <div>
-              <h3>Word problem — sandwich fractions</h3>
-              <div class="scorebar amber" style="width:200px"><i style="width:60%"></i></div>
-              <div class="meta">elapsed 0:42 · model processes page by page</div>
-            </div>
-            <span class="chip gen"><span class="pulse"></span>Transcribing</span>
-            <button class="btn btn-ghost btn-sm" disabled>Review now</button>
+            <span class="chip fail">Error · retry page / replace</span>
           </div>
         </div>
       </div>
 
-      <div class="note-bar" style="margin-top:18px">
-        <span class="chip draft">Background</span>
-        <span>Nothing blocks on this screen — check the assignment page or dashboard, close the laptop, come back later.</span>
+      <div class="panel" style="margin-top:20px">
+        <div class="panel-h"><h3>Maya Rodriguez · 3-page submission</h3><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="search-group" style="margin-left:auto"><input id="pages-search" class="field" placeholder="Search date, name, or status…" style="width:240px"/><button class="search-go" id="pages-search-go" type="button">Search</button></span></div></div>
+        <div class="panel-b" style="padding:0 0 8px">
+          <table class="assoc" id="pages-table">
+            <thead>
+              <tr>
+                <th data-key="date" data-dir="desc">Date <span class="arrow">▾</span></th>
+                <th data-key="name">Name <span class="arrow"></span></th>
+                <th data-key="status">Status <span class="arrow"></span></th>
+              </tr>
+            </thead>
+            <tbody id="pages-body">
+            <tr data-date="3/6/26" data-name="Page 1 — Instructions copy" data-status="completed" data-go="workspace"><td class="mono">3/6/26</td><td>Page 1 — Instructions copy</td><td><span class="chip ready">Completed</span></td></tr>
+            <tr data-date="3/6/26" data-name="Page 2 — Fraction problems" data-status="completed" data-go="workspace"><td class="mono">3/6/26</td><td>Page 2 — Fraction problems</td><td><span class="chip ready">Completed</span></td></tr>
+            <tr data-date="3/6/26" data-name="Page 3 — Word problem" data-status="transcribing"><td class="mono">3/6/26</td><td>Page 3 — Word problem</td><td><span class="chip gen"><span class="pulse"></span>Transcribing</span></td></tr>
+            </tbody>
+          </table>
+          <div class="tbl-foot">
+            <span class="mono" id="pages-count">3 pages · showing 1–3</span>
+            <span class="pager2" id="pages-pager">
+              <button data-page="prev" disabled>‹ Prev</button>
+              <button data-page="1" class="on">1</button>
+              <button data-page="next" disabled>Next ›</button>
+            </span>
+          </div>
+        </div>
       </div>
 
       <div class="panel" style="margin-top:20px">
-        <div class="panel-h"><h3>Failure · Sam Okafor · page 2</h3><span class="chip fail">Failed</span></div>
+        <div class="panel-h"><h3>Error · Sam Okafor · page 2</h3><span class="chip fail">Error</span></div>
         <div class="panel-b">
           <div style="background:var(--red-soft);border:1px solid color-mix(in srgb, var(--red) 30%, transparent);border-radius:8px;padding:10px 14px" class="mono">provider timeout after 2 attempts · image OK</div>
           <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;align-items:center">
             <button class="btn btn-pine btn-sm" data-go="processing">Retry page</button>
-            <span class="mono" style="letter-spacing:.04em">default — reprocesses only the failed page</span>
+            <span class="mono" style="letter-spacing:.04em">default — reprocesses only the errored page</span>
             <button class="btn btn-ghost btn-sm">Replace page image</button>
             <button class="btn btn-ghost btn-sm">Retranscribe document…</button>
           </div>
@@ -966,25 +979,6 @@
         </div>
       </div>
 
-      <div class="panel" style="margin-top:26px">
-        <div class="panel-h"><h3>Operator configuration</h3><span class="mono">backend only · never shown to teachers</span></div>
-        <div class="panel-b">
-          <div class="ops-grid">
-            <div>
-              <h4>Vision provider + model</h4>
-              <p>Chosen operationally, following the existing OpenRouter-based prompting pattern. Only image-capable models selectable. Credentials stay server-side.</p>
-            </div>
-            <div>
-              <h4>Teacher experience</h4>
-              <p>No model choice, no provider UI — a configuration change never alters a teacher's workflow or touches existing transcriptions.</p>
-            </div>
-            <div>
-              <h4>Observability</h4>
-              <p>Quality, failure rate, latency, and per-page cost measured by document type — materials vs submissions — to tune the model over time.</p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </section>
@@ -996,26 +990,24 @@
     <aside class="side">
       <span class="brand"><span class="mark"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5" opacity=".45"/><rect x="4" y="13" width="7" height="7" rx="1.5" opacity=".45"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></span> ClassPrints</span>
       <nav>
-        <a class="navi" data-go="overview"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg> Overview</a>
-        <a class="navi" data-go="dashboard"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg> Charts</a>
-        <span class="grp" style="padding-left:12px">Assignment Reader</span>
-        <a class="navi" data-go="upload"><svg viewBox="0 0 24 24"><path d="M12 16V5m0 0-4 4m4-4 4 4M5 19h14"/></svg> Upload</a>
-        <a class="navi" data-go="processing"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg> Processing</a>
-        <a class="navi on"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="16" rx="1"/><rect x="13" y="4" width="7" height="16" rx="1"/></svg> Workspace</a>
+        <span class="grp">Management</span>
+        <a class="navi on" data-go="classes"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Classes</a>
+        <span class="grp">Account</span>
+        <div class="navi-row" style="display:flex;align-items:center;gap:2px"><a class="navi" style="flex:1"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10 1.4 1.4m0-12.8-1.4 1.4m-10 10-1.4 1.4"/></svg> Settings</a><button class="theme-btn" style="margin-right:4px" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z"/></svg><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button></div>
+        <a class="navi"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> Pricing</a>
       </nav>
       <div class="foot">
         <span class="avatar">EE</span>
         <span class="who"><b>Elena Ellis</b><span>jose@classprints.io</span></span>
         <span class="plan-tag">PLUS</span>
-        <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle light or dark theme"><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14A8.5 8.5 0 0 1 10 4a8 8 0 1 0 10 10z"/></svg><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button>
       </div>
     </aside>
 
     <div class="main">
-      <div class="crumbs"><b>Fractions worksheet 4</b> <span>›</span> <b>Priya Shah</b> <span>›</span> <b>Review & grade</b></div>
+      <div class="crumbs"><a data-go="classes" style="cursor:pointer"><b>Classes</b></a> <span>›</span> <a data-go="dashboard" style="cursor:pointer"><b>Grade 3 · Room 12</b></a> <span>›</span> <a data-go="assignment" style="cursor:pointer"><b>Fractions worksheet 4</b></a> <span>›</span> <a data-go="assignment" style="cursor:pointer"><b>Priya Shah</b></a> <span>›</span> <b>Review &amp; grade</b></div>
       <div class="page-head">
         <div>
-          <h1><button class="btn btn-ghost" data-go="assignment" title="Back to all submissions" aria-label="Back to all submissions" style="width:36px;height:36px;padding:0;justify-content:center;border-radius:999px"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><path d="M19 12H5m0 0 6 6m-6-6 6-6"/></svg></button> Priya Shah <span class="chip ready">Ready</span> <span class="chip draft">3 pages</span></h1>
+          <h1><button class="btn btn-ghost" data-go="assignment" title="Back to all submissions" aria-label="Back to all submissions" style="width:36px;height:36px;padding:0;justify-content:center;border-radius:999px"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><path d="M19 12H5m0 0 6 6m-6-6 6-6"/></svg></button> Priya Shah <span class="chip ready">Ready to grade</span> <span class="chip draft">3 pages</span></h1>
           <div class="sub">Fractions worksheet 4 — Equivalent fractions · max 10 · one workspace: verify beside the original, then grade</div>
         </div>
         <div class="head-actions">
@@ -1023,6 +1015,39 @@
         </div>
       </div>
 
+      <div class="panel" style="margin-bottom:20px">
+        <div class="panel-h"><h3>Questions · Priya's work</h3><span class="mono">one row per parsed question — mark, award, comment</span><span class="chip draft" style="margin-left:auto">3 of 3 auto-parsed</span></div>
+        <div class="panel-b">
+          <div class="rosterline">
+            <span class="mono">Q1</span>
+            <span class="grow" style="text-align:left"><b>1/2 and 2/4 — equal</b> <span style="color:var(--ink-3)">· parsed from p1</span></span>
+            <button class="btn btn-pine btn-sm">✓ Correct</button>
+            <button class="btn btn-ghost btn-sm">✗ Incorrect</button>
+            <input class="field" value="1" style="max-width:64px" aria-label="Points for question 1"/>
+            <span class="mono" style="text-transform:none;letter-spacing:0">/ 1 pt</span>
+            <button class="btn btn-ghost btn-sm">Comment</button>
+          </div>
+          <div class="rosterline">
+            <span class="mono">Q2</span>
+            <span class="grow" style="text-align:left"><b>1/3 and 1/4 — 1/3 is larger</b> <span style="color:var(--ink-3)">· parsed from p1 · marked incorrect</span></span>
+            <button class="btn btn-ghost btn-sm">✓ Correct</button>
+            <button class="btn btn-pine btn-sm">✗ Incorrect</button>
+            <input class="field" value="0" style="max-width:64px" aria-label="Points for question 2"/>
+            <span class="mono" style="text-transform:none;letter-spacing:0">/ 1 pt</span>
+            <button class="btn btn-ghost btn-sm">Comment</button>
+          </div>
+          <div class="rosterline">
+            <span class="mono">Q3</span>
+            <span class="grow" style="text-align:left"><b>2/6 and 1/3 — equal</b> <span style="color:var(--ink-3)">· parsed from p1 · not marked yet</span></span>
+            <button class="btn btn-ghost btn-sm">✓ Correct</button>
+            <button class="btn btn-ghost btn-sm">✗ Incorrect</button>
+            <input class="field" placeholder="—" style="max-width:64px" aria-label="Points for question 3"/>
+            <span class="mono" style="text-transform:none;letter-spacing:0">/ 1 pt</span>
+            <button class="btn btn-ghost btn-sm">Comment</button>
+          </div>
+        </div>
+      </div>
+      <div class="note-bar" style="margin-bottom:20px"><span>Each parsed question is its own row: mark correct or incorrect, award points, or open a per-question comment. The submission-level score stays the teacher's judgment.</span></div>
       <div class="split-review">
         <div>
           <div class="pane-label">
@@ -1053,7 +1078,7 @@
         <div>
           <div class="pane-label">
             <span class="pane-label">Transcription · editable</span>
-            <span class="chip ready">Ready · verified</span>
+            <span class="chip ready">Ready to grade · verified</span>
             <span class="mono" style="margin-left:auto">verified Mar 7 · by E. Ellis</span>
           </div>
           <div class="editor">
@@ -1077,7 +1102,7 @@
           </div>
 
           <div class="panel" style="margin-top:14px">
-            <div class="panel-h"><h3>Grading</h3><span class="mono">Ready ✓ Mar 7 15:02 — grading unlocked</span></div>
+            <div class="panel-h"><h3>Grading</h3><span class="mono">Ready to grade ✓ Mar 7 15:02 — grading unlocked</span></div>
             <div class="panel-b">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
                 <div>
@@ -1095,7 +1120,7 @@
                 </div>
                 <div style="display:flex;flex-direction:column;gap:10px">
                   <button class="btn btn-pine">Grade</button>
-                  <p class="field-hint" style="margin-top:auto">One control: press Grade to set the graded state, press again to sunset it and return the submission to Ready. Score and comments are both optional.</p>
+                  <p class="field-hint" style="margin-top:auto">One control: press Grade to set the graded state, press again to sunset it and return the submission to Ready to grade. Score and comments are both optional.</p>
                 </div>
               </div>
             </div>
@@ -1105,7 +1130,7 @@
 
       <div class="panel" style="margin-top:22px">
         <div class="panel-h">
-          <h3>Assignment materials <span class="chip ctx">Context · not graded</span> <span class="chip ready">Ready · v2</span></h3>
+          <h3>Assignment materials <span class="chip ctx">Context · not graded</span></h3>
           <span class="mono">opened beside this review · one click away</span>
         </div>
         <div class="panel-b">
@@ -1128,7 +1153,107 @@
   </div>
 
 <script>
+  // ── assignments tables: sort · search · paginate (dashboard + class pages) ──
+  function initAssignTable(root) {
+    const table = document.getElementById(root.table);
+    const count = document.getElementById(root.count);
+    const tbody = document.getElementById(root.body);
+    const pager = document.getElementById(root.pager);
+    const search = document.getElementById(root.search);
+    const goBtn = document.getElementById(root.go);
+    const PER_PAGE = 10;
+    let sortKey = 'date', sortDir = 'desc', page = 1, query = '';
+    const rows = () => Array.from(tbody.querySelectorAll('tr'));
+    const filtered = () => {
+      const q = query.trim().toLowerCase();
+      if (!q) return rows();
+      return rows().filter(r =>
+        [r.dataset.date, r.dataset.name, r.dataset.status].some(v => v.toLowerCase().includes(q)));
+    };
+    const sorted = list => {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      return list.slice().sort((a, b) => {
+        if (sortKey === 'date') {
+          const [ma, da, ya] = a.dataset.date.split('/').map(Number);
+          const [mb, db, yb] = b.dataset.date.split('/').map(Number);
+          return dir * ((ya - yb) || (ma - mb) || (da - db));
+        }
+        if (sortKey === 'status') {
+          const rank = v => v === 'active' ? 0 : v === 'need review' ? 0 : v === 'graded' ? 1 : v === 'archived' ? 2 : 3;
+          return dir * (rank(a.dataset.status) - rank(b.dataset.status));
+        }
+        if (sortKey === 'students' || sortKey === 'assignments') {
+          return dir * (Number(a.dataset[sortKey]) - Number(b.dataset[sortKey]));
+        }
+        return dir * a.dataset[sortKey].localeCompare(b.dataset[sortKey]);
+      });
+    };
+    const render = () => {
+      const all = sorted(filtered());
+      const pages = Math.max(1, Math.ceil(all.length / PER_PAGE));
+      page = Math.min(page, pages);
+      const slice = all.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+      rows().forEach(r => { r.style.display = 'none'; r.parentElement.appendChild(r); });
+      slice.forEach(r => { r.style.display = ''; tbody.appendChild(r); });
+      const from = all.length === 0 ? 0 : (page - 1) * PER_PAGE + 1;
+      const to = Math.min(page * PER_PAGE, all.length);
+      const noun = root.noun || 'assignment';
+      count.textContent = all.length + (all.length === 1 ? ' ' + noun : ' ' + noun + 's') + ' · showing ' + from + '–' + to;
+      pager.querySelectorAll('button').forEach(b => {
+        if (b.dataset.page === 'prev') b.disabled = page <= 1;
+        else if (b.dataset.page === 'next') b.disabled = page >= pages;
+        else {
+          const p = Number(b.dataset.page);
+          b.classList.toggle('on', p === page);
+          b.style.display = p <= pages ? '' : 'none';
+        }
+      });
+    };
+    table.querySelectorAll('th[data-key]').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+        else { sortKey = key; sortDir = key === 'date' ? 'desc' : 'asc'; }
+        table.querySelectorAll('th[data-key]').forEach(t => {
+          t.querySelector('.arrow').textContent = t.dataset.key === sortKey ? (sortDir === 'asc' ? '▴' : '▾') : '';
+        });
+        page = 1; render();
+      });
+    });
+    const applySearch = () => { query = search.value; page = 1; render(); };
+    goBtn.addEventListener('click', applySearch);
+    search.addEventListener('keydown', e => { if (e.key === 'Enter') applySearch(); });
+    pager.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.page === 'prev') page = Math.max(1, page - 1);
+      else if (b.dataset.page === 'next') page = page + 1;
+      else page = Number(b.dataset.page);
+      render();
+    });
+    render();
+  }
+  initAssignTable({ table: 'assign-table', body: 'assign-body', search: 'assign-search', go: 'assign-search-go', count: 'assign-count', pager: 'assign-pager', noun: 'assignment' });
+  initAssignTable({ table: 'classList-table', body: 'classList-body', search: 'classList-search', go: 'classList-search-go', count: 'classList-count', pager: 'classList-pager', noun: 'class' });
+  initAssignTable({ table: 'seat-table', body: 'seat-body', search: 'seat-search', go: 'seat-search-go', count: 'seat-count', pager: 'seat-pager', noun: 'seating chart' });
+  initAssignTable({ table: 'subs-table', body: 'subs-body', search: 'subs-search', go: 'subs-search-go', count: 'subs-count', pager: 'subs-pager', noun: 'submission' });
+  initAssignTable({ table: 'pages-table', body: 'pages-body', search: 'pages-search', go: 'pages-search-go', count: 'pages-count', pager: 'pages-pager', noun: 'page' });
+
+  // dashboard section tabs: Assignments | Seating Charts
+  (function () {
+    const tabs = document.getElementById('dash-tabs');
+    if (!tabs) return;
+    const panes = { assignments: document.getElementById('dash-assignments'), seating: document.getElementById('dash-seating') };
+    tabs.addEventListener('click', e => {
+      const b = e.target.closest('button[data-tab]'); if (!b) return;
+      tabs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      for (const [key, pane] of Object.entries(panes)) {
+        if (pane) pane.hidden = key !== b.dataset.tab;
+      }
+    });
+  })();
+
   function go(id) {
+    if (id === 'dashboard' && window.__fromClasses) { window.__fromClasses = false; }
     document.querySelectorAll('.mock-bar button[data-go]').forEach(x => x.classList.toggle('on', x.dataset.go === id));
     document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === 's-' + id));
     history.replaceState(null, '', '#' + id);
@@ -1174,26 +1299,33 @@
       document.body.style.overflow = '';
     }
   }
-// overview seatmap — mirrors the live overview page (column numbers, row letters, legend)
+// overview seatmap — mirrors the staging overview page (overview.tsx sampleSeats):
+// occupied = pine, needs-review = red wash, open = dashed. Column numbers 1-7, row letters A-E.
   const seatHost = document.getElementById('cp-seats');
   if (seatHost) {
-    const fills = { "0,0":"AV","0,3":"JM","0,4":"RS","1,1":"KL","1,2":"TB","2,0":"MD","2,5":"LP","3,3":"JC","4,1":"EW","4,6":"NO" };
-    const conflicts = new Set(["1,2","3,3"]), empty = new Set(["2,2","2,3"]);
+    // staging sampleSeats: initials, plus name for the hover title
+    const seats = [
+      [ {i:'AV', n:'Avery'}, null, null, {i:'JM', n:'Jordan'}, {i:'RS', n:'Riley'}, null, null ],
+      [ null, {i:'KL', n:'Kai'}, {i:'TB', n:'Taylor', r:true}, null, null, null, null ],
+      [ {i:'MD', n:'Morgan'}, null, null, null, null, {i:'LP', n:'Logan'}, null ],
+      [ null, null, null, {i:'JC', n:'Jamie', r:true}, null, null, null ],
+      [ null, {i:'EW', n:'Emerson'}, null, null, null, null, {i:'NO', n:'Noah'} ],
+    ];
     const frag = document.createDocumentFragment();
     const corner = document.createElement('span'); corner.setAttribute('aria-hidden', 'true'); frag.appendChild(corner);
     for (let c = 0; c < 7; c++) {
       const h = document.createElement('span'); h.className = 'collbl'; h.setAttribute('aria-hidden', 'true'); h.textContent = String(c + 1); frag.appendChild(h);
     }
-    for (let r = 0; r < 5; r++) {
+    seats.forEach((row, r) => {
       const rl = document.createElement('span'); rl.className = 'rowlbl'; rl.setAttribute('aria-hidden', 'true'); rl.textContent = String.fromCharCode(65 + r); frag.appendChild(rl);
-      for (let c = 0; c < 7; c++) {
-        const k = r + ',' + c;
-        const seat = document.createElement('span');
-        seat.className = 'seat' + (fills[k] ? ' f' + (conflicts.has(k) ? ' c' : '') : (empty.has(k) ? ' empty' : ''));
-        seat.textContent = fills[k] || '\u2014';
-        frag.appendChild(seat);
-      }
-    }
+      row.forEach((seat, c) => {
+        const s = document.createElement('span');
+        s.className = 'seat' + (seat ? (seat.r ? ' nr' : ' f') : '');
+        s.textContent = seat ? seat.i : '\u2014';
+        if (seat && seat.n) s.title = seat.n;
+        frag.appendChild(s);
+      });
+    });
     seatHost.appendChild(frag);
   }
 

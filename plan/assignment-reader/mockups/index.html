@@ -51,9 +51,9 @@
             <span class="chip st-uploading"><span class="dot"></span> Uploading</span>
             <span class="chip st-queued"><span class="dot"></span> Queued</span>
             <span class="chip st-processing"><span class="dot pulse"></span> Transcribing</span>
-            <span class="chip st-ready"><span class="dot"></span> Completed / Ready</span>
+            <span class="chip st-ready"><span class="dot"></span> Completed / Ready to grade</span>
             <span class="chip st-review"><span class="dot"></span> Needs review</span>
-            <span class="chip st-failed"><span class="dot"></span> Failed</span>
+            <span class="chip st-failed"><span class="dot"></span> Error</span>
             <span class="chip st-graded"><span class="dot"></span> Graded</span>
             <span class="chip st-archived"><span class="dot"></span> Archived · read-only</span>
           </div>
@@ -70,8 +70,11 @@
         <div class="panel-body">
 
           <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <a href="01b-class-assignments.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:190px;">
+              <span class="mono faint">01a</span><b>Select class</b><span class="small faint">hierarchy: Classes → class → assignment</span>
+            </a>
             <a href="01-dashboard.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:190px;">
-              <span class="mono faint">01</span><b>Select class & assignment</b><span class="small faint">hierarchy: class → assignment</span>
+              <span class="mono faint">01</span><b>Select assignment</b><span class="small faint">per-class tables behind tabs: Assignments | Seating Charts</span>
             </a>
             <span class="mono faint">→</span>
             <div class="card" style="min-width:200px;">
@@ -84,7 +87,7 @@
             </div>
             <span class="mono faint">→</span>
             <a href="03-upload.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:220px;">
-              <span class="mono faint">03</span><b>Upload & order pages</b><span class="small faint">HEIC→JPEG · ≤20 pages · order before transcribe</span>
+              <span class="mono faint">03</span><b>Upload &amp; order pages</b><span class="small faint">JPG/JPEG/HEIC · ≤20 pages · order before transcribe</span>
             </a>
             <span class="mono faint">→</span>
             <a href="04-processing.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:200px;">
@@ -97,7 +100,7 @@
               <span class="mono faint">04</span><br><b>Processing result</b><br>
               <div style="display:grid; gap:6px; margin-top:6px;">
                 <span class="chip st-ready"><span class="dot"></span> Success → Needs review</span>
-                <span class="chip st-failed"><span class="dot"></span> Failure → Needs attention</span>
+                <span class="chip st-failed"><span class="dot"></span> Error → Needs attention</span>
               </div>
               <span class="small faint">failed pages retry or replace → back to queue</span>
             </div>
@@ -140,13 +143,13 @@
             <span class="chip st-processing"><span class="dot pulse"></span> Transcribing</span><span class="mono faint">→</span>
             <span class="chip st-ready"><span class="dot"></span> Completed</span>
           </div>
-          <p class="small faint" style="margin-top:8px;">Runs page by page — each page carries its own state; a completed page is reviewable while siblings process. Failed ⇒ retry page (default) or confirmed whole-document retranscription.</p>
+          <p class="small faint" style="margin-top:8px;">Runs page by page — each page carries its own state; a completed page is reviewable while siblings process. Error ⇒ retry page (default) or confirmed whole-document retranscription.</p>
         </div>
         <div class="card">
           <div class="h-small" style="margin-bottom:10px;">Review — both doc types</div>
           <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
             <span class="chip st-review"><span class="dot"></span> Needs review</span><span class="mono faint">→</span>
-            <span class="chip st-ready"><span class="dot"></span> Ready</span>
+            <span class="chip st-ready"><span class="dot"></span> Ready to grade</span>
           </div>
           <p class="small faint" style="margin-top:8px;">Teacher-verified against the original. Materials end here: verified context. Can return to Needs review at any point.</p>
         </div>
@@ -156,21 +159,26 @@
             <span class="chip plain">Not graded</span><span class="mono faint">→</span>
             <span class="chip st-graded"><span class="dot"></span> Graded</span>
           </div>
-          <p class="small faint" style="margin-top:8px;">Teacher-visible path on one workspace: Needs review → Ready → Graded. Score optional, ≤ max when defined, two decimals. Returned submissions stop appearing graded.</p>
+          <p class="small faint" style="margin-top:8px;">Teacher-visible path on one workspace: Needs review → Ready to grade → Graded. Score optional, ≤ max when defined, two decimals. Returned submissions stop appearing graded.</p>
         </div>
       </div>
 
       <!-- ============ screen index ============ -->
-      <div class="h-small" style="margin-bottom: 12px;">The five screens</div>
+      <div class="h-small" style="margin-bottom: 12px;">The six screens</div>
       <div class="cols" style="grid-template-columns: repeat(3, 1fr);">
+        <a href="01b-class-assignments.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px;">
+          <span class="mono faint">01a</span><b class="h-panel">Class assignments</b>
+          <span class="small muted">The sidebar's "Classes" entry: the canonical table (Date · Class · Students · Assignments · Status Active/Archived) with search, sortable headers, pagination. Selecting a class opens its dashboard.</span>
+          <span class="mono faint" style="margin-top:auto;">PRD §1</span>
+        </a>
         <a href="01-dashboard.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px;">
           <span class="mono faint">01</span><b class="h-panel">Dashboard</b>
-          <span class="small muted">Classes → assignments with status rollups; outstanding review & grading work visible without a spreadsheet. Class create/rename/archive; read-only archived state.</span>
+          <span class="small muted">Per-class canonical tables — Assignments (Date · Assignment · Status) and Seating Charts (Date · Class · Student Count) behind a section tab. Search right-anchored, sortable headers, pagination at 10.</span>
           <span class="mono faint" style="margin-top:auto;">PRD §1 §6 · decision 7</span>
         </a>
         <a href="02-assignment.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px;">
           <span class="mono faint">02</span><b class="h-panel">Assignment detail</b>
-          <span class="small muted">The materials document (stamped context, versioned on replacement) and student submissions grouped by status with per-page chips and scores.</span>
+          <span class="small muted">The materials document (stamped context) and student submissions grouped by status with search + Filters &amp; sort, per-page chips and scores.</span>
           <span class="mono faint" style="margin-top:auto;">PRD §2 §3 §6 · decisions 3 8 9</span>
         </a>
         <a href="03-upload.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px;">
@@ -184,8 +192,8 @@
           <span class="mono faint" style="margin-top:auto;">PRD §4 §7 · decisions 5 6</span>
         </a>
         <a href="05-workspace.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px; outline: 2px solid var(--accent); outline-offset: 2px;">
-          <span class="mono faint">05 · core</span><b class="h-panel">Review & grading workspace</b>
-          <span class="small muted">One screen per document: original beside the editable draft, and — for submissions — score, comments, Mark Ready → Mark graded, and return-to-review in the same place. Grading unlocks at Ready.</span>
+          <span class="mono faint">05 · core</span><b class="h-panel">Review &amp; grading workspace</b>
+          <span class="small muted">One screen per document: original beside the editable draft, per-question rows for correct / incorrect / points / comment, and — for submissions — score, comments, and return-to-review in the same place. Grading unlocks when the document is ready to grade.</span>
           <span class="mono faint" style="margin-top:auto;">PRD §5 §6 · decisions 4 5 11</span>
         </a>
       </div>
@@ -200,8 +208,8 @@
           <div class="rowline"><b style="min-width: 120px;">Teacher</b><span>Elena Ellis — third-grade, one class of ~24, short interrupted grading windows (persona 1)</span></div>
           <div class="rowline"><b style="min-width: 120px;">Class</b><span>Grade 3 · Room 12; a second class Grade 3 · Science Club shown archived & read-only</span></div>
           <div class="rowline"><b style="min-width: 120px;">Assignment</b><span>"Fractions worksheet 4 — Equivalent fractions" · max score 10 · materials v2 (replaced Mar 3, v1 retained read-only)</span></div>
-          <div class="rowline"><b style="min-width: 120px;">Materials</b><span>2 pages (instructions, fraction wall) — Ready, stamped <span class="stamp faint" style="transform:scale(0.85);">Context · not graded</span></span></div>
-          <div class="rowline"><b style="min-width: 120px;">Submissions</b><span>Maya Rodriguez — 3 pages, needs review, p3 still transcribing · Priya Shah — Ready · Jack Thompson — Graded 8.5 / 10 · Sam Okafor — p2 failed (retry) · Noah Kim — not started</span></div>
+          <div class="rowline"><b style="min-width: 120px;">Materials</b><span>2 pages (instructions, fraction wall) — verified context, stamped <span class="stamp faint" style="transform:scale(0.85);">Context · not graded</span></span></div>
+          <div class="rowline"><b style="min-width: 120px;">Submissions</b><span>Maya Rodriguez — 3 pages, needs review, p3 still transcribing · Priya Shah — ready to grade · Jack Thompson — Graded 8.5 / 10 · Sam Okafor — p2 error (retry) · Noah Kim — not started</span></div>
         </div>
       </div>
 
@@ -210,6 +218,7 @@
 
   <nav class="nav-next">
     <a href="index.html" class="on">⌂ Overview</a>
+    <a href="01b-class-assignments.html">01a Class Assignments</a>
     <a href="01-dashboard.html">01 Dashboard</a>
     <a href="02-assignment.html">02 Assignment</a>
     <a href="03-upload.html">03 Upload</a>
@@ -218,8 +227,8 @@
   </nav>
 
   <footer class="foot">
-    <span>Assignment Reader · product-doc.md markups</span>
-    <span>Overview</span>
+    <span>© 2026 ClassPrints</span>
+    <span><a href="#">Terms</a> &nbsp; <a href="#">Privacy</a> &nbsp; <a href="#">Support</a></span>
   </footer>
 
 </body>

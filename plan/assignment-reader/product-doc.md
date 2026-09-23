@@ -60,7 +60,7 @@ Students are represented as teacher-managed roster records in this release. They
 ## Solution
 
 - Teachers organize work by class and assignment. Each assignment can include optional photographed assignment materials, such as a prompt, instructions, or worksheet, and can contain separate student submissions with one or more photographed pages. The product asynchronously transcribes both document types into readable, editable content while retaining every original image as the fallback when content cannot be faithfully represented.
-- One workspace per document presents each original page beside its WYSIWYG transcription. Teachers correct and verify assignment materials and student submissions there, refer to assignment materials while reviewing a submission, and move student work through **Needs review → Ready → Graded** on the same surface — grading is not a separate screen. Assignment materials use **Needs review → Ready** and are never graded.
+- One workspace per document presents each original page beside its WYSIWYG transcription. Teachers correct and verify assignment materials and student submissions there, refer to assignment materials while reviewing a submission, and move student work through **Needs review → Ready to grade → Graded** on the same surface — grading is not a separate screen. Assignment materials use **Needs review → Ready to grade** (verified context) and are never graded.
 - When grading student work, teachers may add an optional score and comments. Transcription uses a backend-selected, configurable vision provider and model; end users do not choose the model.
 
 ### Differentiators
@@ -87,6 +87,18 @@ A signed-in teacher can:
 - View assignment materials and student submissions within the correct class and assignment context.
 
 The roster remains intentionally simple. It does not include student authentication, invitations, guardian relationships, enrollment synchronization, or school information system integration.
+
+### Navigation and list presentation
+
+The app uses one shared sidebar on every screen. The **Management** group holds a single **Classes** entry that leads to the class list; every per-class view (assignment tables, uploads, processing, review workspace) lives inside that section and keeps the entry highlighted. The **Account** group holds **Settings** and **Pricing**.
+
+The class list and every list view use one canonical list component: a sortable table (click a column header to toggle ascending/descending), a connected search bar anchored to the right of the panel that filters across all columns, and pagination of at most 10 rows per page. Row click opens the item. Column sets:
+
+- **Classes:** Date · Class · Students · Assignments · Status (Active | Archived).
+- **Class dashboard — Assignments:** Date · Assignment · Status (one state chip: "Need review" while any work is ungraded, "Graded" when fully reviewed).
+- **Class dashboard — Seating Charts:** Date · Class · Student Count.
+- **Submissions:** Date · Name · Status.
+- **Processing (per page):** Date · Name · Status.
 
 ### 2. Assignment-material upload
 
@@ -136,9 +148,9 @@ The review workspace — one screen per document — must:
 - Provide a WYSIWYG editor for correcting the transcription.
 - Preserve teacher edits as the authoritative digital version.
 - Never overwrite teacher edits silently if transcription is retried.
-- Allow the teacher to move assignment materials or a submission to **Ready** after review.
-- Host grading for student submissions in the same workspace: the optional score, comments, **Mark Ready**, **Mark graded**, and the return to **Needs review** all happen on this one screen.
-- Gate grading on verification: **Mark graded** becomes available only after the submission reaches **Ready**, and **Ready** requires review of the full document.
+- Allow the teacher to move assignment materials or a submission to **Ready to grade** after review.
+- Host grading for student submissions in the same workspace: the optional score, comments, **Mark graded**, and the return to **Needs review** all happen on this one screen.
+- Gate grading on verification: **Mark graded** becomes available only after the submission reaches **Ready to grade**, and **Ready to grade** requires review of the full document.
 - Keep the assignment materials available on demand while the teacher reviews a student submission.
 
 The goal is not to guarantee perfect automatic transcription. The goal is to make correction faster and safer than reading and manually reproducing the paper alone.
@@ -182,7 +194,7 @@ flowchart TD
     F -->|Failure| H[Needs attention]
     H -->|Retry or replace page| E
     G --> I[Compare image and edit transcription]
-    I --> J[Ready]
+    I --> J[Ready to grade]
     J -->|Assignment materials| K[Available as assignment context]
     J -->|Student submission| L[Add optional score and comments]
     L --> M[Graded]
@@ -198,21 +210,21 @@ Processing, review, and grading are separate concepts. Each assignment-material 
 - **Queued:** Upload is complete and transcription is waiting to start.
 - **Transcribing:** The model is processing the document.
 - **Completed:** An editable draft is available.
-- **Failed:** Processing did not produce a usable draft; the teacher can retry or replace affected pages.
+- **Failed:** Processing did not produce a usable draft; the teacher can retry or replace affected pages. Teacher-facing copy for this state is **Error** — it names system upload/parsing failures, distinct from grading outcomes.
 
 Transcription runs page by page. Each page carries its own processing state within its document's state, and a page becomes reviewable and editable as soon as its own draft completes, while later pages in the same document continue processing.
 
 ### Review state
 
 - **Needs review:** A draft exists but has not been verified by the teacher.
-- **Ready:** The teacher has reviewed the transcription. Assignment materials are marked as verified context; a student submission is ready to grade or finish grading.
+- **Ready to grade:** The teacher has reviewed the transcription. Assignment materials are marked as verified context; a student submission is ready to grade or finish grading.
 
 ### Submission grading state
 
 - **Not graded:** The teacher has not completed grading the student submission.
 - **Graded:** The teacher has completed grading the student submission. A score is optional.
 
-The teacher-visible progression for a student submission is **Needs review → Ready → Graded**, but the underlying states remain separate so processing never implies review and assignment materials can never become graded.
+The teacher-visible progression for a student submission is **Needs review → Ready to grade → Graded**, but the underlying states remain separate so processing never implies review and assignment materials can never become graded.
 
 ## Core product concepts
 
@@ -327,7 +339,7 @@ The MVP is product-complete when a teacher can:
 5. Review each original image beside editable transcribed content for both assignment materials and student submissions.
 6. Correct either transcription without losing access to the original page or silently losing prior teacher edits.
 7. Access assignment materials while reviewing a student submission.
-8. Move assignment materials from Needs review to Ready and a student submission from Needs review to Ready to Graded.
+8. Move assignment materials from Needs review to Ready to grade and a student submission from Needs review to Ready to grade to Graded.
 9. Record an optional score and comments only on a student submission, within the same workspace where its transcription is verified.
 10. Identify outstanding review and grading work by class and assignment without counting assignment materials as student work.
 
@@ -339,7 +351,7 @@ Initial product measurement should establish baselines before fixed targets are 
 
 - Median time from completed upload to editable draft, segmented by assignment materials and student submissions.
 - Transcription failure and retry rate by document type.
-- Percentage of processed assignment materials that reach Ready, percentage of processed submissions that reach Ready, and percentage of submissions that reach Graded.
+- Percentage of processed assignment materials that reach Ready to grade, percentage of processed submissions that reach Ready to grade, and percentage of submissions that reach Graded.
 - Teacher correction activity per processed page, segmented by document type, as a proxy for transcription usefulness.
 - Time teachers spend reviewing assignment materials and student submissions compared with their existing paper workflow.
 - Percentage of assignments with uploaded materials and percentage of submission-review sessions in which those materials are opened.
@@ -411,7 +423,7 @@ The product behaviors below were open questions during planning and have been de
     - **Rationale:** Real grading uses halves and quarters, so integer-only scores would force workarounds. Hard validation against the maximum keeps the optional maximum meaningful.
 
 5. Whether teachers may begin editing completed pages while remaining pages in the same document are still processing.
-    - **Decision:** Yes. Transcription runs per page, and a page becomes reviewable and editable as soon as its own draft is ready while later pages in the same document continue processing. A document reaches Needs review only when every page is complete, and Ready still requires review of the full document.
+    - **Decision:** Yes. Transcription runs per page, and a page becomes reviewable and editable as soon as its own draft is ready while later pages in the same document continue processing. A document reaches Needs review only when every page is complete, and Ready to grade still requires review of the full document.
     - **Rationale:** Per-page readiness shortens interrupted grading sessions without weakening the review gate.
 
 6. Whether a retry applies to one failed page or reprocesses the entire document by default.
@@ -435,5 +447,5 @@ The product behaviors below were open questions during planning and have been de
     - **Rationale:** Students have no accounts and the teacher is the only viewer of the product, so visibility controls would guard a threat that does not exist. The pre-launch provider disclosure must explicitly name answer-key content among the material sent to the transcription provider.
 
 11. Whether transcription review and grading are separate screens or one workspace.
-    - **Decision:** One workspace per document. The teacher verifies each transcription beside its original and, for student submissions, records the optional score and comments in that same workspace; **Needs review → Ready → Graded** are states on one surface, not separate screens. Assignment materials use the same workspace without a grading panel, and grading requires that the submission first reaches **Ready**.
+    - **Decision:** One workspace per document. The teacher verifies each transcription beside its original and, for student submissions, records the optional score and comments in that same workspace; **Needs review → Ready to grade → Graded** are states on one surface, not separate screens. Assignment materials use the same workspace without a grading panel, and grading requires that the submission first reaches **Ready to grade**.
     - **Rationale:** Verification and grading are one attention loop — teachers check the original while judging the work, so separate screens duplicated context (a grading screen could show only a transcription excerpt) and added navigation. The verification gate survives as a state requirement rather than a change of place.
