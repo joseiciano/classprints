@@ -75,9 +75,9 @@ Mark YOUR screen's link in the first `nav-next` with class `on`. Screens 01a–0
 
 - Teacher: **Elena Ellis**, class **Grade 3 · Room 12** (also has class "Grade 3 · Science Club" archived example if needed).
 - Assignment: **"Fractions worksheet 4 — Equivalent fractions"**, max score **10**, 2 assignment-material pages uploaded, verified context (v2, replaced Mar 3 — v1 noted where versions matter).
-- Students: **Maya Rodriguez** (use a 3-page submission with no document review state while page 3 is still transcribing or errored; completed pages remain immediately reviewable and editable), **Jack Thompson** (Graded, 8.5 / 10, comment "Showed strong fraction sense — watch simplification of 6/8."), **Priya Shah** (Ready to grade), **Sam Okafor** (Error page retry shown), **Noah Kim** (not started / no submission).
+- Students: **Maya Rodriguez** (use a 3-page submission with no document review state while Page 3 is still transcribing or errored; completed pages remain immediately reviewable and editable), **Jack Thompson** (Graded, 8.5 / 10, comment "Showed strong fraction sense — watch simplification of 6/8."), **Priya Shah** (Ready to grade), **Sam Okafor** (Error page retry shown), **Noah Kim** (not started / no submission; the row's Create submission action opens the upload flow).
 - Materials doc: 2 pages — Page 1 = worksheet instructions ("Name ___ Date ___ Equivalent Fractions..."), Page 2 = fraction wall reference.
-- Maya's submission pages: p1 instructions copy + her work, p2 fraction problems, p3 word problem.
+- Maya's submission pages: Page 1 instructions copy + her work, Page 2 fraction problems, Page 3 word problem.
 - Workspace exemplar (05): **Priya Shah** — Ready to grade, grading rail unlocked (score empty, Mark graded available, Return to Needs review).
 - Sample handwriting content (use `.photo > .hand` markup): worksheet heading "Equivalent Fractions", problems like "1/2 = ?/8", word problem "Maya cut her sandwich into 4 equal pieces and ate 2..."
 - Dates: today ≈ Mar 7.
@@ -88,17 +88,26 @@ Mark YOUR screen's link in the first `nav-next` with class `on`. Screens 01a–0
 - Needs review → `.st-review`; Ready to grade → `.st-ready`; Graded → `.st-graded`; Error (system upload/parsing failures) → `.st-failed`; Archived/read-only → `.st-archived`. The standalone "Ready" review-state label is retired — use "Ready to grade" for submissions awaiting grading.
 - Assignment materials get a `.stamp` (e.g. `CONTEXT · NOT GRADED`) wherever they appear near submissions.
 
+## Contract-facing status and labels
+
+- Submission status tabs use the granular `displayStatus` values: `not_started`, `uploading`, `queued`, `transcribing`, `error`, `needs_review`, `ready_to_grade`, and `graded`. Keep an optional All tab, but do not replace these filters with an aggregate processing tab.
+- A not-started student row opens or creates that student's submission. Error rows keep visible recovery actions such as Retry page and Replace page image.
+- Browser filename and size are local upload-session metadata only. Once a page is accepted, show server `PageSummary.label` values such as `Maya Rodriguez · Page 2` or `Page 1`; never show normalized object names in processing or workspace UI.
+- The workspace displays the assignment maximum as metadata. Changing it uses `PATCH /assignments/:assignmentId`; grading commands change submission score/comments and must not edit the maximum.
+- Where historical critique text conflicts with visible error recovery (for example, replacing granular status filters with an aggregate), treat the contract rule above and the marked-obsolete entry in `mockups-critique.md` as authoritative; do not reintroduce the outdated guidance.
+
 ## File inventory
+
 
 | File | Content |
 |---|---|
 | `index.html` | Overview, flow map, screen index (may use inline mermaid-style styled divs; no mermaid lib) |
 | `01b-class-assignments.html` | Class Assignments: the sidebar "Classes" target — canonical table (Date · Class · Students · Assignments · Status Active/Archived) with connected search, sortable headers, pagination; selecting a class goes to the dashboard |
 | `01-dashboard.html` | Class dashboard: section tab (Assignments | Seating Charts) beside Rename / Archive class / New assignment; two canonical tables — Assignments (Date · Assignment · Status) and Seating Charts (Date · Class · Student Count); connected search right-anchored, sortable headers, pagination at 10; row click opens the item |
-| `02-assignment.html` | Assignment detail: materials doc ("Open materials") + submissions as canonical table (Date · Name · Status) with status tabs |
-| `03-upload.html` | Upload flow: inline ordered page list (drag + × per row), Supports JPEG/PNG/HEIC, 20-page/10MB limits; confirm returns to assignment page |
-| `04-processing.html` | Async processing: per-page canonical table (Date · Name · Status), error page + retry modal, retranscribe consent; operator config lives in docs, not this screen |
-| `05-workspace.html` | Review + grading in one workspace (PRD §5 §6, decisions 11 and 12): side-by-side original ↔ editable draft, per-question grading rows (correct / incorrect / points / comment), grading rail with Ready to grade gate, return-in-place |
+| `02-assignment.html` | Assignment detail: materials doc ("Open materials") + submissions as canonical table (Date · Name · Status) with one tab per granular `displayStatus` and a create action for not-started rows |
+| `03-upload.html` | Upload flow: inline ordered page list (drag + × per row), Supports JPEG/PNG/HEIC, 20-page/10MB limits; browser filename/size only for local pending files, accepted rows use server page labels; confirm returns to assignment page |
+| `04-processing.html` | Async processing: per-page canonical table (Date · Name · Status) using server `PageSummary.label` values, error page + retry modal, retranscribe consent; operator config lives in docs, not this screen |
+| `05-workspace.html` | Review + grading in one workspace (PRD §5 §6, decisions 11 and 12): side-by-side original ↔ editable draft, per-question grading rows (correct / incorrect / points / comment), grading rail with Ready to grade gate; assignment max changes use metadata PATCH, not grading |
 
 ## Review checklist per agent (do this, report "checked" in final message)
 

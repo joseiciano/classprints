@@ -1,10 +1,12 @@
 # Mockups Critique
 
-This file is to serve as the single source of critiques for current mockups. 
+This file serves as the source of critiques for current mockups. Historical entries remain below when they explain earlier UI decisions; the contract notes above them govern current screens. Recent contract reconciliations: granular `displayStatus` submission tabs (including Error and Upload recovery paths) are current UI; the older dashboard radio-filter proposal (item 3) is obsolete and must not be re-applied.
 
-This file will be revised over time but should be treated at the point in time as accurate. 
+## Current status and recovery contract
 
-## Critisms
+Submission filters use granular `displayStatus` values: `not_started`, `uploading`, `queued`, `transcribing`, `error`, `needs_review`, `ready_to_grade`, and `graded`. A not-started row opens the create-submission upload flow. Error rows remain visible and expose page-scoped recovery such as Retry page and Replace page image; do not hide Error under an aggregate processing state.
+
+## Historical critiques
 
 ## Dashboard Page
 
@@ -20,9 +22,7 @@ Date | Assignment | Status |
 12/7/16 | Fractions Worksheet 4 | (Need Review) | (Click to Open)
 ```
 
-3. Based on the table shown in point 2, remove the radio buttons (Needs review · 1
-Graded · 1
-Errors · 1), we just want to track the state (Need Review) if we have non-graded assignments, and (Graded) if all reviewed. 
+3. **OBSOLETE: do not remove granular submission errors.** The old radio-button proposal conflicts with current recovery UI. Assignment-level status may remain aggregate, but submission tabs must retain each `displayStatus`, including Error, and Error rows must link to visible recovery actions (Retry page, Replace page image, or document retranscription with consent).
 
 4. In the assignments card, with the change to the list format, we should have the Date and Assignment and Status cols be sortable. We can click on the column header for them, and it sorts by this (Ascending / Descending)
 

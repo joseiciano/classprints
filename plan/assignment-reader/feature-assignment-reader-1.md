@@ -13,7 +13,8 @@ tags: [feature, assignment-reader, cloudflare-workers, postgres, react, ai]
 
 This plan delivers the complete teacher-only Assignment Reader MVP defined by
 [`plan/assignment-reader/product-doc.md`](assignment-reader/product-doc.md), using the infrastructure decisions in
-[`plan/assignment-reader/functional-spec.md`](assignment-reader/functional-spec.md) and the annotated behavioral wireframes in
+[`plan/assignment-reader/functional-spec.md`](assignment-reader/functional-spec.md), the normative HTTP contract in
+[`plan/assignment-reader/api-manifest.md`](assignment-reader/api-manifest.md), and the annotated behavioral wireframes in
 [`plan/assignment-reader/mockups/`](assignment-reader/mockups/). Completion of every phase is completion of the MVP; deferred items are explicitly excluded rather than left as follow-up implementation gaps.
 
 The PRD is authoritative across all artifacts. A partially processed document has no review state even though completed pages are editable; a graded submission returns explicitly to **Needs review**, not to **Ready to grade**; and Submissions and Processing use the canonical table contract. The functional specification, executable plan, and annotated wireframes encode these rules consistently.
@@ -71,7 +72,7 @@ The plan closes the functional specification's editor blocker: drafts are stored
 - **GOAL-001**: Establish one deterministic data/API/editor/privacy contract so schema, API, worker, and frontend tracks can proceed without later interpretation.
 
 - [ ] **TASK-001**: Create `packages/assignment-reader-shared` and encode the cross-runtime contract.
-  - Add `package.json`, `tsconfig.json`, `src/index.ts`, `src/types.ts`, `src/schemas.ts`, `src/content-schema.ts`, and `src/queue-messages.ts`; export all enums, list request/response schemas, command payloads, draft nodes, question segments, error codes, and discriminated queue messages.
+  - Add `package.json`, `tsconfig.json`, `src/index.ts`, `src/types.ts`, `src/schemas.ts`, `src/content-schema.ts`, and `src/queue-messages.ts`; export every enum, list request/response schema, command payload, draft node, question segment, error code, and discriminated queue message declared by `plan/assignment-reader/api-manifest.md`.
   - Add the package to `apps/seating-backend/package.json`, `apps/seating-frontend/package.json`, and the new worker package in TASK-006; update `pnpm-lock.yaml` once.
   - Use Zod schemas at every API/provider boundary and plain TypeScript types internally; do not put React, Hono, Postgres, or Worker binding types in the package.
   - Acceptance: backend, frontend, and worker import the same processing/review/grading enums and `schemaVersion: 1` validator; malformed nodes, unsafe crop coordinates, automatic judgments, and unknown fields are rejected.
@@ -128,14 +129,14 @@ The plan closes the functional specification's editor blocker: drafts are stored
   - Implement shared repository ownership joins and service guards for teacher ownership, archived ancestry, historical material versions, and deletion-pending records. Controllers must only parse Zod input, call services, and map domain errors to HTTP responses.
   - Expose CRUD routes for `/classes`, `/classes/:classId/students`, `/classes/:classId/assignments`, `/assignments/:assignmentId/material-versions`, and `/assignments/:assignmentId/submissions`; use PATCH for rename/max-score/archive metadata and explicit command endpoints for state transitions.
   - Dependencies: TASK-001, TASK-002, and TASK-004.
-  - Acceptance: all route families require an authenticated session; cross-teacher IDs return not-found/forbidden without disclosing ownership; archived ancestry rejects mutation at service and repository write boundaries.
+  - Acceptance: all route families require an authenticated session; cross-teacher IDs return `404 RESOURCE_NOT_FOUND` exactly as specified by `plan/assignment-reader/api-manifest.md` §1.1, never a `403` that would confirm resource existence; archived ancestry rejects mutation at service and repository write boundaries.
 
 - [ ] **TASK-008**: Implement all canonical server-side list queries.
   - Add list methods for Classes, Assignments, Seating Charts, Submissions, and Processing with allow-listed sort columns, case-insensitive search over exactly the displayed columns, stable ID tiebreak sorting, fixed `pageSize = 10`, total count, and page count.
   - Submissions must left-join the class roster so active students without submissions appear as `Not started`; only created submissions participate in PAT-003 assignment status.
   - Return processing state counts separately from review/grading state; never label a partial document `Needs review`.
   - Dependencies: TASK-007.
-  - Acceptance: each declared column sorts in both directions, search covers all displayed columns, requested page sizes above 10 are rejected or normalized to 10, and two teachers cannot influence each other's counts.
+  - Acceptance: each declared column sorts in both directions, search covers all displayed columns, `pageSize` is not part of the canonical query contract (the parameter is rejected as an unknown field), and two teachers cannot influence each other's counts.
 
 - [ ] **TASK-009**: Add minimal class-scoped Seating Charts persistence and save flow.
   - Extend `apps/seating-backend/src/seating/seating.routes.ts`, `seating.service.ts`, and `seating.db.ts` with `POST /api/v1/seating/:externalId/save-to-class`.
@@ -408,6 +409,7 @@ The plan closes the functional specification's editor blocker: drafts are stored
 
 - [Assignment Reader Product Requirements](assignment-reader/product-doc.md)
 - [Assignment Reader Infrastructure Analysis](assignment-reader/functional-spec.md)
+- [Assignment Reader API Manifest](assignment-reader/api-manifest.md)
 - [Assignment Reader Mockup Specification](assignment-reader/mockups/SPEC.md)
 - [Assignment Reader Mockup Overview](assignment-reader/mockups/index.html)
 - [Staging → Production Pipeline](infrastructure-staging-prod-pipeline-1.md)

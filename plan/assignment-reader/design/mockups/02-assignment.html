@@ -54,7 +54,7 @@
               <span class="chip plain">Created Mar 1</span>
               <span style="margin-left: auto;" class="btn-row">
                 <button class="btn primary">New submission</button>
-                <button class="btn ghost">Rename</button>
+                <button class="btn ghost">Edit details</button>
               </span>
             </div>
           </div>
@@ -71,11 +71,11 @@
                   <div class="pages-strip">
                     <div class="thumb selected">
                       <div class="photo"><div class="hand" style="font-size:11px; line-height:15px; padding:8px 8px 8px 24px;">Name ___ Date ___<br><b>Equivalent Fractions</b><br>Shade the fraction wall to find…</div></div>
-                      <div class="thumb-meta"><span>p1 · instructions</span><span class="st-ready mono">✓</span></div>
+                      <div class="thumb-meta"><span>Page 1 · instructions</span><span class="st-ready mono">Verified</span></div>
                     </div>
                     <div class="thumb">
                       <div class="photo"><div class="hand" style="font-size:11px; line-height:15px; padding:8px 8px 8px 24px;">Fraction wall<br>1 &nbsp; 1/2 &nbsp; 1/3 &nbsp; 1/4<br>1/6 &nbsp; 1/8 …</div></div>
-                      <div class="thumb-meta"><span>p2 · fraction wall</span><span class="st-ready mono">✓</span></div>
+                      <div class="thumb-meta"><span>Page 2 · fraction wall</span><span class="st-ready mono">Verified</span></div>
                     </div>
                   </div>
                   <div class="btn-row" style="margin-top: 16px;">
@@ -90,7 +90,7 @@
                     <b>Materials are context, not student work.</b> The teacher authors one document per assignment; it is never a submission and never graded, and it is excluded from all grading counts (PRD §2, §6, principle 5). Hence the stamp.
                   </div>
                   <div class="note accent" data-n="2">
-                    <b>"Open materials" shows the source.</b> The button opens the materials document — the pages used to create the assignment — in the same side-by-side workspace (PRD §2). Replacement creates a new version while earlier versions remain available read-only; retranscription never silently overwrites teacher edits (resolved decisions 6 and 8).
+                    <b>"Open materials" shows the source.</b> The button opens the materials document — the pages used to create the assignment — in the same side-by-side workspace (PRD §2). Replacing confirmed materials starts a new draft material version; the shipped current version stays read-only, and earlier versions remain available read-only. Retranscription never silently overwrites teacher edits (resolved decisions 6 and 8).
                   </div>
                   <div class="note danger" data-n="5">
                     <b>Deletion is scoped, never silent.</b> A page, the materials document, or an entire submission can each be deleted; deleting a class or assignment cascades to everything inside it (PRD resolved decision 3).
@@ -115,12 +115,14 @@
               <div>
                 <div class="seg" style="margin-bottom: 12px;">
                   <button class="on">All 5</button>
+                  <button>Not started 1</button>
+                  <button>Uploading 0</button>
+                  <button>Queued 0</button>
                   <button>Transcribing 1</button>
+                  <button>Error 1</button>
                   <button>Needs review 0</button>
                   <button>Ready to grade 1</button>
                   <button>Graded 1</button>
-                  <button>Error 1</button>
-                  <button>Not started 1</button>
                 </div>
 
                 <div class="panel-body" style="padding:0;">
@@ -162,8 +164,8 @@
                         <td style="padding:12px 16px;" class="mono">3/6/26</td>
                         <td style="padding:12px 16px;"><b>Sam Okafor</b><span class="small faint" style="display:block; margin-top:4px;">3 pages · started Mar 6</span></td>
                         <td style="padding:12px 16px;">
-                          <div class="btn-row"><span class="chip st-failed"><span class="dot"></span> Error · page 2</span></div>
-                          <div class="btn-row" style="margin-top:7px;"><button class="btn danger sm">Review error</button></div>
+                          <div class="btn-row"><span class="chip st-failed"><span class="dot"></span> Error · Page 2</span></div>
+                          <div class="btn-row" style="margin-top:7px;"><a class="btn danger sm" href="04-processing.html">Review error</a></div>
                         </td>
                       </tr>
                       <tr style="border-bottom:1px solid var(--ink-line);">
@@ -171,7 +173,7 @@
                         <td style="padding:12px 16px;"><b>Noah Kim</b><span class="small faint" style="display:block; margin-top:4px;">No submission · no pages yet</span></td>
                         <td style="padding:12px 16px;">
                           <div class="btn-row"><span class="chip plain">Not started</span></div>
-                          <div class="btn-row" style="margin-top:7px;"><button class="btn ghost sm">Create submission</button></div>
+                          <div class="btn-row" style="margin-top:7px;"><a class="btn ghost sm" href="03-upload.html">Create submission</a></div>
                         </td>
                       </tr>
                     </tbody>
@@ -192,13 +194,13 @@
                   <b>Submissions exist on their own.</b> A submission can be created for any student whether or not the assignment has materials at all (PRD §3) — Noah's row exists with nothing transcribed and no context document required.
                 </div>
                 <div class="note accent" data-n="4">
-                  <b>States are per page, then per submission.</b> Each page carries its own state and completes independently (PRD resolved decision 5): Maya's p1 and p2 are complete while p3 is still transcribing, so her row shows only the processing state and page count. The document gets a review state only after every page completes.
+                  <b>States are per page, then per submission.</b> Each page carries its own state and completes independently (PRD resolved decision 5): Maya's Page 1 and Page 2 are complete while Page 3 is still transcribing, so her row shows only the processing state and page count. The document gets a review state only after every page completes.
                 </div>
                 <div class="note" data-n="6">
-                  <b>One review state, then grading.</b> "Ready to grade" replaces "Ready" — it is the reviewed-and-awaiting-grading state, so no redundant "Ready" chip (PRD review state). "Error" names system upload/parsing failures, distinct from grading outcomes (PRD processing state). Scores show against the assignment max (decision 4).
+                  <b>Submission tabs use displayStatus.</b> Filters match the API's granular displayStatus values: not_started, uploading, queued, transcribing, error, needs_review, ready_to_grade, and graded. Assignment-level aggregate status stays separate from this submission list.
                 </div>
                 <div class="note accent" data-n="7">
-                  <b>Rows open the document.</b> The canonical list opens a submission from its row, while direct actions preserve the available workflow — Grade, View, Return to Needs review, Review error, and Create submission (PRD §3, §5, §6).
+                  <b>Rows open the document or create it.</b> Existing submissions open their workflow; a not-started student opens the upload flow so the teacher can create that submission (PRD §3, §5, §6).
                 </div>
               </div>
 

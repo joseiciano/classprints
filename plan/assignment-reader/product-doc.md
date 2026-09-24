@@ -80,7 +80,7 @@ Students are represented as teacher-managed roster records in this release. They
 
 A signed-in teacher can:
 
-- Create, rename, view, and archive classes.
+- Create, rename, view, and archive classes. Archived classes block ordinary uploads and edits, while privacy and destructive deletion remain available.
 - Add, rename, and remove student records within a class.
 - Create assignments within a class.
 - Optionally define an assignment's maximum score.
@@ -92,12 +92,12 @@ The roster remains intentionally simple. It does not include student authenticat
 
 The app uses one shared sidebar on every screen. The **Management** group holds a single **Classes** entry that leads to the class list; every per-class view (assignment tables, uploads, processing, review workspace) lives inside that section and keeps the entry highlighted. The **Account** group holds **Settings** and **Pricing**.
 
-The class list and every list view use one canonical list component: a sortable table (click a column header to toggle ascending/descending), a connected search bar anchored to the right of the panel that filters across all columns, and pagination of at most 10 rows per page. Row click opens the item. Column sets:
+The class list and every list view except material-version history use one canonical list component: a sortable table (click a column header to toggle ascending/descending), a connected search bar anchored to the right of the panel that filters across all columns, and pagination of at most 10 rows per page. Row click opens the item. Material-version history is the explicit exception: it uses a dedicated read-only history presentation rather than the canonical list rules. Column sets:
 
 - **Classes:** Date · Class · Students · Assignments · Status (Active | Archived).
 - **Class dashboard — Assignments:** Date · Assignment · Status (one state chip: "Need review" while any work is ungraded, "Graded" when fully reviewed).
 - **Class dashboard — Seating Charts:** Date · Class · Student Count.
-- **Submissions:** Date · Name · Status.
+- **Submissions:** Date · Name · Status. A **Not started** row opens the submission-creation flow rather than an existing workspace.
 - **Processing (per page):** Date · Name · Status.
 
 ### 2. Assignment-material upload
@@ -106,11 +106,11 @@ A teacher can:
 
 - Add optional teacher-authored source pages to an assignment without associating those pages with a student.
 - Upload one or more photographed prompts, instruction pages, worksheets, or reference pages as an ordered assignment-material document.
-- Review and change page order before transcription begins.
+- Review and change page order while the material version is a draft, then explicitly confirm the current page set before transcription begins.
 - See upload and processing progress without keeping the upload view open.
-- Retry or replace failed pages without recreating the assignment.
+- Retry a failed page, or replace that failed page in place as recovery, without recreating the assignment. Replacing an otherwise successful current material creates a new draft material version instead.
 
-Each original image remains attached to the assignment after transcription. Assignment materials provide context only; they are not submissions and do not receive scores or grading comments.
+Each original image remains attached to the assignment after transcription. Assignment materials provide context only; they are not submissions and do not receive scores or grading comments. Prior material versions remain fully viewable but read-only.
 
 ### 3. Student submission creation and page upload
 
@@ -118,11 +118,11 @@ A teacher can:
 
 - Create a submission for a student under an assignment, whether or not the assignment has uploaded materials.
 - Upload one or more photographed pages to the same submission.
-- Review and change page order before transcription begins.
+- Review and change page order while the page set is unconfirmed, then explicitly confirm it before transcription begins.
 - See upload and processing progress without keeping the upload view open.
-- Retry a failed page or submission without recreating its class, student, and assignment context.
+- Retry a failed page, or replace that failed page in place as recovery, without recreating its class, student, and assignment context.
 
-Each page's original image remains attached to the submission after transcription.
+Each page's original image remains attached to the submission after transcription. Adding another page after confirmation invalidates review and grading, makes the page set require confirmation again, and does not queue the new page until the teacher confirms the current set.
 
 ### 4. Asynchronous transcription
 
@@ -131,6 +131,7 @@ For both assignment materials and student submissions, the product must:
 - Process uploaded pages asynchronously.
 - Produce one ordered, editable draft for the uploaded document.
 - Make a best effort to preserve paragraphs, lists, line breaks, and math notation that materially affect meaning.
+- Parse question segments when the source supports a stable row, while producing no row when the model is uncertain rather than inventing a question or answer.
 - Avoid claiming that diagrams, drawings, or illegible content were transcribed when they were not.
 - Preserve the source image as the fallback for content that cannot be represented faithfully.
 - Expose processing failures to the teacher with a retry path.
@@ -150,7 +151,9 @@ The review workspace — one screen per document — must:
 - Never overwrite teacher edits silently if transcription is retried.
 - Allow the teacher to move assignment materials or a submission to **Ready to grade** after review.
 - Host grading for student submissions in the same workspace: the optional score, comments, **Mark graded**, and the return to **Needs review** all happen on this one screen.
+- For student submissions, show one row per parsed question segment where the teacher can record `Unmarked`, `Correct`, or `Incorrect`, optional awarded points, and an optional comment. The model never supplies those judgment fields.
 - Gate grading on verification: **Mark graded** becomes available only after the submission reaches **Ready to grade**, and **Ready to grade** requires review of the full document.
+- Treat any page draft edit as new content requiring review: clear that page's review, return the document to **Needs review** once every current page is complete (otherwise show no review state), and return a submission to **Not graded** without erasing its score, comments, or question judgments.
 - Keep the assignment materials available on demand while the teacher reviews a student submission.
 
 The goal is not to guarantee perfect automatic transcription. The goal is to make correction faster and safer than reading and manually reproducing the paper alone.
@@ -164,6 +167,8 @@ Grading happens inside the review workspace defined in capability 5; this capabi
 - Identify student submissions that are graded.
 - Add an optional numeric score to a student submission.
 - Add optional free-form comments to a student submission.
+- Record teacher-authored judgment, optional awarded points, and an optional comment on each parsed question row.
+- Keep the submission score independent from question points unless the teacher explicitly confirms applying the current question-points sum.
 - Mark a reviewed student submission as graded.
 - Return assignment materials or a submission to **Needs review** if more verification is required; a returned submission must no longer appear as graded.
 
@@ -185,19 +190,23 @@ This requirement defines product behavior, not a specific provider commitment. O
 ```mermaid
 flowchart TD
     A[Teacher selects class and assignment] --> B{What is being added?}
-    B -->|Assignment materials| C[Upload and order teacher-authored pages]
-    B -->|Student work| D[Select student and upload ordered response pages]
-    C --> E[Document queued for transcription]
+    B -->|Assignment materials| C[Upload, normalize, store, and order teacher-authored pages]
+    B -->|Student work| D[Select student; upload, normalize, store, and order response pages]
+    C --> E[Confirm current page set]
     D --> E
-    E --> F{Processing result}
-    F -->|Success| G[Needs review]
+    E -->|Queue delivery succeeds| Q[Queue per-page transcription]
+    E -->|Queue delivery fails| QC[Confirmation accepted; queue recovery required]
+    QC -->|Retry confirm| Q
+    Q --> F{Processing result}
+    F -->|Success| G[Needs review after every current page completes]
     F -->|Failure| H[Needs attention]
-    H -->|Retry or replace page| E
+    H -->|Retry or replace failed page| Q
     G --> I[Compare image and edit transcription]
-    I --> J[Ready to grade]
-    J -->|Assignment materials| K[Available as assignment context]
-    J -->|Student submission| L[Add optional score and comments]
-    L --> M[Graded]
+    I --> J[Review every current page]
+    J --> K[Ready to grade]
+    K -->|Assignment materials| L[Available as assignment context]
+    K -->|Student submission| M[Add optional score and comments]
+    M --> N[Graded]
 ```
 
 ## State model
@@ -207,7 +216,7 @@ Processing, review, and grading are separate concepts. Each assignment-material 
 ### Processing state
 
 - **Uploading:** One or more source pages are still being stored.
-- **Queued:** Upload is complete and transcription is waiting to start.
+- **Queued:** The current page set was confirmed, or a recovery action was accepted, and transcription is waiting to start.
 - **Transcribing:** The model is processing the document.
 - **Completed:** An editable draft is available.
 - **Failed:** Processing did not produce a usable draft; the teacher can retry or replace affected pages. Teacher-facing copy for this state is **Error** — it names system upload/parsing failures, distinct from grading outcomes.
@@ -216,12 +225,16 @@ Transcription runs page by page. Each page carries its own processing state with
 
 ### Review state
 
-- **Needs review:** A draft exists but has not been verified by the teacher.
-- **Ready to grade:** The teacher has reviewed the transcription. Assignment materials are marked as verified context; a student submission is ready to grade or finish grading.
+- **Needs review:** Every current page has completed, but at least one has not been verified by the teacher.
+- **Ready to grade:** Every current page is completed and reviewed. Assignment materials are verified context; a student submission is ready to grade or finish grading.
+
+An unconfirmed, partially processed, or failed document has no review state. Completion of the last current page moves the document to **Needs review**. A page-set or generated-content change invalidates readiness: the review state becomes **Needs review** if every current page is still complete, otherwise it becomes absent. A page draft edit also clears that page's review. For submissions, either kind of invalidation changes grading to **Not graded** and clears the recorded graded time while retaining the existing score, comments, and question judgments.
+
+An empty document cannot be confirmed or marked **Ready to grade**.
 
 ### Submission grading state
 
-- **Not graded:** The teacher has not completed grading the student submission.
+- **Not graded:** The teacher has not completed grading the student submission, or later content invalidated the prior graded state.
 - **Graded:** The teacher has completed grading the student submission. A score is optional.
 
 The teacher-visible progression for a student submission is **Needs review → Ready to grade → Graded**, but the underlying states remain separate so processing never implies review and assignment materials can never become graded.
@@ -342,6 +355,7 @@ The MVP is product-complete when a teacher can:
 8. Move assignment materials from Needs review to Ready to grade and a student submission from Needs review to Ready to grade to Graded.
 9. Record an optional score and comments only on a student submission, within the same workspace where its transcription is verified.
 10. Identify outstanding review and grading work by class and assignment without counting assignment materials as student work.
+11. Review parsed question rows without automatic judgment, record optional per-question points and comments, and apply their sum to the submission score only through an explicit teacher-confirmed action.
 
 The product team must also be able to change the configured vision model without exposing model selection to teachers or changing either teacher workflow.
 
@@ -367,7 +381,7 @@ A low edit rate alone is not proof of accuracy; it must be considered alongside 
 - Assignment generation, rewriting, or instructional-content recommendations.
 - Automatic comparison of student work with assignment materials, including answer matching or correctness judgments.
 - Analytics about student performance or learning outcomes.
-- Question extraction, answer grouping, or answer-key generation.
+- Answer grouping or answer-key generation.
 - Student, guardian, or school-administrator accounts.
 - Student uploads, invitations, join codes, or teacher-to-student sharing.
 - Parent sharing, exports, or learning-management-system integrations.
@@ -407,7 +421,7 @@ Different models may produce different formatting and interpretation. A configur
 The product behaviors below were open questions during planning and have been decided. The implementation plan must treat these decisions as requirements rather than choices:
 
 1. Supported source formats and limits, including whether the first release accepts HEIC and PDF in addition to JPEG and PNG.
-    - **Decision:** The first release accepts JPEG, PNG, and HEIC. HEIC images are normalized to JPEG server-side before storage and transcription. PDF is not accepted in this release. Page and image size limits are decided under item 2.
+    - **Decision:** The first release accepts JPEG, PNG, and HEIC. Every accepted image is normalized to JPEG server-side before storage and transcription. PDF is not accepted in this release. Page and image size limits are decided under item 2.
     - **Rationale:** HEIC is the default phone-camera format, so rejecting it would add friction for teachers photographing with phones. Server-side normalization gives the review workspace and the transcription provider one standard image format. PDF support requires page rasterization and a multi-page import flow that conflicts with the photograph-and-order upload model, so it is deferred.
 
 2. Maximum pages and upload size for assignment materials and for each student submission.
@@ -415,31 +429,31 @@ The product behaviors below were open questions during planning and have been de
     - **Rationale:** A uniform limit covers long multi-page responses, such as a six-page handwritten essay, with headroom while capping recurring per-page transcription cost. One limit for both document types keeps the mental model simple, and assignment materials rarely need more.
 
 3. Retention period for original page images and what deletion actions are available to teachers for each document type.
-    - **Decision:** Original page images are retained for the life of their parent record; there is no automatic time-based retention period in this release. A teacher can delete a single page, an entire assignment-materials document, or an entire student submission. Deleting an assignment or class cascades to its documents, and account deletion removes all content.
-    - **Rationale:** Automatic purge windows would contradict the principle that the original is authoritative and would be speculative scope. The provider processing, retention, and deletion disclosure required before launch (see Privacy and school policy) remains a separate launch blocker.
+    - **Decision:** Original page images are retained for the life of their parent record; there is no automatic time-based retention period in this release. A teacher can delete a single page, an entire assignment-materials document, or an entire student submission. Deleting an assignment or class cascades to its documents, and account deletion removes all content. Privacy and destructive deletion remain allowed beneath archived classes even though ordinary mutations there are blocked.
+    - **Rationale:** Automatic purge windows would contradict the principle that the original is authoritative and would be speculative scope. Archived ancestry must not prevent a teacher from satisfying a privacy deletion obligation. The provider processing, retention, and deletion disclosure required before launch (see Privacy and school policy) remains a separate launch blocker.
 
 4. Whether score accepts decimals and how an assignment's maximum score is displayed.
     - **Decision:** A score accepts up to two decimal places. When the assignment defines a maximum score, scores display as "8.5 / 10" and a score above the maximum is rejected with a clear error; without a maximum score, the value displays alone. No percentage conversion is performed.
     - **Rationale:** Real grading uses halves and quarters, so integer-only scores would force workarounds. Hard validation against the maximum keeps the optional maximum meaningful.
 
 5. Whether teachers may begin editing completed pages while remaining pages in the same document are still processing.
-    - **Decision:** Yes. Transcription runs per page, and a page becomes reviewable and editable as soon as its own draft is ready while later pages in the same document continue processing. A document reaches Needs review only when every page is complete, and Ready to grade still requires review of the full document.
-    - **Rationale:** Per-page readiness shortens interrupted grading sessions without weakening the review gate.
+    - **Decision:** Yes. Transcription runs per page, and a page becomes reviewable and editable as soon as its own draft is ready while later pages in the same document continue processing. Unconfirmed, partial, and failed documents have no review state. Completion of the last current page transitions the document to Needs review, and Ready to grade requires every current page to be completed and reviewed. Editing a page clears that page's review and invalidates any ready or graded state while retaining grading values.
+    - **Rationale:** Per-page readiness shortens interrupted grading sessions without weakening the review gate; explicit invalidation prevents stale verification from appearing current.
 
 6. Whether a retry applies to one failed page or reprocesses the entire document by default.
     - **Decision:** The default retry reprocesses only the failed page. A separate explicit action retranscribes the entire document, for example after a model change. Whole-document retranscription requires confirmation and, if any page has teacher edits, explicit consent to overwrite them. Teacher edits are never overwritten silently.
     - **Rationale:** Per-page retry avoids re-billing pages that already succeeded, keeping recurring per-page cost contained. The confirmation path satisfies the rule that a retry must not silently overwrite teacher edits.
 
 7. Whether archived classes and removed students retain their historical assignment materials and submissions.
-    - **Decision:** Yes. Archiving a class makes it read-only: its assignments, materials, and submissions remain viewable, and no new uploads or edits are allowed. Removing a student retains that student's submissions under their assignments so grading records and review history remain intact, and the teacher can explicitly delete a student's data.
-    - **Rationale:** Historical grading records must not silently disappear, and explicit deletion supports teachers with privacy obligations.
+    - **Decision:** Yes. Archiving a class makes ordinary mutation read-only: its assignments, materials, and submissions remain viewable, and no new uploads or edits are allowed. Privacy and destructive deletion are the exception and remain available under archived ancestry. Removing a student retains that student's submissions under their assignments so grading records and review history remain intact, and the teacher can explicitly delete a student's data.
+    - **Rationale:** Historical grading records must not silently disappear, while archived state must not obstruct an explicit privacy deletion obligation.
 
 8. Whether assignment materials may be replaced after student submissions exist, and how prior versions remain available.
-    - **Decision:** Replacement is allowed and creates a new version of the materials document. Prior versions remain viewable in read-only form, and no submission's recorded review context changes retroactively.
-    - **Rationale:** This resolves the document-identity risk: replacing assignment materials after submissions exist must not silently change or hide the context previously used to review those submissions.
+    - **Decision:** Replacing successful current assignment materials creates a new draft version; its page set must be confirmed before transcription. A failed page may instead be replaced in place as recovery, preserving its position while receiving a new page identity. Prior material versions—including summaries, aggregate status, workspace content, pages, and images—remain viewable in read-only form, and no submission's recorded review context changes retroactively.
+    - **Rationale:** This separates failed-page recovery from an intentional material change and resolves the document-identity risk: replacing assignment materials after submissions exist must not silently change or hide the context previously used to review those submissions.
 
 9. Whether the first release supports only one ordered assignment-material document per assignment or multiple named versions or attachments.
-    - **Decision:** The first release supports exactly one ordered assignment-materials document per assignment. Replacing materials creates a new version of that document. Multiple named versions or attachments are out of scope.
+    - **Decision:** The first release supports exactly one ordered assignment-materials document per assignment. Changing successfully processed current materials creates a new version of that document; failed-page replacement remains recovery within the current version. Multiple named versions or attachments are out of scope.
     - **Rationale:** Versioning covers the legitimate replacement case; multiple named attachments would be speculative scope for this release.
 
 10. Whether assignment materials may include answer keys or rubrics and, if so, whether they require additional visibility controls.
@@ -449,3 +463,7 @@ The product behaviors below were open questions during planning and have been de
 11. Whether transcription review and grading are separate screens or one workspace.
     - **Decision:** One workspace per document. The teacher verifies each transcription beside its original and, for student submissions, records the optional score and comments in that same workspace; **Needs review → Ready to grade → Graded** are states on one surface, not separate screens. Assignment materials use the same workspace without a grading panel, and grading requires that the submission first reaches **Ready to grade**.
     - **Rationale:** Verification and grading are one attention loop — teachers check the original while judging the work, so separate screens duplicated context (a grading screen could show only a transcription excerpt) and added navigation. The verification gate survives as a state requirement rather than a change of place.
+
+12. Whether transcription may identify question segments for manual per-question review even though AI grading and answer matching are out of scope.
+    - **Decision:** Yes. Transcription may produce stable question segments when it can identify them without guessing. The teacher, not the model, records `Unmarked`, `Correct`, or `Incorrect`, optional awarded points, and an optional comment on each current segment. The submission score remains separate; the product may apply the current awarded-point sum only after showing it and receiving explicit teacher confirmation. If parsing is uncertain, the product creates no question row rather than inventing one.
+    - **Rationale:** Stable rows reduce navigation friction while preserving teacher judgment. Separating extraction from assessment keeps automatic answer matching, scoring, feedback, and rubric grading out of scope.

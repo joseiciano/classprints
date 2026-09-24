@@ -101,11 +101,11 @@
                       <div style="display:flex; align-items:center; gap:12px;">
                         <div class="thumb" style="width:56px; flex:none;">
                           <div class="photo" style="height:64px;"><div class="hand" style="font-size:8px; line-height:11px; padding:7px 5px 5px 18px;"><b>Equivalent Fractions</b><br>Name: Maya R.<br>1/2 = 4/8</div></div>
-                          <div class="thumb-meta"><span>p1</span></div>
+                          <div class="thumb-meta"><span>Page 1</span></div>
                         </div>
                         <div>
                           <b>Maya Rodriguez · Page 1</b>
-                          <p class="small faint" style="margin-top:4px;">Instructions copy + Maya's work</p>
+                          <p class="small faint" style="margin-top:4px;">Draft available</p>
                         </div>
                       </div>
                     </td>
@@ -114,7 +114,7 @@
                         <span class="chip plain"><span class="dot"></span> Completed</span>
                         <button type="button" class="btn primary sm">Review now</button>
                       </div>
-                      <span class="mono faint">100%</span>
+                      <span class="mono faint">attempt 1</span>
                     </td>
                   </tr>
 
@@ -124,11 +124,11 @@
                       <div style="display:flex; align-items:center; gap:12px;">
                         <div class="thumb" style="width:56px; flex:none;">
                           <div class="photo" style="height:64px;"><div class="hand" style="font-size:8px; line-height:11px; padding:7px 5px 5px 18px;"><b>Part B</b><br>1/2 = 4/8<br>2/3 = 8/12</div></div>
-                          <div class="thumb-meta"><span>p2</span></div>
+                          <div class="thumb-meta"><span>Page 2</span></div>
                         </div>
                         <div>
                           <b>Maya Rodriguez · Page 2</b>
-                          <p class="small faint" style="margin-top:4px;">Fraction problems · editable draft available</p>
+                          <p class="small faint" style="margin-top:4px;">Draft available</p>
                         </div>
                       </div>
                     </td>
@@ -137,7 +137,7 @@
                         <span class="chip plain"><span class="dot"></span> Completed</span>
                         <button type="button" class="btn primary sm">Review now</button>
                       </div>
-                      <span class="mono faint">100%</span>
+                      <span class="mono faint">attempt 1</span>
                     </td>
                   </tr>
 
@@ -147,11 +147,11 @@
                       <div style="display:flex; align-items:center; gap:12px;">
                         <div class="thumb" style="width:56px; flex:none;">
                           <div class="photo" style="height:64px;"><div class="hand" style="font-size:8px; line-height:11px; padding:7px 5px 5px 18px;">Maya cut her sandwich into 4 equal pieces and ate 2...</div></div>
-                          <div class="thumb-meta"><span>p3</span></div>
+                          <div class="thumb-meta"><span>Page 3</span></div>
                         </div>
                         <div>
                           <b>Maya Rodriguez · Page 3</b>
-                          <p class="small faint" style="margin-top:4px;">Word problem · draft still in progress</p>
+                          <p class="small faint" style="margin-top:4px;">Draft not available</p>
                         </div>
                       </div>
                     </td>
@@ -160,7 +160,7 @@
                         <span class="chip st-processing"><span class="dot pulse"></span> Transcribing</span>
                         <button type="button" class="btn sm" disabled>Review now</button>
                       </div>
-                      <span class="mono faint">elapsed 0:42</span>
+                      <span class="mono faint">attempt 1 · elapsed 0:42</span>
                     </td>
                   </tr>
                 </tbody>
@@ -179,7 +179,7 @@
           <div class="cols" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 24px;">
             <div class="col note-stack">
               <div class="note accent" data-n="2">
-                <b>Per-page transcription and queue.</b> Resolved decision 5: a page becomes reviewable and editable as soon as its own draft completes while later pages keep processing. The canonical list keeps Date · Name · Status rows searchable, sortable, and paginated at 10 rows, with Review now only for completed pages.
+                <b>Per-page transcription and queue.</b> Resolved decision 5: a page becomes reviewable and editable as soon as its own draft completes while later pages keep processing. The canonical list keeps Date · Name · Status rows searchable, sortable, and paginated at 10 rows, with Review now only for completed pages. Persisted page names come from server <span class="mono">PageSummary.label</span> values such as “Maya Rodriguez · Page 1”, never browser filenames.
               </div>
               <div class="note" data-n="3">
                 <b>Document gate.</b> Until every page completes, the document has no review state — only mixed processing counts. It can enter Needs review only after full completion; Ready to grade still requires full-document teacher review (resolved decision 5).
@@ -194,18 +194,17 @@
               </div>
             </div>
           </div>
-
           <!-- ============ error page and consent ============ -->
           <div class="cols" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items:start; margin-bottom: 26px;">
             <div class="col panel">
               <div class="panel-head">
-                <span class="stamp green">Error panel</span>
+                <span class="stamp green">Error page</span>
                 <span class="panel-title">Sam Okafor · Page 2</span>
                 <span class="chip st-failed"><span class="dot"></span> Error</span>
               </div>
               <div class="panel-body">
                 <div class="card" style="border-color:var(--c-failed); margin-bottom:14px;">
-                  <p class="mono" style="color:var(--c-failed);">Provider timeout after 2 attempts · image OK</p>
+                  <p class="mono" style="color:var(--c-failed);">Provider timeout · attempt 2 · image OK · retry allowed</p>
                 </div>
                 <div class="btn-row">
                   <button type="button" class="btn primary sm">Retry page</button>
@@ -214,7 +213,7 @@
                   <button type="button" class="btn ghost sm">Retranscribe document</button>
                   <span class="small faint">opens consent</span>
                 </div>
-                <p class="small muted" style="margin-top:14px;">Default retry reprocesses only the failed page — no re-billing of succeeded pages (resolved decision 6).</p>
+                <p class="small muted" style="margin-top:14px;">Default retry reprocesses only the failed page (resolved decision 6). Succeeded pages keep their drafts. If queue delivery fails after a committed action, the server surfaces a Retry queue delivery action — that recovery path re-enqueues undelivered revisions only.</p>
                 <div class="note danger" data-n="6" style="margin-top:14px;">
                   <b>Recover at page scope.</b> Resolved decision 6: errored pages are exposed with a retry path, and the default retry reprocesses only that page.
                 </div>
@@ -226,15 +225,19 @@
                 <div class="veil"></div>
                 <div style="position:relative; z-index:8;">
                   <div class="modal-title">Retranscribe entire document?</div>
-                  <p class="small muted">This action re-bills all 3 pages. Page 1 contains teacher edits — overwriting them requires explicit consent. Teacher edits are never overwritten silently (resolved decision 6, principle 2).</p>
+                  <p class="small muted">All 3 current pages reprocess again. Page 1 contains teacher edits — overwriting them requires explicit consent. Teacher edits are never overwritten silently (resolved decision 6, principle 2).</p>
                   <div style="margin:16px 0; border:1px dashed var(--ink-line); border-radius:var(--r-sm);">
                     <div class="rowline">
                       <span class="mono">[ ]</span>
-                      <span class="small"><b>3 pages re-processed</b><br><span class="faint">All completed pages are submitted again.</span></span>
+                      <span class="small"><b>Confirm retranscription</b><br><span class="faint">Expected document revision: current.</span></span>
                     </div>
-                    <div class="rowline st-failed">
+                    <div class="rowline">
                       <span class="mono">[ ]</span>
-                      <span class="small"><b>Teacher edits on page 1 will be replaced</b><br>Explicit consent is required before continuing.</span>
+                      <span class="small"><b>Teacher edits on Page 1 will be replaced</b><br>Explicit consent is required before continuing.</span>
+                    </div>
+                    <div class="rowline">
+                      <span class="mono">[ ]</span>
+                      <span class="small"><b>Reset question judgments</b><br>Current judgments tied to superseded pages leave the client view.</span>
                     </div>
                   </div>
                   <div class="btn-row" style="justify-content:flex-end;">

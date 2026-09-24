@@ -54,58 +54,99 @@ New migrations defining:
 
 - `classes` (teacher-owned, archival status) → `students` (teacher-managed roster records,
   no auth identity) and `assignments` (optional `max_score`).
-- **One** ordered `assignment_materials` document per assignment, **with versions**:
-  replacing materials creates a new version, prior versions stay viewable read-only, and no
-  submission's recorded review context changes retroactively (resolved decisions 8, 9).
+- **One** ordered assignment-materials document per assignment, stored as
+  `assignment_material_versions` rows (implementation-plan table name): changing
+  successfully processed current materials creates a new draft version, prior versions
+  stay viewable read-only, and no submission's recorded review context changes
+  retroactively (resolved decisions 8, 9). There is no separate `assignment_materials`
+  table.
 - `submissions` (one per student per assignment) with review state and grading fields
   (`score` up to two decimals, comments, graded state).
-- `pages` — the atomic unit for both document types: position (order), per-page processing
-  state, source-image storage key, draft content, `edited_by_teacher` flag, error message.
-  Per-page state carries decisions 5 and 6.
-- `question_segments` (JSONB per page) — parsed question rows that drive the workspace's
-  per-question grading UI (see §5; resolved decision 12).
-- A per-page **job audit table**: model, latency, attempt count, outcome, cost estimate,
-  document type. This feeds the PRD success measures (median upload→draft time, failure and
-  retry rate, per-page cost by model and doc type) and capability 7 observability.
+- `pages` — the atomic unit for both document types: immutable identity, position (order),
+  per-page processing state, source-image storage key, draft content,
+  `edited_by_teacher` flag, and error message. Per-page state carries decisions 5 and 6.
+- `question_segments` (JSONB per page and page transcription revision) — parsed question
+  rows that drive the workspace's per-question grading UI (see §5; resolved decision 12).
+- A per-page **job audit table**: model, latency, execution outcome, cost estimate, and
+  document type. This internal lifetime audit feeds the PRD success measures (median
+  upload→draft time, failure and retry rate, per-page cost by model and doc type) and
+  capability 7 observability; it is not the page's current-revision attempt counter.
 
-Archival and removal rules (decision 7 — archived classes read-only, removed students
-retain submissions, explicit deletion of a student's data) are status columns plus cascade
-semantics on the tables above.
+The concurrency model has three distinct monotonically increasing revisions:
+
+- **`documentRevision` is document-scoped.** It increments whenever the current page set
+  or generated content changes. Document readiness, grading, question-total application,
+  and whole-document retranscription use `expectedDocumentRevision`.
+- **`pageRevision` is page-transcription-scoped.** It increments when that page is
+  reprocessed or replaced, and generated question segments belong to this revision.
+  Per-question judgment commands use `expectedPageRevision`.
+- **`contentRevision` is teacher-edit-scoped.** It increments for teacher-authored draft
+  edits without conflating those edits with a new transcription.
+
+A failed-page retry increments that page's `pageRevision` and the document's
+`documentRevision` without retranscribing siblings. Whole-document retranscription
+increments `documentRevision` and every current page's `pageRevision`.
+
+Archival and removal rules (decision 7 — archived classes ordinarily read-only, removed
+students retain submissions, explicit deletion of a student's data) are status columns
+plus cascade semantics on the tables above. Privacy and destructive delete commands remain
+allowed beneath archived ancestry; other mutations remain blocked.
 
 ### 2. Object storage — R2 bucket per environment
 
 Canonical original images live in R2. Keys encode ownership and key each object by the
 page's immutable id, not its sequence position:
 `teacher/{teacher_id}/class/{class_id}/assignment/{assignment_id}/{doc_type}/{page_id}.jpg`.
-Replacing materials creates a new version with new page rows, so prior versions' objects
-are never overwritten and stay viewable read-only (decision 8), and the delete cascade
-walks this key-space (decision 3).
+A confirmed failed-page replacement is recovery within the current document: it preserves
+the position but creates a new immutable page id and object. An intentional change to
+successfully processed current assignment materials instead creates a new draft material
+version with new page rows. Objects are never overwritten, prior versions stay viewable
+read-only, and the delete cascade walks this key-space (decisions 3 and 8).
 
 R2 rather than Cloudflare Images hosted storage — rationale in Appendix A (D2). Decision 3
 (delete cascades) and decision 8 (versioning) are the load-bearing requirements behind it.
 
-HEIC is normalized to JPEG **before** storage (decision 1), so exactly one canonical JPEG
-object exists per page; the original HEIC bytes are transient during upload and never
-persisted.
+Every accepted JPEG, PNG, or HEIC upload is normalized to JPEG **before** storage, so
+exactly one canonical JPEG object exists per page; the original upload bytes are transient
+and never persisted.
+
+Historical material-version summary, aggregate, workspace, page, and image reads resolve
+against these retained objects. Historical mutation actions are absent; all mutation
+attempts against a historical version return HTTP 409 `HISTORICAL_VERSION_READ_ONLY`.
 
 ### 3. Image pipeline — Cloudflare Images binding in the API worker
 
-- **At upload:** Images binding `.input()` transcodes HEIC → JPEG (binding input cap is
-  20 MB; the product limit is 10 MB, so it fits) and produces the single canonical JPEG
+- **At upload:** Images binding `.input()` normalizes accepted JPEG, PNG, and HEIC input
+  (binding input cap is 20 MB; the product limit is 10 MB) into the single canonical JPEG
   written to R2.
 - **At display:** an auth-gated route (`/api/v1/pages/{id}/image`) streams from R2 and
-  applies transformation parameters — resized variants for the workspace and thumbnails,
-  `rotate`, and region crops for the editor's image-region blocks. Region crops can be
-  stateless: the transcription stores coordinates; the crop is computed from them at
-  request time.
+  applies transformation parameters for workspace variants, thumbnails, and editor
+  image-region blocks. Stored region coordinates always reference the canonical,
+  unrotated JPEG and are bounds-checked in that coordinate space. The service crops the
+  canonical image first, then rotates the cropped result; display resizing may follow.
+  This keeps stored regions stable when the viewer changes orientation.
 - All image delivery goes through teacher auth. Student work images are never publicly
   addressable.
 
 ### 4. Upload ingestion (API worker extension)
 
-Multipart upload endpoints with real validation: MIME sniffing (not extension trust),
-10 MB per image, 20 pages per document, JPEG/PNG/HEIC only. Client-side preflight mirrors
-these limits (mockup 03 shows the "over limit" replace row).
+Multipart upload endpoints perform MIME sniffing (not extension trust), enforce 10 MB per
+image and 20 pages per document, and accept JPEG/PNG/HEIC only. Client-side preflight
+mirrors these limits (mockup 03 shows the "over limit" replace row). The upload path
+normalizes each accepted image to the canonical JPEG, stores it, and records an unconfirmed
+page; **upload never enqueues transcription**.
+
+Material upload is allowed only on a draft material version. An unconfirmed page may be
+replaced and remains unconfirmed. The teacher explicitly confirms a non-empty current page
+set to enqueue it; a repeated confirm after acceptance returns HTTP 409 `INVALID_STATE`
+rather than enqueueing twice. Adding a submission page after confirmation invalidates
+review and grading, returns the set to unconfirmed, and requires confirmation again.
+Replacing a confirmed page is allowed only for failed-page recovery. The replacement
+preserves position, receives a new immutable page id, and increments the page and document
+revisions. It queues automatically. If delivery fails, the operation returns HTTP 500,
+the page records `QUEUE_DELIVERY_FAILED`, and retry-confirm performs only queue-delivery
+recovery. Changing successful current assignment materials creates a new draft version
+rather than mutating the confirmed one.
 
 Because Workers accept 100 MB bodies, uploads proxy through the API worker rather than
 presigned direct-to-R2 — rationale in Appendix A (D3).
@@ -120,26 +161,46 @@ worker: different model configuration, different failure modes, different cost p
 
 ```mermaid
 flowchart LR
-    A[API worker<br/>upload + enqueue,<br/>auth-gated reads] --> Q[[transcription-jobs]]
-    A -- "canonical JPEG" --> R2[(R2 originals)]
+    U[API worker<br/>upload + normalize + store] -- "canonical JPEG" --> R2[(R2 originals)]
+    U -- "unconfirmed page metadata" --> DB[(Neon: pages, revisions,<br/>draft, segments, states, audit)]
+    C[API worker<br/>confirm current page set] --> Q[[transcription-jobs]]
+    RC[API worker<br/>retry-confirm after<br/>queue delivery failure] --> Q
+    REC[API worker<br/>recovery: failed-page retry/replacement<br/>or whole-document retranscription] --> Q
+    C --> DB
+    RC --> DB
+    REC --> DB
+    A[API worker<br/>auth-gated reads] --> R2
+    A --> DB
     Q --> T[transcriber worker<br/>per-page jobs]
     T -- "R2 JPEG, base64" --> O[OpenRouter<br/>vision model]
     T -- "reads" --> R2
-    T --> DB[(Neon: draft,<br/>segments, states, audit)]
-    A --> DB
-    Q -.retries exhausted.-> DLQ[[DLQ]]
+    T --> DB
+    Q -. retries exhausted .-> DLQ[[DLQ]]
 ```
 
 Mechanics the PRD pins down:
 
-- **Per-page job units.** Pages transcribe in parallel, ordered by the position field.
-  Document-level states roll up from page states. A page becomes reviewable and editable
-  the moment its own draft completes while later pages continue (decision 5).
-- **Two retry scopes.** Default retry reprocesses only the failed page — succeeded pages
-  are never re-billed. Whole-document retranscription is a separate explicit action that
-  requires confirmation and, if any page has teacher edits, explicit consent to overwrite.
-  The worker must refuse to overwrite an edited draft unless the request carries the
-  recorded consent flag (decision 6).
+- **Per-page job units and document lifecycle.** Pages transcribe in parallel, ordered by
+  position. A page becomes reviewable and editable when its own draft completes. An
+  unconfirmed, partially processed, or failed document has `reviewState = null`; accepting
+  the last current page's generated content transitions the document to `needs_review`.
+  Mark-ready requires every current page to be completed and reviewed, and an empty
+  document cannot be confirmed or marked ready.
+- **Invalidation is observable.** Any current page-set or generated-content change
+  increments `documentRevision`, invalidates readiness, and sets a submission to
+  `not_graded` with no graded timestamp while retaining score, comments, and question
+  judgments unless an explicit reset is requested. A teacher draft edit increments
+  `contentRevision`, clears that page's review, and sets document review to `needs_review`
+  when all pages remain complete or to `null` otherwise; it applies the same grading
+  invalidation while retaining grading values.
+- **Confirmation and recovery are the queue boundary.** Upload/normalize/store does not
+  enqueue. Only accepted confirmation, retry-confirm after queue-delivery failure, and
+  explicit recovery operations enqueue per-page work.
+- **Two retry scopes.** Default retry reprocesses only the failed page, incrementing its
+  `pageRevision` and the document's `documentRevision` without touching siblings.
+  Whole-document retranscription is a separate explicit action guarded by
+  `expectedDocumentRevision`; it increments the document and every current page revision,
+  and requires confirmation plus explicit consent before overwriting any teacher edits.
 - **Structured output.** The model returns draft blocks (paragraphs, lists, line breaks,
   math, image-region markers) **plus** parsed question segments for the per-question
   grading rows in the workspace (mockup 05: "3 of 3 auto-parsed", per-row correct/incorrect/
@@ -147,9 +208,13 @@ Mechanics the PRD pins down:
   the same spirit as the seating worker's `validateArrangementWithDetails`. Unrepresentable
   content (diagrams, drawings, illegible regions) falls back to the source image and is
   never silently invented or omitted (principle 4).
-- **Failure taxonomy.** Provider timeout, invalid output, storage failure, and image
-  problems are distinguished and surfaced to the teacher (mockup 04: "Provider timeout
-  after 2 attempts · image OK") so the retry path matches the failure class.
+- **Attempt semantics.** A page's `attemptCount` counts accepted worker executions for its
+  current `pageRevision`, resets when `pageRevision` changes, and excludes queue-delivery
+  retries and provider/model retries within one worker execution. The internal audit may
+  retain execution history across revisions without changing this client-visible meaning.
+- **Failure taxonomy.** Provider timeout, invalid output, storage failure, image problems,
+  and queue-delivery failure are distinguished and surfaced so the recovery path matches
+  the failure class.
 
 ### 6. Operator model configuration and cost observability
 
@@ -161,8 +226,8 @@ OpenRouter use).
 Same OpenRouter integration as the optimizer: the transcriber's LLM module is a sibling of
 the seating worker's `seating-llm.ts` — plain `fetch` to
 `https://openrouter.ai/api/v1/chat/completions`, `Bearer` auth with the OpenRouter key,
-`AbortController` timeout, per-model × per-attempt retry with validation errors fed back
-into the next prompt. Two payload-level differences, no plumbing differences:
+`AbortController` timeout, per-model provider retry with validation errors fed back into
+the next provider request. Two payload-level differences, no plumbing differences:
 
 - **Image arrives as base64, never a URL.** The user message `content` becomes the
   multimodal array (`text` part, then `image_url` part with a
@@ -207,7 +272,8 @@ Decision and rationale: Appendix A (D1).
   materials never graded; returned submissions stop appearing graded).
 - Server-side sort, filter (search across columns), and pagination (10 rows) parameters for
   the **canonical list component** shared by the Classes list, class dashboard tables,
-  Submissions, and Processing views.
+  Submissions, and Processing views. Material-version history is the explicit exception
+  and uses a dedicated read-only history presentation.
 - Frontend routes: classes list, class dashboard (Assignments | Seating Charts tabs),
   assignment detail, upload, processing, workspace. The workspace (mockup 05) is the
   surface concentration: side-by-side original ↔ draft viewer, WYSIWYG editor with
@@ -229,8 +295,9 @@ results. The canonical list component then serves that tab.
 
 - Cascade delete must reach **R2 objects**, not just rows: deleting a page, document,
   assignment, or class removes its blobs; account deletion removes everything (decision 3).
-  This is a delete routine walking the key-space, run through the queue so large cascades
-  do not block request handlers.
+  Privacy and destructive deletes remain allowed beneath archived ancestry even though all
+  other mutations there are read-only. The delete routine walks the key-space through the
+  queue so large cascades do not block request handlers.
 - Pre-launch provider disclosure: what is sent to OpenRouter (both document types,
   explicitly including answer-key content per decision 10), the provider's processing,
   retention, and deletion behavior, zero-retention endpoint selection if available, and
