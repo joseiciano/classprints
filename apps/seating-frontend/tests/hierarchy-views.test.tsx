@@ -150,6 +150,29 @@ describe('AssignmentFormDialog hierarchy contract', () => {
 
     expect(submitted).toEqual([]);
   });
+
+  it.each([
+    { label: 'blank', value: '   ' },
+    { label: 'longer than 200 characters', value: 'a'.repeat(201) },
+  ])('rejects a $label required assignment name', ({ value }) => {
+    const submitted: Array<{ name: string; maxScore: number | null }> = [];
+    const container = render(
+      <AssignmentFormDialog
+        open
+        onOpenChange={() => undefined}
+        mode="create"
+        onSubmit={(formValue) => {
+          submitted.push(formValue);
+        }}
+      />,
+    );
+
+    setInputValue(inputAt(container, 0), value);
+    setInputValue(inputAt(container, 1), '10');
+    submit(container);
+
+    expect(submitted).toEqual([]);
+  });
 });
 
 const savedChart: SavedSeatingChart = {
