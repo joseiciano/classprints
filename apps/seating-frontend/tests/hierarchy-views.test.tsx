@@ -233,7 +233,7 @@ describe('RosterPanelView archived/read-only contract', () => {
       <RosterPanelView students={rosterStudents} readOnly />,
     );
 
-    const mutationControlPattern = /add|rename|remove|delete(?:\s|-)?data/i;
+    const mutationControlPattern = /\b(add|rename|remove|delete)\b/i;
     const enabledMutationControls = Array.from(
       container.querySelectorAll<HTMLButtonElement>('button, [role="button"]'),
     ).filter((control) => {
