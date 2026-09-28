@@ -14,7 +14,7 @@ import {
   formatElapsed,
   isDocumentSettled,
 } from '../src/components/assignment-reader/processing-detail';
-
+import { processingRefetchInterval } from '../src/hooks/use-processing-poll';
 // React's act() requires an explicit environment declaration outside a
 // testing-library setup.
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -209,7 +209,25 @@ describe('processing helpers', () => {
     expect(formatElapsed(milliseconds)).toBe(expected);
   });
 });
-
+describe('processingRefetchInterval', () => {
+  it.each([
+    ['visible with unsettled pages', mixedResponse, 'visible', 3_000],
+    ['hidden with unsettled pages', mixedResponse, 'hidden', false],
+    [
+      'visible with settled pages',
+      makeResponse(
+        [makePage({ id: 'page-completed', label: 'Maya Rodriguez · Page 1' })],
+        'completed',
+        makeCounts({ completed: 1 }),
+      ),
+      'visible',
+      false,
+    ],
+    ['visible without response data', undefined, 'visible', false],
+  ] as const)('returns expected refetch interval for %s', (_name, response, visibility, expected) => {
+    expect(processingRefetchInterval(response, visibility)).toBe(expected);
+  });
+});
 describe('ProcessingDetailView recovery contract', () => {
   it('offers retry only for failed pages, never for completed pages', () => {
     const onRetryPage = vi.fn();
