@@ -7,8 +7,31 @@ import { createDb } from '../lib/db';
 import { createAuthServiceFor } from '@classprints/server/auth';
 import type { AuthenticatedUser } from '@classprints/server/auth';
 import { BillingService, type BillingServiceConfig } from '@classprints/server/billing';
+import { createAssignmentReaderRepository } from '../assignment-reader/assignment-reader.repository';
+import {
+  AssignmentReaderService,
+  type AssignmentReaderQueues,
+} from '../assignment-reader/assignment-reader.service';
+import type { DeletionOperation } from '@classprints/assignment-reader-shared';
+
 const getUser = (c: Context<SeatingHonoEnv>): AuthenticatedUser | undefined =>
   c.get('user' as never) as AuthenticatedUser | undefined;
+
+/** Wires only what TASK-018 account deletion needs (repo + the cleanup
+ * queue); it never touches images/transcription, unlike the assignment-reader
+ * subapp's own `createService`. */
+const createAssignmentReaderServiceForDeletion = (c: Context<SeatingHonoEnv>): AssignmentReaderService => {
+  const repo = createAssignmentReaderRepository(createDb(c.env));
+  const queues: AssignmentReaderQueues = {
+    sendTranscriptionPage: async (message) => {
+      await c.env.TRANSCRIPTION_JOBS.send(message);
+    },
+    sendDeletionOperation: async (message) => {
+      await c.env.DOCUMENT_CLEANUP_JOBS.send(message);
+    },
+  };
+  return new AssignmentReaderService({ repo, queues });
+};
 
 const createBillingService = (c: Context<SeatingHonoEnv>): BillingService => {
   const sql = createDb(c.env);
@@ -43,12 +66,6 @@ interface ChangeEmailResponse {
   email: string | null;
   requiresConfirmation: boolean;
   message: string;
-}
-
-interface DeleteAccountResponse {
-  success: boolean;
-  message: string;
-  deletedAt: string;
 }
 
 export const registerUserRoutes = (app: Hono<SeatingHonoEnv>): void => {
@@ -235,22 +252,27 @@ export const registerUserRoutes = (app: Hono<SeatingHonoEnv>): void => {
         // Don't fail the deletion, but log the error
       }
     }
-    // Soft delete by setting deleted_at timestamp and revoking sessions
-    let deletedAt: string;
+    // Soft delete by setting deleted_at timestamp and revoking sessions. This
+    // immediately disables access (api-routes-review.md §3.1): a repeated
+    // request after this point has no valid session and 401s, which is what
+    // makes account deletion intentionally not teacher-replayable.
     try {
-      deletedAt = await authService.softDeleteProfile(user.id);
+      await authService.softDeleteProfile(user.id);
     } catch (error) {
       console.error('[DELETE /user/account] Failed to soft-delete:', error);
       throw new HttpError(500, 'Failed to delete account');
     }
 
-    const responseBody: DeleteAccountResponse = {
-      success: true,
-      message: 'Account has been soft-deleted successfully',
-      deletedAt,
-    };
+    // Schedule Assignment Reader's cross-store (Postgres + R2) cleanup
+    // (TASK-018). Access and sessions are already revoked above; this only
+    // enumerates and hands off Assignment Reader data to the durable
+    // deletion pipeline apps/assignment-worker/src/deletion owns.
+    const assignmentReaderService = createAssignmentReaderServiceForDeletion(c);
+    const { operation } = await assignmentReaderService.scheduleAccountDeletion(user.id);
 
-    return c.json(responseBody, 200);
+    const responseBody: { data: DeletionOperation } = { data: operation };
+
+    return c.json(responseBody, 202);
   });
 };
 
