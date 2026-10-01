@@ -52,5 +52,5 @@ All review/grading invariants are server-enforced; historical context remains st
 ## Related
 
 - Files: `apps/seating-backend/src/assignment-reader/**` (FILE-004); `apps/seating-backend/src/user/user.routes.ts` (FILE-007); `apps/seating-frontend/src/hooks/use-delete-account.ts` (FILE-014).
-- Tests: TEST-003 (revision compare-and-swap, readiness/grading gates, retained draft grading data), TEST-006 (deletion replay/failure injection).
+- Tests: TEST-003 (revision compare-and-swap, readiness/grading gates, retained draft grading data) — covered by `apps/seating-backend/tests/assignment-reader.repository.integration.test.ts` (`updatePageDraftRow`, `markDocumentReadyRow` + `markSubmissionGradedRow`, `returnToNeedsReviewRow`) and `apps/seating-backend/tests/assignment-reader.service.test.ts` (deletion-scope idempotency/conflict). TEST-006 (deletion replay/failure injection) — the cleanup-consumer replay/failure-injection path is covered by `apps/assignment-worker/tests/deletion.integration.test.ts` (TASK-006); the TASK-018 deletion-scope *visibility* guard (a pending scope hides only its own descendants, never a sibling scope sharing the same id) is covered by `assignment-reader.repository.integration.test.ts`'s `notDeletionPending`/`createDeletionOperation` regression tests.
 - See also: REQ-016 through REQ-019, REQ-022, SEC-001, RISK-004.

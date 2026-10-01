@@ -1,3 +1,4 @@
+import postgres from 'postgres';
 import type { Sql } from '../lib/db';
 import type {
   AssignmentListItem,
@@ -68,6 +69,7 @@ import type {
   UpdatePageDraftOutcome,
   UpdateQuestionJudgmentOutcome,
 } from './assignment-reader.types';
+import { DeletionScopeConflictError } from './assignment-reader.types';
 /**
  * Assignment Reader repository (TASK-007/TASK-008). Owns all Postgres access
  * for hierarchy, canonical lists, materials, and submissions. Every read and
@@ -570,63 +572,93 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
    * non-delete route" (api-routes-documents.md §"Shared state and revision
    * rules") before physical cleanup finishes, every read must check its own
    * id AND every ancestor id that could carry a pending scope deletion.
-   * `idx_deletion_operations_pending_target` is unique on `target_id` while
-   * pending, so checking `target_id = any(ancestor ids)` never needs
-   * `target_type` to disambiguate. Account-scope deletion is deliberately
-   * excluded: it revokes the teacher's session in the same request that
-   * accepts it, so every later request 401s before reaching these reads.
+   *
+   * `materials` and `assignment` scopes both use the ASSIGNMENT's own id as
+   * `target_id` (there is no separate "materials" id), so matching an
+   * ancestor id alone is not enough to tell the two scopes apart — a pending
+   * materials-only delete must hide the materials version and its pages
+   * without also hiding the assignment row, its submissions, or submission
+   * pages. Every branch below therefore pairs each candidate id with the
+   * `target_type`(s) that are actually allowed to carry it, instead of
+   * matching `target_id` against the id alone. Account-scope deletion is
+   * deliberately excluded: it revokes the teacher's session in the same
+   * request that accepts it, so every later request 401s before reaching
+   * these reads.
    */
   const notDeletionPending = (alias: 'c' | 's' | 'a' | 'v' | 'sb', teacherId: string) => {
     switch (alias) {
       case 'c':
         return sql`and not exists (
           select 1 from deletion_operations d
-          where d.teacher_id = ${teacherId} and d.status = 'pending' and d.target_id = c.id
+          where d.teacher_id = ${teacherId} and d.status = 'pending'
+            and d.target_type = 'class' and d.target_id = c.id
         )`;
       case 's':
         return sql`and not exists (
           select 1 from deletion_operations d
           where d.teacher_id = ${teacherId} and d.status = 'pending'
-            and d.target_id = any(array[s.id, s.class_id]::uuid[])
+            and (
+              (d.target_type = 'student_data' and d.target_id = s.id)
+              or (d.target_type = 'class' and d.target_id = s.class_id)
+            )
         )`;
       case 'a':
         return sql`and not exists (
           select 1 from deletion_operations d
           where d.teacher_id = ${teacherId} and d.status = 'pending'
-            and d.target_id = any(array[a.id, a.class_id]::uuid[])
+            and (
+              (d.target_type = 'assignment' and d.target_id = a.id)
+              or (d.target_type = 'class' and d.target_id = a.class_id)
+            )
         )`;
       case 'v':
         return sql`and not exists (
           select 1 from deletion_operations d
           where d.teacher_id = ${teacherId} and d.status = 'pending'
-            and d.target_id = any(array[
-              v.id, v.assignment_id,
-              (select class_id from assignments where id = v.assignment_id)
-            ]::uuid[])
+            and (
+              (d.target_type in ('materials', 'assignment') and d.target_id = v.assignment_id)
+              or (d.target_type = 'class'
+                  and d.target_id = (select class_id from assignments where id = v.assignment_id))
+            )
         )`;
       case 'sb':
         return sql`and not exists (
           select 1 from deletion_operations d
           where d.teacher_id = ${teacherId} and d.status = 'pending'
-            and d.target_id = any(array[sb.id, sb.student_id, sb.assignment_id, sb.class_id]::uuid[])
+            and (
+              (d.target_type = 'submission' and d.target_id = sb.id)
+              or (d.target_type = 'student_data' and d.target_id = sb.student_id)
+              or (d.target_type = 'assignment' and d.target_id = sb.assignment_id)
+              or (d.target_type = 'class' and d.target_id = sb.class_id)
+            )
         )`;
     }
   };
 
   /** Pages are owned by exactly one parent document (`materials_version_id`
    * xor `submission_id`); this guards a page-level read/write against the
-   * page's own id or any ancestor (class/assignment/materials-version/
-   * submission/student) carrying a pending scope deletion — see
-   * `notDeletionPending`'s doc comment for why ancestor ids must be checked
-   * here too. `pages` denormalizes `class_id`/`assignment_id` directly, so no
+   * page's own id or any ancestor (class/assignment/submission/student)
+   * carrying a pending scope deletion — see `notDeletionPending`'s doc
+   * comment for why each id must be paired with its `target_type`(s). A
+   * `materials`-scope delete shares the assignment's own id with the
+   * `assignment` scope, so it only matches pages that actually belong to a
+   * materials version (`materials_version_id is not null`); a submission's
+   * pages share `assignment_id` too but are unaffected by a materials-only
+   * delete. `pages` denormalizes `class_id`/`assignment_id` directly, so no
    * join is needed to reach them. */
   const notDeletionPendingParent = (teacherId: string) => sql`
     and not exists (
       select 1 from deletion_operations d
       where d.teacher_id = ${teacherId} and d.status = 'pending'
-        and d.target_id = any(array[
-          p.id, p.class_id, p.assignment_id, p.materials_version_id, p.submission_id, p.student_id
-        ]::uuid[])
+        and (
+          (d.target_type = 'page' and d.target_id = p.id)
+          or (d.target_type = 'class' and d.target_id = p.class_id)
+          or (d.target_type = 'assignment' and d.target_id = p.assignment_id)
+          or (d.target_type = 'materials' and d.target_id = p.assignment_id
+              and p.materials_version_id is not null)
+          or (d.target_type = 'submission' and d.target_id = p.submission_id)
+          or (d.target_type = 'student_data' and d.target_id = p.student_id)
+        )
     )
   `;
 
@@ -1039,22 +1071,42 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
 
     async createDeletionOperation({ teacherId, targetType, targetId, storageKeys }) {
       const now = Date.now();
-      return sql.begin(async (tx) => {
-        const rows = await tx<DeletionOperationRow[]>`
-          insert into deletion_operations (teacher_id, target_type, target_id, status, accepted_at_ms, updated_at_ms)
-          values (${teacherId}, ${targetType}, ${targetId}, 'pending', ${now}, ${now})
-          returning id, target_type, target_id, status, accepted_at_ms
-        `;
-        const operation = rows[0];
-        if (!operation) throw new Error('Unable to create deletion operation');
-        for (const storageKey of storageKeys) {
-          await tx`
-            insert into deletion_objects (operation_id, storage_key, status, attempts, created_at_ms)
-            values (${operation.id}, ${storageKey}, 'pending', 0, ${now})
+      try {
+        return await sql.begin(async (tx) => {
+          const rows = await tx<DeletionOperationRow[]>`
+            insert into deletion_operations (teacher_id, target_type, target_id, status, accepted_at_ms, updated_at_ms)
+            values (${teacherId}, ${targetType}, ${targetId}, 'pending', ${now}, ${now})
+            returning id, target_type, target_id, status, accepted_at_ms
           `;
+          const operation = rows[0];
+          if (!operation) throw new Error('Unable to create deletion operation');
+          for (const storageKey of storageKeys) {
+            await tx`
+              insert into deletion_objects (operation_id, storage_key, status, attempts, created_at_ms)
+              values (${operation.id}, ${storageKey}, 'pending', 0, ${now})
+            `;
+          }
+          return operation;
+        });
+      } catch (error) {
+        // `idx_deletion_operations_pending_target` is unique on `target_id`
+        // alone (not `target_id, target_type`): `materials` and `assignment`
+        // scopes share the assignment's own id, so a concurrent delete under
+        // the other scope hits this unique violation (23505) instead of the
+        // `findPendingDeletionOperation` pre-check, which only looks at the
+        // SAME `target_type`. Surface it as a typed conflict the service
+        // layer can turn into a 409 rather than an unhandled 500.
+        if (error instanceof postgres.PostgresError && error.code === '23505') {
+          const rows = await sql<DeletionOperationRow[]>`
+            select id, target_type, target_id, status, accepted_at_ms
+            from deletion_operations
+            where teacher_id = ${teacherId} and target_id = ${targetId} and status = 'pending'
+            limit 1
+          `;
+          if (rows[0]) throw new DeletionScopeConflictError(rows[0]);
         }
-        return operation;
-      });
+        throw error;
+      }
     },
 
     async promoteDraftMaterials(teacherId, materialVersionId) {

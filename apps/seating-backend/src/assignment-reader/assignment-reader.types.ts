@@ -347,6 +347,28 @@ export interface CreateDeletionOperationInput {
   storageKeys: string[];
 }
 
+/**
+ * Thrown by `createDeletionOperation` when `idx_deletion_operations_pending_target`
+ * rejects the insert because a pending deletion already owns this `target_id`
+ * under a *different* `target_type` — e.g. an `assignment`-scope delete is
+ * already pending for the same id a `materials`-scope delete just targeted
+ * (both scopes use the assignment's own id; see `notDeletionPending`'s doc
+ * comment in assignment-reader.repository.ts). The service layer catches
+ * this and surfaces a 409 instead of letting the raw unique-violation
+ * escape as an unhandled 500.
+ */
+export class DeletionScopeConflictError extends Error {
+  public readonly existing: DeletionOperationRow;
+
+  constructor(existing: DeletionOperationRow) {
+    super(
+      `A deletion is already pending for this target (target_type=${existing.target_type}, target_id=${existing.target_id})`,
+    );
+    this.name = 'DeletionScopeConflictError';
+    this.existing = existing;
+  }
+}
+
 // ——— Workspace, review, and grading (TASK-016/TASK-017) ————————————————————
 
 /** One current page's question segment, left-joined to its teacher judgment
@@ -459,7 +481,8 @@ export type AssignmentReaderErrorCode =
   | 'REVISION_CONFLICT'
   | 'CONSENT_REQUIRED'
   | 'SCORE_EXCEEDS_MAXIMUM'
-  | 'QUEUE_DELIVERY_FAILED';
+  | 'QUEUE_DELIVERY_FAILED'
+  | 'DELETION_ALREADY_PENDING';
 
 export interface AssignmentReaderHttpError extends Error {
   readonly status: number;
