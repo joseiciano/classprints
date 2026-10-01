@@ -3,6 +3,7 @@ import type {
   ConfirmDocumentBody,
   DocumentRevisionCommandBody,
   DocumentType,
+  ProcessingListQuery,
   RetranscribeDocumentBody,
 } from '@classprints/assignment-reader-shared';
 import {
@@ -11,6 +12,7 @@ import {
   deletePage,
   fetchAllDocumentPages,
   fetchDocumentAggregate,
+  fetchDocumentProcessing,
   fetchDocumentWorkspace,
   markDocumentReady,
   retranscribeDocument,
@@ -36,6 +38,28 @@ export function useDocumentPages(documentType: DocumentType, documentId: string 
     queryKey: [...assignmentReaderKeys.documents.aggregate(documentType, documentId ?? ''), 'pages'],
     queryFn: () => fetchAllDocumentPages(documentType, documentId as string),
     enabled: Boolean(documentId),
+  });
+}
+
+/**
+ * The canonical, sortable/searchable/paginated per-page processing list
+ * (TASK-023). Polling is the caller's responsibility (`refetchIntervalMs`,
+ * `false` to pause) so the "every 3000 ms, only while visible and any page
+ * is non-terminal" rule lives with the component that knows both the page's
+ * visibility and the document's current rollup, not buried in this hook.
+ */
+export function useDocumentProcessingList(
+  documentType: DocumentType,
+  documentId: string | undefined,
+  query: ProcessingListQuery,
+  refetchIntervalMs: number | false,
+) {
+  return useQuery({
+    queryKey: assignmentReaderKeys.documents.processing(documentType, documentId ?? '', query),
+    queryFn: () => fetchDocumentProcessing(documentType, documentId as string, query),
+    enabled: Boolean(documentId),
+    placeholderData: (previous) => previous,
+    refetchInterval: refetchIntervalMs,
   });
 }
 
