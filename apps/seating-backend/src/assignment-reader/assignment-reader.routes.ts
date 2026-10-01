@@ -431,8 +431,8 @@ export const registerAssignmentReaderRoutes = (app: Hono<SeatingHonoEnv>): void 
   app.delete('/pages/:pageId', async (c) => {
     try {
       const user = getUser(c);
-      const result = await createService(c).removePage(user.id, c.req.param('pageId'));
-      return c.json({ data: result }, 202);
+      const { operation, created } = await createService(c).removePage(user.id, c.req.param('pageId'));
+      return c.json({ data: operation }, created ? 202 : 200);
     } catch (error) {
       return handleRouteError(error, c);
     }

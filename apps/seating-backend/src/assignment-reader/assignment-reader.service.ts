@@ -698,8 +698,28 @@ export class AssignmentReaderService {
 
   /** Removes a page from a draft material version or a submission
    * (api-routes-documents.md §2.4). A page on current successful materials
-   * requires a new draft version instead. */
-  async removePage(teacherId: string, pageId: string): Promise<DeletionOperation> {
+   * requires a new draft version instead.
+   *
+   * A delete route must check for a pending operation on this target before
+   * looking up the now-hidden target (api-routes-documents.md §2.4 general
+   * rule): once the row is physically deleted, `findPage` can no longer
+   * distinguish "already deleted, replay" from "never existed", so the
+   * pending-operation check runs first and short-circuits to the replay
+   * response before any lookup that depends on the row still existing. */
+  async removePage(teacherId: string, pageId: string): Promise<{ operation: DeletionOperation; created: boolean }> {
+    const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'page', pageId);
+    if (pending) {
+      return {
+        operation: {
+          id: pending.id,
+          targetType: 'page',
+          targetId: pageId,
+          status: 'pending',
+          acceptedAt: toIso(pending.accepted_at_ms) as string,
+        },
+        created: false,
+      };
+    }
     const page = await this.deps.repo.findPage(teacherId, pageId);
     if (!page) throw notFound();
     const parentId = this.parentIdOf(page);
@@ -738,11 +758,14 @@ export class AssignmentReaderService {
       console.error('removePage: cleanup queue send failed', { operationId: deletionOperation.id, error });
     }
     return {
-      id: deletionOperation.id,
-      targetType: 'page',
-      targetId: pageId,
-      status: 'pending',
-      acceptedAt: toIso(deletionOperation.accepted_at_ms) as string,
+      operation: {
+        id: deletionOperation.id,
+        targetType: 'page',
+        targetId: pageId,
+        status: 'pending',
+        acceptedAt: toIso(deletionOperation.accepted_at_ms) as string,
+      },
+      created: true,
     };
   }
 

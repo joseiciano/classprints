@@ -330,6 +330,14 @@ const buildFakeRepository = (state: FakeState): AssignmentReaderRepository => {
       state.deletionOps.push(operation);
       return operation;
     },
+
+    async findPendingDeletionOperation(teacherId, targetType, targetId) {
+      return (
+        state.deletionOps.find(
+          (op) => op.target_type === targetType && op.target_id === targetId && op.status === 'pending',
+        ) ?? null
+      );
+    },
   };
 };
 
@@ -640,11 +648,28 @@ describe('AssignmentReaderService — remove page (TASK-011)', () => {
     state.pages.set('p3', newPageRow({ id: 'p3', materials_version_id: MATERIALS_DRAFT, position: 3 }));
     const queues = buildFakeQueues();
     const service = buildService(state, buildFakeImages(), queues);
-    const op = await service.removePage(TEACHER_A, 'p2');
-    expect(op.targetType).toBe('page');
-    expect(op.status).toBe('pending');
+    const result = await service.removePage(TEACHER_A, 'p2');
+    expect(result.created).toBe(true);
+    expect(result.operation.targetType).toBe('page');
+    expect(result.operation.status).toBe('pending');
     expect(state.pages.has('p2')).toBe(false);
     expect(state.pages.get('p3')?.position).toBe(2);
+    expect(queues.deletionSent).toHaveLength(1);
+  });
+
+  it('replays an already-accepted removal with the same pending operation instead of 404', async () => {
+    const state = freshState();
+    state.pages.set('p1', newPageRow({ id: 'p1', materials_version_id: MATERIALS_DRAFT, position: 1 }));
+    const queues = buildFakeQueues();
+    const service = buildService(state, buildFakeImages(), queues);
+    const first = await service.removePage(TEACHER_A, 'p1');
+    expect(first.created).toBe(true);
+    expect(state.pages.has('p1')).toBe(false);
+
+    const replay = await service.removePage(TEACHER_A, 'p1');
+    expect(replay.created).toBe(false);
+    expect(replay.operation).toEqual(first.operation);
+    // No second deletion operation or cleanup message is created on replay.
     expect(queues.deletionSent).toHaveLength(1);
   });
 
@@ -672,8 +697,8 @@ describe('AssignmentReaderService — remove page (TASK-011)', () => {
     );
     state.docs.set(SUBMISSION_1, { ...state.docs.get(SUBMISSION_1)!, class_status: 'archived' });
     const service = buildService(state);
-    const op = await service.removePage(TEACHER_A, 'p1');
-    expect(op.status).toBe('pending');
+    const result = await service.removePage(TEACHER_A, 'p1');
+    expect(result.operation.status).toBe('pending');
   });
 });
 

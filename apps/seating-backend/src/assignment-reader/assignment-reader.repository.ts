@@ -406,6 +406,11 @@ export interface AssignmentReaderRepository {
   removePageRow(teacherId: string, pageId: string): Promise<RemovePageResultRow | null>;
   findPageImageSource(teacherId: string, pageId: string): Promise<PageImageDeliveryRow | null>;
   createDeletionOperation(input: CreateDeletionOperationInput): Promise<DeletionOperationRow>;
+  findPendingDeletionOperation(
+    teacherId: string,
+    targetType: 'page',
+    targetId: string,
+  ): Promise<DeletionOperationRow | null>;
   // Processing (TASK-008): per-page canonical list for one document.
   listProcessing(options: ProcessingListOptions): Promise<ListResponse<ProcessingPageItem>>;
   // Submissions
@@ -471,6 +476,20 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
         )`;
     }
   };
+
+  /** Pages are owned by exactly one parent document (`materials_version_id`
+   * xor `submission_id`); this guards a page-level read/write against that
+   * parent being deletion-pending, matching `notDeletionPending`'s check for
+   * the parent's own route (api-routes-documents.md §1.9/§2.7). Unlike
+   * `notDeletionPending`, the target column is resolved per-row since a page
+   * query has no fixed parent alias to join on. */
+  const notDeletionPendingParent = (teacherId: string) => sql`
+    and not exists (
+      select 1 from deletion_operations d
+      where d.teacher_id = ${teacherId} and d.status = 'pending'
+        and d.target_id = coalesce(p.materials_version_id, p.submission_id)
+    )
+  `;
 
   /** Full page column list shared by every single/multi-row page read and
    * write-returning clause (TASK-010/TASK-011). */
@@ -550,6 +569,7 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
                p.uploaded_at_ms, p.created_at_ms, p.updated_at_ms
         from pages p
         where p.teacher_id = ${teacherId} and p.id = ${pageId}
+          ${notDeletionPendingParent(teacherId)}
         limit 1
       `;
       return rows[0] ?? null;
@@ -627,13 +647,23 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
         `;
         const row = rows[0];
         if (!row) throw new Error('Unable to insert page');
-        if (!isMaterials) {
+        // Uploading a page changes the current ordered page set, so
+        // documentRevision increments exactly once for this mutation
+        // (api-routes-documents.md §2.1/§2.2).
+        if (isMaterials) {
+          await tx`
+            update assignment_material_versions set
+              document_revision = document_revision + 1, updated_at_ms = ${now}
+            where id = ${input.materialsVersionId} and teacher_id = ${input.teacherId}
+          `;
+        } else {
           // Appending a page after an earlier confirmation invalidates it
           // (api-routes-documents.md §2.2); materials pages only ever upload
           // while the version is still an unconfirmed draft, so no analogous
           // reset is needed there.
           await tx`
             update submissions set
+              document_revision = document_revision + 1,
               draft_confirmed = false, confirmed_at_ms = null, review_state = null,
               grading_state = 'not_graded', graded_at_ms = null, updated_at_ms = ${now}
             where id = ${input.submissionId}
@@ -832,9 +862,21 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
 
     async findPageImageSource(teacherId, pageId) {
       const rows = await sql<PageImageDeliveryRow[]>`
-        select id, storage_key, teacher_id, class_id, assignment_id, document_type
-        from pages
-        where teacher_id = ${teacherId} and id = ${pageId}
+        select p.id, p.storage_key, p.teacher_id, p.class_id, p.assignment_id, p.document_type
+        from pages p
+        where p.teacher_id = ${teacherId} and p.id = ${pageId}
+          ${notDeletionPendingParent(teacherId)}
+        limit 1
+      `;
+      return rows[0] ?? null;
+    },
+
+    async findPendingDeletionOperation(teacherId, targetType, targetId) {
+      const rows = await sql<DeletionOperationRow[]>`
+        select id, target_type, target_id, status, accepted_at_ms
+        from deletion_operations
+        where teacher_id = ${teacherId} and target_type = ${targetType}
+          and target_id = ${targetId} and status = 'pending'
         limit 1
       `;
       return rows[0] ?? null;
