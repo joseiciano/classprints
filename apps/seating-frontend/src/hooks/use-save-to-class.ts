@@ -37,11 +37,23 @@ export function useSaveSeatingChartToClass(jobExternalId: string) {
     },
   });
 
+  const savedChart = mutation.data ?? null;
+  // The backend is idempotent per (classId, source job): if a chart was
+  // already saved to this class from a *different* result, saving again
+  // returns that original snapshot unchanged rather than persisting the
+  // newly selected one. Surface that mismatch so the UI doesn't claim the
+  // just-selected arrangement was saved when it wasn't.
+  const isReplayOfDifferentResult =
+    savedChart !== null &&
+    mutation.variables !== undefined &&
+    savedChart.sourceResultId !== mutation.variables.resultId;
+
   return {
     saveToClass: mutation.mutateAsync,
     isSaving: mutation.isPending,
     error: mutation.error,
     reset: mutation.reset,
-    savedChart: mutation.data ?? null,
+    savedChart,
+    isReplayOfDifferentResult,
   };
 }

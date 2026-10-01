@@ -10,7 +10,9 @@ import { SeatingApiError } from '../lib/seating-api';
  * Class selector and "Save to class" mutation (TASK-009). Copies the
  * currently selected seating result into a class-scoped snapshot. Saving
  * again for the same class replays the original snapshot rather than
- * creating a duplicate.
+ * creating a duplicate; if that replayed snapshot came from a different
+ * result than the one currently selected, the confirmation says so instead
+ * of implying the newly selected arrangement was saved.
  */
 export function SaveToClassButton({
   jobId,
@@ -72,7 +74,7 @@ function SaveToClassDialog({
   }, [query]);
 
   const { classes, isLoading: isLoadingClasses, error: listError } = useActiveClasses(debouncedQuery);
-  const { saveToClass, isSaving, error: saveError, savedChart, reset } =
+  const { saveToClass, isSaving, error: saveError, savedChart, isReplayOfDifferentResult, reset } =
     useSaveSeatingChartToClass(jobId);
 
   const handleSave = async () => {
@@ -121,10 +123,12 @@ function SaveToClassDialog({
       }
     >
       {savedChart ? (
-        <FormAlert tone="info">
+        <FormAlert tone={isReplayOfDifferentResult ? 'warning' : 'info'}>
           <span className="flex items-center gap-2">
             <Check aria-hidden="true" className="h-4 w-4 shrink-0" />
-            Saved to {savedChart.className}.
+            {isReplayOfDifferentResult
+              ? `${savedChart.className} already has a saved chart from a different arrangement. Your newly selected arrangement was not saved.`
+              : `Saved to ${savedChart.className}.`}
           </span>
         </FormAlert>
       ) : (
