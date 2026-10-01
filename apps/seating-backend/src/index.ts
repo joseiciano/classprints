@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import type { SeatingHonoEnv, SeatingWorkerBindings } from './types/env';
 import { registerSeatingRoutes } from './seating/seating.routes';
 import { registerUserRoutes } from './user/user.routes';
+import { registerAssignmentReaderRoutes } from './assignment-reader/assignment-reader.routes';
 import {
   registerAuthController,
   requireAuth,
@@ -15,7 +16,7 @@ import { getCsrfHeaderName } from '@classprints/shared';
 import { createDb } from './lib/db';
 import { EmailSender, renderVerificationTemplate } from '@classprints/server/email';
 import { isHttpError } from '@classprints/server/http';
-import { createRateLimitMiddleware } from '@classprints/server/middleware';
+import { createRateLimitMiddleware, requireCsrf } from '@classprints/server/middleware';
 import type { ExecutionContext } from '@cloudflare/workers-types';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
@@ -184,13 +185,21 @@ export const buildApp = (options: AppOptions = {}) => {
 
   const userApp = new Hono<HonoEnv>();
   userApp.use('*', requireAuth(authDeps));
+  userApp.use('*', requireCsrf());
   registerUserRoutes(userApp);
   app.route('/api/v1', userApp);
 
   const seatingApp = new Hono<HonoEnv>();
   seatingApp.use('/seating/*', requireAuth(authDeps));
+  seatingApp.use('/seating/*', requireCsrf());
   registerSeatingRoutes(seatingApp);
   app.route('/api/v1', seatingApp);
+
+  const assignmentReaderApp = new Hono<HonoEnv>();
+  assignmentReaderApp.use('*', requireAuth(authDeps));
+  assignmentReaderApp.use('*', requireCsrf());
+  registerAssignmentReaderRoutes(assignmentReaderApp);
+  app.route('/api/v1', assignmentReaderApp);
 
   return app;
 };

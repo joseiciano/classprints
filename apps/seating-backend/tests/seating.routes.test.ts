@@ -6,6 +6,14 @@ import type { SeatingJob, SeatingResult } from '@classprints/seating-shared';
 import type { BillingService } from '@classprints/server/billing';
 import type * as BillingModule from '@classprints/server/billing';
 
+// Double-submit CSRF (api-manifest.md §1.1): mutating requests must carry the
+// session marker cookie and the matching header. GETs are exempt.
+const CSRF_TOKEN = 'test-csrf-token';
+const CSRF_HEADERS = {
+  Cookie: `seating_csrf_token=${CSRF_TOKEN}`,
+  'X-CSRF-Token': CSRF_TOKEN,
+};
+
 class RouteTestRepository implements SeatingRepository {
   private jobs = new Map<string, SeatingJob>();
   private results = new Map<string, SeatingResult[]>();
@@ -146,7 +154,7 @@ describe('Seating Routes', () => {
     const req = new Request('http://localhost/api/v1/seating', {
       method: 'POST',
       body: JSON.stringify(payload),
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CSRF_HEADERS },
     });
 
     const res = await app.fetch(req, createEnv() as any);
@@ -161,7 +169,7 @@ describe('Seating Routes', () => {
     const req = new Request('http://localhost/api/v1/seating', {
       method: 'POST',
       body: JSON.stringify(payload),
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CSRF_HEADERS },
     });
 
     const res = await app.fetch(req, createEnv() as any);
@@ -176,7 +184,7 @@ describe('Seating Routes', () => {
       new Request('http://localhost/api/v1/seating', {
         method: 'POST',
         body: JSON.stringify(payload),
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...CSRF_HEADERS },
       }),
       createEnv() as any,
     );
@@ -198,7 +206,7 @@ describe('Seating Routes', () => {
       new Request('http://localhost/api/v1/seating', {
         method: 'POST',
         body: JSON.stringify(payload),
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...CSRF_HEADERS },
       }),
       createEnv() as any,
     );
@@ -230,7 +238,7 @@ describe('Seating Routes', () => {
       new Request('http://localhost/api/v1/seating', {
         method: 'POST',
         body: JSON.stringify(payload),
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...CSRF_HEADERS },
       }),
       createEnv() as any,
     );
@@ -248,7 +256,7 @@ describe('Seating Routes', () => {
       new Request('http://localhost/api/v1/seating', {
         method: 'POST',
         body: JSON.stringify(payload),
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...CSRF_HEADERS },
       }),
       createEnv() as any,
     );

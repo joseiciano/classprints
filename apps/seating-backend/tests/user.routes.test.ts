@@ -49,6 +49,14 @@ vi.mock('@classprints/server/billing', async (importOriginal) => {
   };
 });
 
+// Double-submit CSRF (api-manifest.md §1.1): mutating requests must carry the
+// session marker cookie and the matching header. GETs are exempt.
+const CSRF_TOKEN = 'test-csrf-token';
+const CSRF_HEADERS = {
+  Cookie: `seating_csrf_token=${CSRF_TOKEN}`,
+  'X-CSRF-Token': CSRF_TOKEN,
+};
+
 describe('User Routes', () => {
   const app = buildApp();
 
@@ -85,6 +93,7 @@ describe('User Routes', () => {
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer mock-token',
+          ...CSRF_HEADERS,
         },
       });
 
@@ -112,6 +121,7 @@ describe('User Routes', () => {
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer mock-token',
+          ...CSRF_HEADERS,
         },
       });
 
@@ -131,6 +141,7 @@ describe('User Routes', () => {
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer mock-token',
+          ...CSRF_HEADERS,
         },
       });
 
@@ -157,6 +168,7 @@ describe('User Routes', () => {
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer mock-token',
+          ...CSRF_HEADERS,
         },
       });
 
@@ -174,6 +186,7 @@ describe('User Routes', () => {
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer invalid-token',
+          ...CSRF_HEADERS,
         },
       });
 
