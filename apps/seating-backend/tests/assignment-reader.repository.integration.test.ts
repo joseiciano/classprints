@@ -369,13 +369,19 @@ d('integration: assignment-reader repository against live Postgres', () => {
       expect(page.started_at_ms).toBeNull();
       expect(page.completed_at_ms).toBeNull();
       expect(page.queued_at_ms).not.toBeNull();
-      // A new transcription attempt starts with no edits or review (TASK-015
-      // regression: these must not leak from the superseded page_revision).
-      expect(page.content_revision).toBe(0);
+      // A new transcription attempt starts with no review of its (not yet
+      // existing) content, and `editedByTeacher` describes only the current
+      // revision's draft (TASK-015 regression: these must not leak from the
+      // superseded page_revision). `contentRevision` and `teacherEditCount`
+      // are teacher-edit-scoped counters that retry must leave untouched
+      // (api-routes-documents.md: "contentRevision is teacher-edit-scoped
+      // and is not incremented by upload, replacement, retry, or
+      // retranscription").
+      expect(page.content_revision).toBe(3);
       expect(page.reviewed_content_revision).toBeNull();
       expect(page.reviewed_at_ms).toBeNull();
       expect(page.edited_by_teacher).toBe(false);
-      expect(page.teacher_edit_count).toBe(0);
+      expect(page.teacher_edit_count).toBe(2);
 
       // The untouched sibling keeps its own revision and completed draft.
       const sibling = await readPage(siblingPageId);
@@ -483,15 +489,20 @@ d('integration: assignment-reader repository against live Postgres', () => {
       expect(p1.draft).toBeNull();
       expect(p1.completed_at_ms).toBeNull();
       expect(p1.started_at_ms).toBeNull();
-      // TASK-015 regression: a fresh transcription attempt must not keep
-      // the superseded revision's teacher-edit/review state, otherwise
+      // TASK-015 regression: a fresh transcription attempt must not keep the
+      // superseded revision's review state or `editedByTeacher` flag (which
+      // describes only the current revision's draft), otherwise
       // evaluateRetranscriptionConsent() would permanently require
       // overwriteTeacherEdits consent for a page nobody has edited yet.
-      expect(p1.content_revision).toBe(0);
+      // `contentRevision` and `teacherEditCount` are teacher-edit-scoped
+      // counters that retranscription must leave untouched
+      // (api-routes-documents.md §3.4: "queue every current page without
+      // changing page IDs, order, or contentRevision").
+      expect(p1.content_revision).toBe(4);
       expect(p1.reviewed_content_revision).toBeNull();
       expect(p1.reviewed_at_ms).toBeNull();
       expect(p1.edited_by_teacher).toBe(false);
-      expect(p1.teacher_edit_count).toBe(0);
+      expect(p1.teacher_edit_count).toBe(3);
 
       const submission = await readSubmissionFull(scope.submissionId);
       expect(submission.document_revision).toBe(3);
