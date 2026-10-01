@@ -89,10 +89,6 @@ function SaveToClassDialog({
     onOpenChange(next);
   };
 
-  const savedToClassName = savedChart
-    ? classes.find((c) => c.id === savedChart.classId)?.name
-    : undefined;
-
   return (
     <Dialog
       open={open}
@@ -128,7 +124,7 @@ function SaveToClassDialog({
         <FormAlert tone="info">
           <span className="flex items-center gap-2">
             <Check aria-hidden="true" className="h-4 w-4 shrink-0" />
-            Saved to {savedToClassName ?? 'the selected class'}.
+            Saved to {savedChart.className}.
           </span>
         </FormAlert>
       ) : (
