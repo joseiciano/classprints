@@ -2,13 +2,13 @@
 ticket: 6
 phase: "Implementation Phase 6"
 goal: GOAL-006
-status: Not Started
+status: Completed
 date_created: 2026-10-01
 ---
 
 # Ticket 6: Implement review, grading, and deletion APIs
 
-![Status: Not Started](https://img.shields.io/badge/status-Not%20Started-lightgrey)
+![Status: Completed](https://img.shields.io/badge/status-Completed-brightgreen)
 
 Part of [Assignment Reader MVP plan](../feature-assignment-reader-1.md). Builds on [Ticket 2](2-persistence-and-infrastructure-foundations.md), [Ticket 3](3-hierarchy-lists-and-saved-seating-charts.md), [Ticket 4](4-upload-and-authenticated-image-delivery.md), and [Ticket 5](5-transcription-retry-and-progress-services.md).
 
@@ -16,7 +16,7 @@ Part of [Assignment Reader MVP plan](../feature-assignment-reader-1.md). Builds 
 
 ## Tasks
 
-- [ ] **TASK-016**: Implement draft editing and revision-aware page review.
+- [x] **TASK-016**: Implement draft editing and revision-aware page review.
   - Add `PATCH /api/v1/pages/:pageId/draft` with validated JSON and required `expectedContentRevision`; update with compare-and-swap and return `409` on stale revision.
   - Increment `content_revision` and `teacher_edit_count`, set `edited_by_teacher`, supersede the current page-review record, and atomically apply REQ-016 state invalidation.
   - Add `POST /api/v1/pages/:pageId/review` to persist the current content revision and `POST /api/v1/documents/:documentType/:documentId/mark-ready` gated on every current page being completed and reviewed at its current revision.
@@ -24,7 +24,7 @@ Part of [Assignment Reader MVP plan](../feature-assignment-reader-1.md). Builds 
   - Dependencies: TASK-007 ([Ticket 3](3-hierarchy-lists-and-saved-seating-charts.md)) and TASK-014 ([Ticket 5](5-transcription-retry-and-progress-services.md)).
   - Acceptance: autosave survives reload, conflicting edits do not overwrite, stale review evidence cannot unlock readiness, and API calls cannot bypass the full-document gate.
 
-- [ ] **TASK-017**: Implement materials context, question judgments, and submission grading.
+- [x] **TASK-017**: Implement materials context, question judgments, and submission grading.
   - Add idempotent PAT-002 review-context capture; material version history/current endpoints; and current/historical workspace responses.
   - Add question judgment mutations keyed by current stable segment ID and expected transcription revision; accept only teacher-authored judgment/points/comment fields.
   - Add submission grading draft mutation and `mark-graded`; validate score rules and require `ready_to_grade`. `return-to-needs-review` clears graded state/timestamp but retains draft grading fields for later revision.
@@ -32,7 +32,7 @@ Part of [Assignment Reader MVP plan](../feature-assignment-reader-1.md). Builds 
   - Dependencies: TASK-016 (this ticket).
   - Acceptance: materials have no grading endpoints, no model field can set a grade, uncertain pages work with zero question rows, score limits hold in DB and service, and reopening removes graded visibility without deleting draft judgments.
 
-- [ ] **TASK-018**: Integrate idempotent relational/R2 deletion and account deletion.
+- [x] **TASK-018**: Integrate idempotent relational/R2 deletion and account deletion.
   - Add destructive API commands for page, materials document, submission, student data, assignment, and class. Each command creates one operation plus one object row per current/historical key, marks the scope deletion-pending, and enqueues only the operation ID for the [Ticket 2](2-persistence-and-infrastructure-foundations.md) TASK-006 cleanup consumer.
   - Ensure each scope enumerates all descendant rows and current/historical R2 keys before it becomes unavailable; relational finalization occurs only after the cleanup consumer marks every object complete.
   - Extend `apps/seating-backend/src/user/user.routes.ts` so account deletion soft-disables access immediately, cancels billing as today, schedules all Assignment Reader keys/data, and returns an accepted/pending response. Update `apps/seating-frontend/src/hooks/use-delete-account.ts` for that response without restoring access.
