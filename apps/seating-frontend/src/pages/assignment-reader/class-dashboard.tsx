@@ -45,7 +45,7 @@ const TABS: { id: ClassDashboardTab; label: string }[] = [
   { id: 'seating-charts', label: 'Seating Charts' },
 ];
 
-const tabDefaults: Record<ClassDashboardTab, Omit<ClassDashboardSearch, 'tab'>> = {
+export const classDashboardTabDefaults: Record<ClassDashboardTab, Omit<ClassDashboardSearch, 'tab'>> = {
   assignments: defaultAssignmentsSearch,
   roster: defaultRosterSearch,
   'seating-charts': defaultSeatingChartsSearch,
@@ -105,7 +105,7 @@ export function ClassDashboardPage({
   const isArchived = classRecord.status === 'archived';
 
   const setTab = (tab: ClassDashboardTab) => {
-    onSearchChange({ tab, ...tabDefaults[tab] });
+    onSearchChange({ tab, ...classDashboardTabDefaults[tab] });
   };
 
   return (

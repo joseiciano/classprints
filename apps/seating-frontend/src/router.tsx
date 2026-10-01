@@ -9,6 +9,7 @@ import {
   useLocation,
 } from '@tanstack/react-router';
 import {
+  BookOpen,
   CreditCard,
   LayoutGrid,
   LogOut,
@@ -23,6 +24,20 @@ import { LoadingScreen } from './components/ui/loading-screen';
 import { Logo } from './components/ui/logo';
 import { ThemeToggle } from './components/ui/theme-toggle';
 import { AuthCallbackPage } from './pages/auth-callback';
+import {
+  AssignmentDetailPage,
+} from './pages/assignment-reader/assignment-detail';
+import {
+  ClassDashboardPage,
+  classDashboardTabDefaults,
+  type ClassDashboardSearch,
+  type ClassDashboardTab,
+} from './pages/assignment-reader/class-dashboard';
+import { ClassesPage, defaultClassesSearch, type ClassesSearch } from './pages/assignment-reader/classes';
+import { DocumentProcessingPage } from './pages/assignment-reader/document-processing';
+import { DocumentUploadPage } from './pages/assignment-reader/document-upload';
+import { DocumentWorkspacePage } from './pages/assignment-reader/document-workspace';
+import { defaultSubmissionsSearch, type SubmissionsSearch } from './components/assignment-reader/submissions-panel';
 import { ConfigsArrangementPage } from './pages/configs-arrangement';
 import { ConfigsPage } from './pages/configs';
 import { CreateArrangementPage } from './pages/create-arrangement';
@@ -42,13 +57,15 @@ import { useSubscription } from './hooks/use-subscription';
 import { APPLICATION_NAME } from './lib/constants';
 import { useAuth } from './providers/auth-provider';
 import type { AuthUser } from '@classprints/shared';
+import type { DocumentType } from '@classprints/assignment-reader-shared';
 
 const APP_LINKS = [
-  { label: 'Charts', to: '/charts', icon: LayoutGrid, exact: false },
-  { label: 'Configs', to: '/configs', icon: SlidersHorizontal, exact: true },
-  { label: 'New chart', to: '/create-arrangement', icon: Plus, exact: true },
-  { label: 'Settings', to: '/settings', icon: Settings, exact: true },
-  { label: 'Pricing', to: '/pricing', icon: CreditCard, exact: true },
+  { label: 'Classes', to: '/classes', icon: BookOpen, exact: false, section: undefined },
+  { label: 'Charts', to: '/charts', icon: LayoutGrid, exact: false, section: undefined },
+  { label: 'Configs', to: '/configs', icon: SlidersHorizontal, exact: true, section: undefined },
+  { label: 'New chart', to: '/create-arrangement', icon: Plus, exact: true, section: 'Create' },
+  { label: 'Settings', to: '/settings', icon: Settings, exact: true, section: 'Account' },
+  { label: 'Pricing', to: '/pricing', icon: CreditCard, exact: true, section: undefined },
 ] as const;
 
 type AuthSnapshot = { user: AuthUser | null; initializing: boolean };
@@ -195,6 +212,107 @@ const jobDetailRoute = createRoute({
   component: JobDetailRouteComponent,
 });
 
+// ——— Assignment Reader: classes, assignments, and documents (TASK-019) ———————
+
+function readString(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function readDirection(value: unknown, fallback: 'asc' | 'desc'): 'asc' | 'desc' {
+  return value === 'asc' || value === 'desc' ? value : fallback;
+}
+
+function readPage(value: unknown, fallback: number): number {
+  const page = typeof value === 'string' ? Number(value) : value;
+  return typeof page === 'number' && Number.isInteger(page) && page >= 1 ? page : fallback;
+}
+
+function readOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+const CLASS_SORT_VALUES = ['createdAt', 'name', 'studentCount', 'assignmentCount', 'status'] as const;
+
+function validateClassesSearch(search: Record<string, unknown>): ClassesSearch {
+  const sort = CLASS_SORT_VALUES.includes(search.sort as (typeof CLASS_SORT_VALUES)[number])
+    ? (search.sort as ClassesSearch['sort'])
+    : defaultClassesSearch.sort;
+  return {
+    q: readString(search.q, ''),
+    sort,
+    direction: readDirection(search.direction, defaultClassesSearch.direction),
+    page: readPage(search.page, defaultClassesSearch.page),
+    status: search.status === 'active' || search.status === 'archived' ? search.status : undefined,
+  };
+}
+
+function validateClassDashboardSearch(search: Record<string, unknown>): ClassDashboardSearch {
+  const tab: ClassDashboardTab =
+    search.tab === 'roster' || search.tab === 'seating-charts' ? search.tab : 'assignments';
+  const defaults = classDashboardTabDefaults[tab];
+  return {
+    tab,
+    q: readString(search.q, defaults.q),
+    sort: readString(search.sort, defaults.sort),
+    direction: readDirection(search.direction, defaults.direction),
+    page: readPage(search.page, defaults.page),
+    status: readOptionalString(search.status) ?? defaults.status,
+  };
+}
+
+function validateSubmissionsSearch(search: Record<string, unknown>): SubmissionsSearch {
+  return {
+    q: readString(search.q, ''),
+    sort: (readOptionalString(search.sort) as SubmissionsSearch['sort']) ?? defaultSubmissionsSearch.sort,
+    direction: readDirection(search.direction, defaultSubmissionsSearch.direction),
+    page: readPage(search.page, defaultSubmissionsSearch.page),
+    status: readOptionalString(search.status) as SubmissionsSearch['status'],
+  };
+}
+
+function asDocumentType(value: string): DocumentType {
+  return value === 'submission' ? 'submission' : 'materials';
+}
+
+const classesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/classes',
+  component: ClassesRouteComponent,
+  validateSearch: validateClassesSearch,
+});
+
+const classDashboardRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/classes/$classId',
+  component: ClassDashboardRouteComponent,
+  validateSearch: validateClassDashboardSearch,
+});
+
+const assignmentDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/classes/$classId/assignments/$assignmentId',
+  component: AssignmentDetailRouteComponent,
+  validateSearch: validateSubmissionsSearch,
+});
+
+const documentUploadRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/upload',
+  component: DocumentUploadRouteComponent,
+});
+
+const documentProcessingRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/processing',
+  component: DocumentProcessingRouteComponent,
+});
+
+const documentWorkspaceRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/workspace',
+  component: DocumentWorkspaceRouteComponent,
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/settings',
@@ -233,6 +351,12 @@ const routeTree = rootRoute.addChildren([
     configsArrangementRoute,
     jobsRoute,
     jobDetailRoute,
+    classesRoute,
+    classDashboardRoute,
+    assignmentDetailRoute,
+    documentUploadRoute,
+    documentProcessingRoute,
+    documentWorkspaceRoute,
     settingsRoute,
   ]),
   signOutRoute,
@@ -481,16 +605,11 @@ function AppSidebar() {
         <BrandLink />
       </div>
       <nav aria-label="Workspace navigation" className="flex flex-col gap-0.5">
-        {APP_LINKS.map(({ label, to, icon: Icon, exact }, index) => (
+        {APP_LINKS.map(({ label, to, icon: Icon, exact, section }) => (
           <div key={to}>
-            {index === 2 ? (
+            {section ? (
               <p className="px-3 pb-1 pt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3">
-                Create
-              </p>
-            ) : null}
-            {index === 3 ? (
-              <p className="px-3 pb-1 pt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3">
-                Account
+                {section}
               </p>
             ) : null}
             <Link
@@ -607,4 +726,80 @@ function useFocusTrap(
 function JobDetailRouteComponent() {
   const { jobId } = jobDetailRoute.useParams();
   return <JobDetailPage jobId={jobId} />;
+}
+
+function ClassesRouteComponent() {
+  const search = classesRoute.useSearch();
+  const navigate = classesRoute.useNavigate();
+  return (
+    <ClassesPage
+      search={search}
+      onSearchChange={(next) => void navigate({ search: (prev) => ({ ...prev, ...next }) })}
+    />
+  );
+}
+
+function ClassDashboardRouteComponent() {
+  const { classId } = classDashboardRoute.useParams();
+  const search = classDashboardRoute.useSearch();
+  const navigate = classDashboardRoute.useNavigate();
+  return (
+    <ClassDashboardPage
+      classId={classId}
+      search={search}
+      onSearchChange={(next) => void navigate({ search: next })}
+    />
+  );
+}
+
+function AssignmentDetailRouteComponent() {
+  const { classId, assignmentId } = assignmentDetailRoute.useParams();
+  const search = assignmentDetailRoute.useSearch();
+  const navigate = assignmentDetailRoute.useNavigate();
+  return (
+    <AssignmentDetailPage
+      classId={classId}
+      assignmentId={assignmentId}
+      submissionsSearch={search}
+      onSubmissionsSearchChange={(next) =>
+        void navigate({ search: (prev) => ({ ...prev, ...next }) })
+      }
+    />
+  );
+}
+
+function DocumentUploadRouteComponent() {
+  const { classId, assignmentId, documentType, documentId } = documentUploadRoute.useParams();
+  return (
+    <DocumentUploadPage
+      classId={classId}
+      assignmentId={assignmentId}
+      documentType={asDocumentType(documentType)}
+      documentId={documentId}
+    />
+  );
+}
+
+function DocumentProcessingRouteComponent() {
+  const { classId, assignmentId, documentType, documentId } = documentProcessingRoute.useParams();
+  return (
+    <DocumentProcessingPage
+      classId={classId}
+      assignmentId={assignmentId}
+      documentType={asDocumentType(documentType)}
+      documentId={documentId}
+    />
+  );
+}
+
+function DocumentWorkspaceRouteComponent() {
+  const { classId, assignmentId, documentType, documentId } = documentWorkspaceRoute.useParams();
+  return (
+    <DocumentWorkspacePage
+      classId={classId}
+      assignmentId={assignmentId}
+      documentType={asDocumentType(documentType)}
+      documentId={documentId}
+    />
+  );
 }
