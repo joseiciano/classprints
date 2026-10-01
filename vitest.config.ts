@@ -7,7 +7,11 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['apps/**/tests/**/*.test.ts', 'apps/**/tests/**/*.test.tsx'],
+    include: [
+      'apps/**/tests/**/*.test.ts',
+      'apps/**/tests/**/*.test.tsx',
+      'packages/**/tests/**/*.test.ts',
+    ],
     setupFiles: [resolvePath('tests/vitest.setup.ts')],
   },
   esbuild: {
@@ -37,6 +41,14 @@ export default defineConfig({
       {
         find: '@hono-rate-limiter/cloudflare',
         replacement: resolvePath('tests/mocks/hono-rate-limiter-cloudflare.ts'),
+      },
+      {
+        find: /^@classprints\/assignment-reader-shared\/(.*)$/,
+        replacement: resolvePath('packages/assignment-reader-shared/src/$1'),
+      },
+      {
+        find: '@classprints/assignment-reader-shared',
+        replacement: resolvePath('packages/assignment-reader-shared/src/index.ts'),
       },
     ],
   },
