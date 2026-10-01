@@ -100,3 +100,43 @@ export function uploadWithConcurrency<T, R>(
     }
   });
 }
+
+export interface ConcurrencyLimiter {
+  /** Runs `task` once a slot is free, sharing the limiter's ceiling with every other call. */
+  run<T>(task: () => Promise<T>): Promise<T>;
+}
+
+/**
+ * A persistent bounded-concurrency gate. Unlike `uploadWithConcurrency`
+ * (which drives one fixed batch to completion and then stops), a limiter
+ * stays alive across calls: tasks submitted from separate invocations — a
+ * second file picker selection, a later single-file replace — still share
+ * the same `concurrency` ceiling instead of each spinning up its own
+ * independent pool. Create one per document (e.g. via `useRef`) so the
+ * document-wide number of in-flight uploads never exceeds `concurrency`.
+ */
+export function createConcurrencyLimiter(concurrency: number): ConcurrencyLimiter {
+  let active = 0;
+  const queue: Array<() => void> = [];
+
+  const run = <T,>(task: () => Promise<T>): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      const attempt = () => {
+        active += 1;
+        task()
+          .then(resolve, reject)
+          .finally(() => {
+            active -= 1;
+            const next = queue.shift();
+            if (next) next();
+          });
+      };
+      if (active < concurrency) {
+        attempt();
+      } else {
+        queue.push(attempt);
+      }
+    });
+
+  return { run };
+}

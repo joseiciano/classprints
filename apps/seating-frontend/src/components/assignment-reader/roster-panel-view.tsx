@@ -1,23 +1,49 @@
 import { Pencil, Plus, UserMinus, UserX } from 'lucide-react';
-import type { StudentRecord } from '@classprints/assignment-reader-shared';
+import type { StudentListQuery, StudentRecord } from '@classprints/assignment-reader-shared';
 import { formatDate } from '../../lib/assignment-reader-format';
 import { Button } from '../ui/button';
+import { CanonicalList, type CanonicalListColumn } from './canonical-list';
+
+const STATUS_OPTIONS: { value: StudentListQuery['status']; label: string }[] = [
+  { value: undefined, label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'removed', label: 'Removed' },
+];
 
 export interface RosterPanelViewProps {
   students: StudentRecord[];
   /** True under an archived class: every mutation control is disabled. */
   readOnly?: boolean;
   isLoading?: boolean;
+  isFetching?: boolean;
   error?: unknown;
   onRetry?: () => void;
   onAddStudent?: () => void;
   onRenameStudent?: (student: StudentRecord) => void;
   onRemoveStudent?: (student: StudentRecord) => void;
   onDeleteStudentData?: (student: StudentRecord) => void;
+
+  /** Current `q` value from the route's search params (the source of truth). */
+  search?: string;
+  onSearchChange?: (value: string) => void;
+  sort?: StudentListQuery['sort'];
+  direction?: NonNullable<StudentListQuery['direction']>;
+  onSortChange?: (sort: string, direction: 'asc' | 'desc') => void;
+  page?: number;
+  totalPages?: number;
+  totalItems?: number;
+  onPageChange?: (page: number) => void;
+  statusFilter?: StudentListQuery['status'];
+  onStatusFilterChange?: (status: StudentListQuery['status']) => void;
 }
 
 /**
- * Pure roster view (TASK-020's "roster management" smart/view pair). An
+ * Pure roster view (TASK-020's "roster management" smart/view pair), built
+ * on the same canonical-list search/sort/pagination affordances as every
+ * other roster-backed surface (REQ-003): the roster is a full
+ * `StudentListQuery`, not just the first page of active students, so this
+ * view exposes search, sortable columns, a status filter, and pagination
+ * rather than silently truncating at the server's 10-per-page ceiling. An
  * archived class is read-only end to end: Add, Rename, Remove, and
  * Delete-data are all disabled, since the sanctioned destructive action for
  * an archived class is deleting the whole class, not its individual
@@ -27,109 +53,133 @@ export function RosterPanelView({
   students,
   readOnly = false,
   isLoading = false,
+  isFetching = false,
   error,
   onRetry,
   onAddStudent,
   onRenameStudent,
   onRemoveStudent,
   onDeleteStudentData,
+  search = '',
+  onSearchChange = () => {},
+  sort,
+  direction = 'asc',
+  onSortChange = () => {},
+  page = 1,
+  totalPages = students.length > 0 ? 1 : 0,
+  totalItems = students.length,
+  onPageChange = () => {},
+  statusFilter,
+  onStatusFilterChange = () => {},
 }: RosterPanelViewProps) {
+  const columns: CanonicalListColumn<StudentRecord>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      sortable: true,
+      render: (student) => <span className="font-medium text-foreground">{student.name}</span>,
+    },
+    {
+      key: 'createdAt',
+      header: 'Added',
+      sortable: true,
+      render: (student) => formatDate(student.createdAt),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      render: (student) => (student.status === 'active' ? 'Active' : 'Removed'),
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: (student) => (
+        <div className="inline-flex items-center gap-1">
+          <IconButton
+            label={`Rename ${student.name}`}
+            icon={Pencil}
+            disabled={readOnly || student.status !== 'active'}
+            onClick={() => onRenameStudent?.(student)}
+          />
+          <IconButton
+            label={`Remove ${student.name} from roster`}
+            icon={UserMinus}
+            disabled={readOnly || student.status !== 'active'}
+            onClick={() => onRemoveStudent?.(student)}
+          />
+          <IconButton
+            label={`Delete ${student.name}'s data`}
+            icon={UserX}
+            tone="destructive"
+            disabled={readOnly}
+            onClick={() => onDeleteStudentData?.(student)}
+          />
+        </div>
+      ),
+      headerClassName: 'w-28',
+      cellClassName: 'text-right',
+    },
+  ];
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-xl font-medium text-foreground">Roster</h2>
-        <Button type="button" size="sm" disabled={readOnly} onClick={onAddStudent}>
-          <Plus aria-hidden="true" className="h-4 w-4" />
-          Add student
-        </Button>
       </div>
 
-      {error ? (
-        <div
-          role="alert"
-          className="flex flex-col gap-3 rounded-[12px] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
-        >
-          <span>Unable to load the roster.</span>
-          {onRetry ? (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="min-h-9 shrink-0 rounded-full border border-destructive/30 bg-card px-3.5 py-1.5 text-[13px] font-semibold text-foreground transition hover:border-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
-            >
-              Try again
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
-      {isLoading ? (
-        <div className="space-y-2" aria-hidden="true">
-          {Array.from({ length: 3 }, (_, index) => (
-            <div key={index} className="h-12 rounded-[10px] border border-border bg-card motion-safe:animate-pulse" />
-          ))}
-        </div>
-      ) : students.length === 0 ? (
-        <div role="status" className="rounded-[12px] border border-dashed border-border bg-card px-6 py-10 text-center">
-          <p className="font-display text-xl font-medium text-foreground">No students yet.</p>
-          <p className="mt-1 text-sm text-muted-foreground">Add your first roster student.</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-[12px] border border-border bg-card">
-          <table className="w-full min-w-[420px] border-collapse text-left text-sm">
-            <caption className="sr-only">Roster</caption>
-            <thead>
-              <tr className="border-b border-border">
-                <th scope="col" className="px-4 py-3 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                  Name
-                </th>
-                <th scope="col" className="px-4 py-3 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                  Added
-                </th>
-                <th scope="col" className="px-4 py-3 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                  Status
-                </th>
-                <th scope="col" className="px-4 py-3 text-right font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => (
-                <tr key={student.id} className="border-b border-border last:border-b-0">
-                  <td className="px-4 py-3 font-medium text-foreground">{student.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(student.createdAt)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {student.status === 'active' ? 'Active' : 'Removed'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="inline-flex items-center gap-1">
-                      <IconButton
-                        label={`Rename ${student.name}`}
-                        icon={Pencil}
-                        disabled={readOnly || student.status !== 'active'}
-                        onClick={() => onRenameStudent?.(student)}
-                      />
-                      <IconButton
-                        label={`Remove ${student.name} from roster`}
-                        icon={UserMinus}
-                        disabled={readOnly || student.status !== 'active'}
-                        onClick={() => onRemoveStudent?.(student)}
-                      />
-                      <IconButton
-                        label={`Delete ${student.name}'s data`}
-                        icon={UserX}
-                        tone="destructive"
-                        disabled={readOnly}
-                        onClick={() => onDeleteStudentData?.(student)}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <CanonicalList<StudentRecord>
+        ariaLabel="Roster"
+        columns={columns}
+        rows={students}
+        getRowId={(student) => student.id}
+        search={search}
+        onSearchChange={(value) => onSearchChange(value)}
+        searchLabel="Search roster"
+        searchPlaceholder="Search by name…"
+        sort={sort}
+        direction={direction}
+        onSortChange={onSortChange}
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        onPageChange={onPageChange}
+        isLoading={isLoading}
+        isFetching={isFetching}
+        error={error}
+        onRetry={onRetry}
+        emptyState={
+          <>
+            <p className="font-display text-xl font-medium text-foreground">No students yet.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Add your first roster student.</p>
+          </>
+        }
+        noMatchesFor={(value) => (
+          <p className="text-sm text-muted-foreground">No students match “{value}”.</p>
+        )}
+        toolbarEnd={
+          <Button type="button" size="sm" disabled={readOnly} onClick={onAddStudent}>
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            Add student
+          </Button>
+        }
+        filters={
+          <select
+            aria-label="Filter by status"
+            value={statusFilter ?? ''}
+            onChange={(event) =>
+              onStatusFilterChange((event.target.value || undefined) as StudentListQuery['status'])
+            }
+            className="min-h-9 rounded-full border border-border bg-card px-3 text-[13px] font-medium text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
+          >
+            {STATUS_OPTIONS.map((option) => (
+              <option key={option.label} value={option.value ?? ''}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        }
+      />
     </div>
   );
 }

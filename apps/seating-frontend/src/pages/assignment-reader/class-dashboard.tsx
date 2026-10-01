@@ -8,7 +8,11 @@ import {
 } from '../../components/assignment-reader/assignments-tab';
 import { ConfirmActionDialog } from '../../components/assignment-reader/confirm-action-dialog';
 import { ClassFormDialog } from '../../components/assignment-reader/class-form-dialog';
-import { RosterPanel } from '../../components/assignment-reader/roster-panel';
+import {
+  defaultRosterSearch,
+  RosterPanel,
+  type RosterPanelSearch,
+} from '../../components/assignment-reader/roster-panel';
 import {
   defaultSeatingChartsSearch,
   SeatingChartsTab,
@@ -52,12 +56,9 @@ const TABS: { id: ClassDashboardTab; label: string }[] = [
   { id: 'seating-charts', label: 'Seating Charts' },
 ];
 
-// The Roster panel has no search/sort/pagination of its own (it isn't one
-// of REQ-003's canonical-list surfaces), so switching to it just reuses the
-// Assignments defaults as inert filler for the shared search shape.
 export const classDashboardTabDefaults: Record<ClassDashboardTab, Omit<ClassDashboardSearch, 'tab'>> = {
   assignments: defaultAssignmentsSearch,
-  roster: defaultAssignmentsSearch,
+  roster: defaultRosterSearch,
   'seating-charts': defaultSeatingChartsSearch,
 };
 
@@ -191,7 +192,12 @@ export function ClassDashboardPage({
             onSearchChange={(next) => onSearchChange({ ...search, ...next })}
           />
         ) : search.tab === 'roster' ? (
-          <RosterPanel classId={classId} isArchived={isArchived} />
+          <RosterPanel
+            classId={classId}
+            isArchived={isArchived}
+            search={search as unknown as RosterPanelSearch}
+            onSearchChange={(next) => onSearchChange({ ...search, ...next })}
+          />
         ) : (
           <SeatingChartsTab
             classId={classId}

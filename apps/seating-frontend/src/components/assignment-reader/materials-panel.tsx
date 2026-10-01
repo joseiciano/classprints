@@ -48,12 +48,15 @@ export function MaterialsPanel({
   isArchived: boolean;
 }) {
   const navigate = useNavigate();
-  const { data, isLoading, error } = useMaterialVersionsList(assignmentId, 1);
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error } = useMaterialVersionsList(assignmentId, page);
   const createDraft = useCreateDraftMaterialVersion(assignmentId);
   const deleteMaterials = useDeleteAssignmentMaterials(assignmentId);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const versions = data?.data ?? [];
+  const totalPages = data?.pagination.totalPages ?? 0;
+  const totalItems = data?.pagination.totalItems ?? 0;
   const draft = versions.find((version) => version.lifecycle === 'draft');
   const current = assignment.currentMaterialVersion;
   const hasAnyMaterials = versions.length > 0;
@@ -156,6 +159,37 @@ export function MaterialsPanel({
               </li>
             ))}
           </ul>
+
+          {totalPages > 1 ? (
+            <nav
+              aria-label="Version history pagination"
+              className="mt-3 flex items-center justify-between gap-3 text-sm text-muted-foreground"
+            >
+              <span>
+                Page {page} of {totalPages} · {totalItems.toLocaleString()} total
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((current) => current - 1)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((current) => current + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </nav>
+          ) : null}
         </div>
       ) : null}
 
@@ -171,7 +205,9 @@ export function MaterialsPanel({
         isSubmitting={deleteMaterials.isPending}
         errorMessage={deleteMaterials.error instanceof SeatingApiError ? deleteMaterials.error.message : null}
         onConfirm={() =>
-          deleteMaterials.mutate(undefined, { onSuccess: () => setIsDeleteOpen(false) })
+          deleteMaterials.mutate(undefined, {
+            onSuccess: () => { setIsDeleteOpen(false); setPage(1); },
+          })
         }
       />
     </section>

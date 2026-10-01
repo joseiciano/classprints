@@ -212,7 +212,7 @@ function UploadRow({
         />
         {item.status === 'failed' || item.isExisting ? (
           <label className="inline-grid h-9 w-9 cursor-pointer place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground">
-            <span className="sr-only">Replace this page's image</span>
+            <span className="sr-only">Replace this page’s image</span>
             <RotateCcw aria-hidden="true" className="h-4 w-4" />
             <input
               type="file"

@@ -12,9 +12,9 @@ import {
   useDocumentPages,
 } from '../../hooks/use-assignment-reader';
 import {
+  createConcurrencyLimiter,
   MAX_DOCUMENT_PAGES,
   UPLOAD_CONCURRENCY,
-  uploadWithConcurrency,
   validateUploadFile,
   validateUploadSelection,
 } from '../../hooks/use-upload-flow';
@@ -44,10 +44,13 @@ function messageFor(error: unknown): string {
  * The single shared ordered upload flow (TASK-022): used for both material
  * and submission documents. Each file is its own independent one-page
  * upload request — never a presigned URL or one giant request — uploaded
- * with bounded concurrency 3 via `uploadWithConcurrency`. Client-side
- * checks (`validateUploadFile`/`validateUploadSelection`) are UX only; the
- * server remains the source of truth and its validation is surfaced per
- * row.
+ * with bounded concurrency 3 via a `createConcurrencyLimiter` instance held
+ * for the lifetime of this document's upload flow, so every upload and
+ * replace started across separate `addFiles`/`handleReplace` calls shares
+ * one document-wide ceiling rather than each call racing its own pool.
+ * Client-side checks (`validateUploadFile`/`validateUploadSelection`) are UX
+ * only; the server remains the source of truth and its validation is
+ * surfaced per row.
  */
 export function UploadFlow({
   documentType,
@@ -67,6 +70,10 @@ export function UploadFlow({
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
   const itemsRef = useRef<QueueItem[]>([]);
   itemsRef.current = items;
+  // One limiter per mounted document: shared by every `runUploads` and
+  // `handleReplace` call so the document-wide in-flight upload count never
+  // exceeds `UPLOAD_CONCURRENCY`, even across separate file selections.
+  const concurrencyLimiterRef = useRef(createConcurrencyLimiter(UPLOAD_CONCURRENCY));
 
   const relatedKeys = [
     assignmentReaderKeys.assignments.detail(assignmentId),
@@ -144,15 +151,19 @@ export function UploadFlow({
   };
 
   const runUploads = (rows: QueueItem[]) => {
-    void uploadWithConcurrency(rows, UPLOAD_CONCURRENCY, async (row) => {
-      updateItem(row.id, { status: 'uploading', errorMessage: undefined });
-      try {
-        const page = await uploadDocumentPage(documentType, documentId, row.file as File);
-        updateItem(row.id, { pageId: page.id, status: 'uploaded', fileName: page.label });
-      } catch (error) {
-        updateItem(row.id, { status: 'failed', errorMessage: messageFor(error) });
-      }
-    });
+    for (const row of rows) {
+      void concurrencyLimiterRef.current
+        .run(() => {
+          updateItem(row.id, { status: 'uploading', errorMessage: undefined });
+          return uploadDocumentPage(documentType, documentId, row.file as File);
+        })
+        .then((page) => {
+          updateItem(row.id, { pageId: page.id, status: 'uploaded', fileName: page.label });
+        })
+        .catch((error) => {
+          updateItem(row.id, { status: 'failed', errorMessage: messageFor(error) });
+        });
+    }
   };
 
   const handleReplace = (itemId: string, file: File) => {
@@ -172,8 +183,12 @@ export function UploadFlow({
       return;
     }
 
-    updateItem(itemId, { status: 'uploading', errorMessage: undefined });
-    replacePageImage(item.pageId, file)
+    const pageId = item.pageId;
+    void concurrencyLimiterRef.current
+      .run(() => {
+        updateItem(itemId, { status: 'uploading', errorMessage: undefined });
+        return replacePageImage(pageId, file);
+      })
       .then((result) => {
         updateItem(itemId, {
           id: result.page.id,

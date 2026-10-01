@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { StudentRecord } from '@classprints/assignment-reader-shared';
+import type { StudentListQuery, StudentRecord } from '@classprints/assignment-reader-shared';
 import {
   useCreateStudent,
   useDeleteStudentData,
@@ -12,19 +12,54 @@ import { ConfirmActionDialog } from './confirm-action-dialog';
 import { NameFormDialog } from './name-form-dialog';
 import { RosterPanelView } from './roster-panel-view';
 
-/** Roster management: add, rename, remove, and destructively delete students. */
-export function RosterPanel({ classId, isArchived }: { classId: string; isArchived: boolean }) {
+export interface RosterPanelSearch {
+  q: string;
+  sort: NonNullable<StudentListQuery['sort']>;
+  direction: NonNullable<StudentListQuery['direction']>;
+  page: number;
+  status?: StudentListQuery['status'];
+}
+
+export const defaultRosterSearch: RosterPanelSearch = {
+  q: '',
+  sort: 'name',
+  direction: 'asc',
+  page: 1,
+  status: 'active',
+};
+
+/**
+ * Roster management: add, rename, remove, and destructively delete
+ * students. The roster is a full `StudentListQuery` (REQ-003) — search,
+ * sortable columns, a status filter, and pagination all reach the server —
+ * rather than a client-side truncation to the first page of active
+ * students, so `search`/`onSearchChange` round-trip through the caller the
+ * same way `AssignmentsTab`/`SubmissionsPanel` do.
+ */
+export function RosterPanel({
+  classId,
+  isArchived,
+  search,
+  onSearchChange,
+}: {
+  classId: string;
+  isArchived: boolean;
+  search: RosterPanelSearch;
+  onSearchChange: (next: Partial<RosterPanelSearch>) => void;
+}) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<StudentRecord | null>(null);
   const [removeTarget, setRemoveTarget] = useState<StudentRecord | null>(null);
   const [deleteDataTarget, setDeleteDataTarget] = useState<StudentRecord | null>(null);
 
-  const { data, isLoading, error, refetch } = useStudentsList(classId, {
-    sort: 'name',
-    direction: 'asc',
-    status: 'active',
-    page: 1,
-  });
+  const query: StudentListQuery = {
+    q: search.q || undefined,
+    sort: search.sort,
+    direction: search.direction,
+    page: search.page,
+    status: search.status,
+  };
+  const { data, isLoading, isFetching, error, refetch } = useStudentsList(classId, query);
   const createStudent = useCreateStudent(classId);
   const renameStudent = useRenameStudent(classId);
   const removeStudent = useRemoveStudentFromRoster(classId);
@@ -36,12 +71,26 @@ export function RosterPanel({ classId, isArchived }: { classId: string; isArchiv
         students={data?.data ?? []}
         readOnly={isArchived}
         isLoading={isLoading}
+        isFetching={isFetching}
         error={error}
         onRetry={() => void refetch()}
         onAddStudent={() => setIsCreateOpen(true)}
         onRenameStudent={setRenameTarget}
         onRemoveStudent={setRemoveTarget}
         onDeleteStudentData={setDeleteDataTarget}
+        search={search.q}
+        onSearchChange={(q) => onSearchChange({ q, page: 1 })}
+        sort={search.sort}
+        direction={search.direction}
+        onSortChange={(sort, direction) =>
+          onSearchChange({ sort: sort as RosterPanelSearch['sort'], direction, page: 1 })
+        }
+        page={search.page}
+        totalPages={data?.pagination.totalPages ?? 0}
+        totalItems={data?.pagination.totalItems ?? 0}
+        onPageChange={(page) => onSearchChange({ page })}
+        statusFilter={search.status}
+        onStatusFilterChange={(status) => onSearchChange({ status, page: 1 })}
       />
 
       <NameFormDialog
