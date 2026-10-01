@@ -19,11 +19,29 @@ import type {
   RetranscribeDocumentBody,
   DocumentProcessingResponse,
   DeletionOperation,
+  DeletionTargetType,
   ImageVariant,
   Rotation,
   ProcessingState,
   TranscriptionPageMessage,
   DeletionOperationMessage,
+  DocumentWorkspace,
+  DocumentAction,
+  PageWorkspace,
+  AssignmentDraft,
+  QuestionSegment,
+  UpdatePageDraftBody,
+  ReviewPageBody,
+  ReviewPageResult,
+  DocumentRevisionCommandBody,
+  DocumentStateResult,
+  UpdateQuestionJudgmentBody,
+  QuestionJudgment,
+  UpdateGradingDraftBody,
+  GradingDraft,
+  QuestionPointsTotalQuery,
+  QuestionPointsTotal,
+  ApplyQuestionPointsBody,
 } from '@classprints/assignment-reader-shared';
 import {
   computeDocumentProcessingState,
@@ -33,7 +51,13 @@ import {
   evaluateRetranscriptionConsent,
 } from '@classprints/assignment-reader-shared';
 import type { AssignmentReaderRepository } from './assignment-reader.repository';
-import type { AssignmentReaderErrorCode, PageRow } from './assignment-reader.types';
+import type {
+  AssignmentReaderErrorCode,
+  DeletionOperationRow,
+  GradingDraftRow,
+  PageRow,
+  QuestionSegmentWithJudgmentRow,
+} from './assignment-reader.types';
 import {
   MAX_UPLOAD_BYTES,
   storageKeyFor,
@@ -1030,6 +1054,692 @@ export class AssignmentReaderService {
     return this.deps.repo.createSubmission(teacherId, assignmentId, studentId);
   }
 
+  // ——— Workspace, review, and grading (TASK-016/TASK-017) ———————————————————
+
+  private mapQuestionSegment(row: QuestionSegmentWithJudgmentRow): QuestionSegment {
+    return {
+      id: row.id,
+      pageId: row.page_id,
+      pageRevision: row.page_revision,
+      ordinal: row.ordinal,
+      label: row.label,
+      questionText: row.question_text,
+      responseText: row.response_text,
+      judgment: {
+        segmentId: row.id,
+        judgment: row.judgment ?? 'unmarked',
+        awardedPoints: toNumber(row.awarded_points),
+        comment: row.comment,
+        updatedAt: toIso(row.judgment_updated_at_ms),
+      },
+    };
+  }
+
+  /** Advisory-only action list (api-routes-review.md "Shared state and
+   * revision rules"): every mutation route re-enforces its own precondition
+   * independently, so an inaccurate entry here can never unlock a command
+   * the server would otherwise reject. Historical material versions carry no
+   * actions; archived ancestry keeps only `delete`, the one mutation the
+   * manifest exempts from the archived-ancestry prohibition. */
+  private computeWorkspaceActions(input: {
+    documentType: DocumentType;
+    historical: boolean;
+    archived: boolean;
+    pageCount: number;
+    processingState: ProcessingState | null;
+    reviewState: import('@classprints/assignment-reader-shared').ReviewState | null;
+    gradingState: import('@classprints/assignment-reader-shared').GradingState | null;
+  }): DocumentAction[] {
+    if (input.historical) return [];
+    if (input.archived) return ['delete'];
+    const actions: DocumentAction[] = ['upload_page', 'delete'];
+    const unconfirmed = input.pageCount === 0 || (input.processingState === null && input.reviewState === null);
+    if (input.pageCount > 0) {
+      if (unconfirmed) {
+        actions.push('confirm');
+      } else {
+        actions.push('retry_page', 'replace_page');
+        if (input.processingState === 'completed') {
+          actions.push('retranscribe', 'edit_draft', 'review_page');
+        }
+      }
+    }
+    if (input.reviewState === 'needs_review') actions.push('mark_ready');
+    if (input.reviewState === 'ready_to_grade') actions.push('return_to_needs_review');
+    if (input.documentType === 'submission') {
+      const gradingOpen =
+        input.gradingState === 'not_graded' &&
+        (input.reviewState === 'needs_review' || input.reviewState === 'ready_to_grade');
+      if (gradingOpen) actions.push('edit_grading', 'edit_question_judgments');
+      if (input.reviewState === 'ready_to_grade' && input.gradingState === 'not_graded') {
+        actions.push('mark_graded');
+      }
+    }
+    return actions;
+  }
+
+  /** GET /documents/:documentType/:documentId/workspace
+   * (api-routes-review.md §1.1). Historical material-version workspaces and
+   * ones under archived ancestry remain readable with `readOnly: true` and
+   * an empty-or-delete-only `allowedActions`. */
+  async getWorkspace(
+    teacherId: string,
+    documentType: DocumentType,
+    documentId: string,
+  ): Promise<DocumentWorkspace> {
+    if (documentType === 'materials') {
+      const materialVersion = await this.deps.repo.findMaterialVersion(teacherId, documentId);
+      if (!materialVersion) throw notFound();
+      const assignment = await this.getAssignment(teacherId, materialVersion.assignmentId);
+      const pages = await this.deps.repo.listDocumentPageRows(teacherId, 'materials', documentId);
+      const historical = materialVersion.lifecycle === 'historical';
+      const archived = assignment.classStatus === 'archived';
+      return {
+        documentType: 'materials',
+        documentId,
+        class: { id: assignment.classId, name: assignment.className, status: assignment.classStatus },
+        assignment: { id: assignment.id, name: assignment.name, maxScore: assignment.maxScore },
+        student: null,
+        materialVersion,
+        submission: null,
+        pages: pages.map((row) => this.mapPageSummary(row)),
+        processingState: materialVersion.processingState,
+        processingCounts: materialVersion.processingCounts,
+        reviewState: materialVersion.reviewState,
+        gradingState: null,
+        documentRevision: materialVersion.documentRevision,
+        reviewContext: null,
+        reviewContextCaptured: false,
+        readOnly: historical || archived,
+        allowedActions: this.computeWorkspaceActions({
+          documentType: 'materials',
+          historical,
+          archived,
+          pageCount: materialVersion.pageCount,
+          processingState: materialVersion.processingState,
+          reviewState: materialVersion.reviewState,
+          gradingState: null,
+        }),
+      };
+    }
+    const submission = await this.getSubmission(teacherId, documentId);
+    const assignment = await this.getAssignment(teacherId, submission.assignmentId);
+    const pages = await this.deps.repo.listDocumentPageRows(teacherId, 'submission', documentId);
+    const reviewContext = submission.materialsVersionId
+      ? await this.deps.repo.findMaterialVersion(teacherId, submission.materialsVersionId)
+      : null;
+    const archived = assignment.classStatus === 'archived';
+    return {
+      documentType: 'submission',
+      documentId,
+      class: { id: assignment.classId, name: assignment.className, status: assignment.classStatus },
+      assignment: { id: assignment.id, name: assignment.name, maxScore: assignment.maxScore },
+      student: { id: submission.studentId, name: submission.studentName },
+      materialVersion: null,
+      submission,
+      pages: pages.map((row) => this.mapPageSummary(row)),
+      processingState: submission.processingState,
+      processingCounts: submission.processingCounts,
+      reviewState: submission.reviewState,
+      gradingState: submission.gradingState,
+      documentRevision: submission.documentRevision,
+      reviewContext,
+      reviewContextCaptured: submission.reviewContextCapturedAt !== null,
+      readOnly: archived,
+      allowedActions: this.computeWorkspaceActions({
+        documentType: 'submission',
+        historical: false,
+        archived,
+        pageCount: submission.pageCount,
+        processingState: submission.processingState,
+        reviewState: submission.reviewState,
+        gradingState: submission.gradingState,
+      }),
+    };
+  }
+
+  /** GET /pages/:pageId (api-routes-review.md §1.2): the canonical editable
+   * read for a current, completed page — also valid for a completed page in
+   * a historical material version or under archived ancestry (read-only). */
+  async getPageWorkspace(teacherId: string, pageId: string): Promise<PageWorkspace> {
+    const page = await this.deps.repo.findPage(teacherId, pageId);
+    if (!page) throw notFound();
+    if (page.processing_state !== 'completed') {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'This page has not finished processing yet');
+    }
+    const parentId = this.parentIdOf(page);
+    const status = await this.deps.repo.findDocumentStatus(teacherId, page.document_type, parentId);
+    if (!status) throw notFound();
+    const historical = page.document_type === 'materials' && status.lifecycle === 'historical';
+    const archived = status.class_status === 'archived';
+    const segmentRows =
+      page.document_type === 'submission'
+        ? await this.deps.repo.listCurrentQuestionSegments(teacherId, pageId)
+        : [];
+    return {
+      page: this.mapPageSummary(page),
+      draft: emptyDraftIfMissing(page.draft),
+      questionSegments: segmentRows.map((row) => this.mapQuestionSegment(row)),
+      reviewedAt: toIso(page.reviewed_at_ms),
+      readOnly: historical || archived,
+    };
+  }
+
+  /** PATCH /pages/:pageId/draft (api-routes-review.md §1.3). */
+  async updatePageDraft(
+    teacherId: string,
+    pageId: string,
+    body: UpdatePageDraftBody,
+  ): Promise<PageWorkspace> {
+    const page = await this.deps.repo.findPage(teacherId, pageId);
+    if (!page) throw notFound();
+    const parentId = this.parentIdOf(page);
+    const status = await this.deps.repo.findDocumentStatus(teacherId, page.document_type, parentId);
+    if (!status) throw notFound();
+    if (page.document_type === 'materials' && status.lifecycle === 'historical') {
+      throw new AssignmentReaderError(409, 'HISTORICAL_VERSION_READ_ONLY', 'This material version is read-only');
+    }
+    this.assertActiveAncestry(status.class_status, 'edit a page draft');
+    const result = await this.deps.repo.updatePageDraftRow({
+      teacherId,
+      pageId,
+      draft: body.draft,
+      expectedContentRevision: body.expectedContentRevision,
+    });
+    if (result.outcome === 'not_found') throw notFound();
+    if (result.outcome === 'invalid_state') {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'Only a completed page can be edited');
+    }
+    if (result.outcome === 'conflict') {
+      throw new AssignmentReaderError(
+        409,
+        'REVISION_CONFLICT',
+        'This page changed since it was loaded',
+        undefined,
+        { currentContentRevision: result.currentContentRevision },
+      );
+    }
+    const segmentRows =
+      result.page.document_type === 'submission'
+        ? await this.deps.repo.listCurrentQuestionSegments(teacherId, pageId)
+        : [];
+    return {
+      page: this.mapPageSummary(result.page),
+      draft: emptyDraftIfMissing(result.page.draft),
+      questionSegments: segmentRows.map((row) => this.mapQuestionSegment(row)),
+      reviewedAt: toIso(result.page.reviewed_at_ms),
+      readOnly: false,
+    };
+  }
+
+  /** POST /pages/:pageId/review (api-routes-review.md §1.4). */
+  async reviewPage(teacherId: string, pageId: string, body: ReviewPageBody): Promise<ReviewPageResult> {
+    const page = await this.deps.repo.findPage(teacherId, pageId);
+    if (!page) throw notFound();
+    const parentId = this.parentIdOf(page);
+    const status = await this.deps.repo.findDocumentStatus(teacherId, page.document_type, parentId);
+    if (!status) throw notFound();
+    if (page.document_type === 'materials' && status.lifecycle === 'historical') {
+      throw new AssignmentReaderError(409, 'HISTORICAL_VERSION_READ_ONLY', 'This material version is read-only');
+    }
+    this.assertActiveAncestry(status.class_status, 'review a page');
+    const result = await this.deps.repo.reviewPageRow({
+      teacherId,
+      pageId,
+      expectedContentRevision: body.expectedContentRevision,
+    });
+    if (result.outcome === 'not_found') throw notFound();
+    if (result.outcome === 'invalid_state') {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'This page cannot be reviewed in its current state');
+    }
+    if (result.outcome === 'conflict') {
+      throw new AssignmentReaderError(
+        409,
+        'REVISION_CONFLICT',
+        'This page changed since it was loaded',
+        undefined,
+        { currentContentRevision: result.currentContentRevision },
+      );
+    }
+    return {
+      pageId: result.page.id,
+      reviewedContentRevision: result.page.reviewed_content_revision as number,
+      reviewedAt: toIso(result.page.reviewed_at_ms) as string,
+      documentReviewState: result.documentReviewState,
+      allCurrentPagesReviewed: result.allCurrentPagesReviewed,
+    };
+  }
+
+  private mapDocumentStateResult(
+    result: import('./assignment-reader.types').DocumentRevisionCommandOutcome,
+    documentType: DocumentType,
+    documentId: string,
+  ): DocumentStateResult {
+    if (result.outcome === 'not_found') throw notFound();
+    if (result.outcome === 'invalid_state') {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'This document cannot change state right now');
+    }
+    if (result.outcome === 'conflict') {
+      throw new AssignmentReaderError(
+        409,
+        'REVISION_CONFLICT',
+        'This document changed since it was loaded',
+        undefined,
+        { currentDocumentRevision: result.currentDocumentRevision },
+      );
+    }
+    return {
+      documentType,
+      documentId,
+      reviewState: result.reviewState,
+      gradingState: result.gradingState,
+      documentRevision: result.documentRevision,
+      updatedAt: toIso(result.updatedAtMs) as string,
+    };
+  }
+
+  /** POST /documents/:documentType/:documentId/mark-ready (api-routes-review.md §1.5). */
+  async markDocumentReady(
+    teacherId: string,
+    documentType: DocumentType,
+    documentId: string,
+    body: DocumentRevisionCommandBody,
+  ): Promise<DocumentStateResult> {
+    await this.requireNonHistoricalDocumentStatus(teacherId, documentType, documentId);
+    const result = await this.deps.repo.markDocumentReadyRow({
+      teacherId,
+      documentType,
+      documentId,
+      expectedDocumentRevision: body.expectedDocumentRevision,
+    });
+    return this.mapDocumentStateResult(result, documentType, documentId);
+  }
+
+  /** POST /documents/:documentType/:documentId/return-to-needs-review (api-routes-review.md §1.6). */
+  async returnToNeedsReview(
+    teacherId: string,
+    documentType: DocumentType,
+    documentId: string,
+    body: DocumentRevisionCommandBody,
+  ): Promise<DocumentStateResult> {
+    await this.requireNonHistoricalDocumentStatus(teacherId, documentType, documentId);
+    const result = await this.deps.repo.returnToNeedsReviewRow({
+      teacherId,
+      documentType,
+      documentId,
+      expectedDocumentRevision: body.expectedDocumentRevision,
+    });
+    return this.mapDocumentStateResult(result, documentType, documentId);
+  }
+
+  /** PUT /pages/:pageId/question-segments/:segmentId/judgment
+   * (api-routes-review.md §2.1). Question-judgment routes exist only for
+   * submissions; a materials page returns 404 rather than creating a
+   * parallel grading surface for materials (manifest §2). */
+  async updateQuestionJudgment(
+    teacherId: string,
+    pageId: string,
+    segmentId: string,
+    body: UpdateQuestionJudgmentBody,
+  ): Promise<QuestionJudgment> {
+    const page = await this.deps.repo.findPage(teacherId, pageId);
+    if (!page || page.document_type !== 'submission' || !page.submission_id) throw notFound();
+    const status = await this.deps.repo.findDocumentStatus(teacherId, 'submission', page.submission_id);
+    if (!status) throw notFound();
+    this.assertActiveAncestry(status.class_status, 'edit a question judgment');
+    const result = await this.deps.repo.updateQuestionJudgmentRow({
+      teacherId,
+      pageId,
+      segmentId,
+      expectedPageRevision: body.expectedPageRevision,
+      judgment: body.judgment,
+      awardedPoints: body.awardedPoints,
+      comment: body.comment,
+    });
+    if (result.outcome === 'not_found') throw notFound();
+    if (result.outcome === 'invalid_state') {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'This submission is not open for grading');
+    }
+    if (result.outcome === 'conflict') {
+      throw new AssignmentReaderError(
+        409,
+        'REVISION_CONFLICT',
+        'This page changed since it was loaded',
+        undefined,
+        { currentPageRevision: result.currentPageRevision },
+      );
+    }
+    return {
+      segmentId: result.segmentId,
+      judgment: result.judgment,
+      awardedPoints: toNumber(result.awardedPoints),
+      comment: result.comment,
+      updatedAt: toIso(result.updatedAtMs),
+    };
+  }
+
+  private async buildGradingDraft(teacherId: string, row: GradingDraftRow): Promise<GradingDraft> {
+    const segments = await this.deps.repo.listSubmissionQuestionSegments(teacherId, row.submission_id);
+    return {
+      submissionId: row.submission_id,
+      documentRevision: row.document_revision,
+      score: toNumber(row.score),
+      comments: row.comments,
+      questionJudgments: segments.map((segment) => ({
+        segmentId: segment.id,
+        judgment: segment.judgment ?? 'unmarked',
+        awardedPoints: toNumber(segment.awarded_points),
+        comment: segment.comment,
+        updatedAt: toIso(segment.judgment_updated_at_ms),
+      })),
+      gradingState: row.grading_state,
+      gradedAt: toIso(row.graded_at_ms),
+      updatedAt: toIso(row.updated_at_ms) as string,
+    };
+  }
+
+  /** PATCH /submissions/:submissionId/grading (api-routes-review.md §2.2). */
+  async updateGradingDraft(
+    teacherId: string,
+    submissionId: string,
+    body: UpdateGradingDraftBody,
+  ): Promise<GradingDraft> {
+    const submission = await this.getSubmission(teacherId, submissionId);
+    const assignment = await this.getAssignment(teacherId, submission.assignmentId);
+    this.assertActiveAncestry(assignment.classStatus, 'edit grading');
+    if (
+      body.score !== undefined &&
+      body.score !== null &&
+      assignment.maxScore !== null &&
+      body.score > assignment.maxScore
+    ) {
+      throw new AssignmentReaderError(409, 'SCORE_EXCEEDS_MAXIMUM', 'Score exceeds the assignment maximum');
+    }
+    const result = await this.deps.repo.updateGradingDraftRow({
+      teacherId,
+      submissionId,
+      expectedDocumentRevision: body.expectedDocumentRevision,
+      scoreProvided: body.score !== undefined,
+      score: body.score ?? null,
+      commentsProvided: body.comments !== undefined,
+      comments: body.comments ?? null,
+    });
+    if (result.outcome === 'not_found') throw notFound();
+    if (result.outcome === 'invalid_state') {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'This submission is not open for grading');
+    }
+    if (result.outcome === 'conflict') {
+      throw new AssignmentReaderError(
+        409,
+        'REVISION_CONFLICT',
+        'This submission changed since it was loaded',
+        undefined,
+        { currentDocumentRevision: result.currentDocumentRevision },
+      );
+    }
+    return this.buildGradingDraft(teacherId, result.row);
+  }
+
+  /** GET /submissions/:submissionId/question-points-total (api-routes-review.md §2.3). */
+  async getQuestionPointsTotal(
+    teacherId: string,
+    submissionId: string,
+    query: QuestionPointsTotalQuery,
+  ): Promise<QuestionPointsTotal> {
+    await this.getSubmission(teacherId, submissionId);
+    const row = await this.deps.repo.getQuestionPointsTotalRow(teacherId, submissionId);
+    if (!row) throw notFound();
+    if (row.documentRevision !== query.expectedDocumentRevision) {
+      throw new AssignmentReaderError(
+        409,
+        'REVISION_CONFLICT',
+        'This submission changed since it was loaded',
+        undefined,
+        { currentDocumentRevision: row.documentRevision },
+      );
+    }
+    const segments = row.segments.map((segment) => ({
+      id: segment.id,
+      ordinal: segment.ordinal,
+      label: segment.label,
+      questionText: segment.questionText,
+      awardedPoints: toNumber(segment.awardedPoints),
+    }));
+    const total = roundTo2(
+      segments.reduce((sum, segment) => sum + (segment.awardedPoints ?? 0), 0),
+    );
+    return {
+      submissionId,
+      documentRevision: row.documentRevision,
+      total,
+      segmentsWithPoints: segments.filter((segment) => segment.awardedPoints !== null).length,
+      totalSegments: segments.length,
+      segments,
+    };
+  }
+
+  /** POST /submissions/:submissionId/apply-question-points-to-score (api-routes-review.md §2.4). */
+  async applyQuestionPointsToScore(
+    teacherId: string,
+    submissionId: string,
+    body: ApplyQuestionPointsBody,
+  ): Promise<GradingDraft> {
+    const submission = await this.getSubmission(teacherId, submissionId);
+    const assignment = await this.getAssignment(teacherId, submission.assignmentId);
+    this.assertActiveAncestry(assignment.classStatus, 'apply question points to score');
+    const result = await this.deps.repo.applyQuestionPointsToScoreRow({
+      teacherId,
+      submissionId,
+      expectedDocumentRevision: body.expectedDocumentRevision,
+      expectedTotal: body.expectedTotal,
+    });
+    if (result.outcome === 'not_found') throw notFound();
+    if (result.outcome === 'invalid_state') {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'This submission is not open for grading');
+    }
+    if (result.outcome === 'conflict') {
+      throw new AssignmentReaderError(
+        409,
+        'REVISION_CONFLICT',
+        'This submission changed since it was loaded',
+        undefined,
+        { currentDocumentRevision: result.currentDocumentRevision },
+      );
+    }
+    if (result.outcome === 'total_conflict') {
+      throw new AssignmentReaderError(
+        409,
+        'REVISION_CONFLICT',
+        'The question-points total changed since it was loaded',
+        undefined,
+        { currentQuestionPointsTotal: roundTo2(result.currentTotal) },
+      );
+    }
+    if (result.outcome === 'score_exceeds_maximum') {
+      throw new AssignmentReaderError(
+        409,
+        'SCORE_EXCEEDS_MAXIMUM',
+        'The question-points total exceeds the assignment maximum',
+      );
+    }
+    return this.buildGradingDraft(teacherId, result.row);
+  }
+
+  /** POST /submissions/:submissionId/mark-graded (api-routes-review.md §2.5). */
+  async markSubmissionGraded(
+    teacherId: string,
+    submissionId: string,
+    body: DocumentRevisionCommandBody,
+  ): Promise<GradingDraft> {
+    const submission = await this.getSubmission(teacherId, submissionId);
+    const assignment = await this.getAssignment(teacherId, submission.assignmentId);
+    this.assertActiveAncestry(assignment.classStatus, 'mark a submission graded');
+    const result = await this.deps.repo.markSubmissionGradedRow({
+      teacherId,
+      submissionId,
+      expectedDocumentRevision: body.expectedDocumentRevision,
+    });
+    if (result.outcome === 'not_found') throw notFound();
+    if (result.outcome === 'invalid_state') {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'This submission is not ready to grade');
+    }
+    if (result.outcome === 'conflict') {
+      throw new AssignmentReaderError(
+        409,
+        'REVISION_CONFLICT',
+        'This submission changed since it was loaded',
+        undefined,
+        { currentDocumentRevision: result.currentDocumentRevision },
+      );
+    }
+    return this.buildGradingDraft(teacherId, result.row);
+  }
+
+  // ——— Deletion (TASK-018) ————————————————————————————————————————————————————
+
+  private toDeletionOperation(row: DeletionOperationRow): DeletionOperation {
+    return {
+      id: row.id,
+      targetType: row.target_type as DeletionTargetType,
+      targetId: row.target_id,
+      status: 'pending',
+      acceptedAt: toIso(row.accepted_at_ms) as string,
+    };
+  }
+
+  private async enqueueDeletion(operationId: string, targetType: DeletionTargetType): Promise<void> {
+    try {
+      await this.requireQueues().sendDeletionOperation({
+        kind: 'deletion_operation',
+        operationId,
+        targetType,
+      });
+    } catch (error) {
+      // The operation row is already committed; internal cleanup replay or
+      // operator DLQ recovery finishes delivery (manifest §1.1/§3.1).
+      console.error('deletion: cleanup queue send failed', { operationId, targetType, error });
+    }
+  }
+
+  /** DELETE /assignments/:assignmentId/materials (api-routes-documents.md
+   * §1.4). Deletes the draft, current, and every historical material
+   * version of this assignment in one operation; submissions are untouched. */
+  async deleteMaterials(
+    teacherId: string,
+    assignmentId: string,
+  ): Promise<{ operation: DeletionOperation; created: boolean }> {
+    const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'materials', assignmentId);
+    if (pending) return { operation: this.toDeletionOperation(pending), created: false };
+    await this.getAssignment(teacherId, assignmentId);
+    const storageKeys = await this.deps.repo.listStorageKeysForMaterialsScope(teacherId, assignmentId);
+    const operation = await this.deps.repo.createDeletionOperation({
+      teacherId,
+      targetType: 'materials',
+      targetId: assignmentId,
+      storageKeys,
+    });
+    await this.enqueueDeletion(operation.id, 'materials');
+    return { operation: this.toDeletionOperation(operation), created: true };
+  }
+
+  /** DELETE /submissions/:submissionId (api-routes-documents.md §1.9). */
+  async deleteSubmission(
+    teacherId: string,
+    submissionId: string,
+  ): Promise<{ operation: DeletionOperation; created: boolean }> {
+    const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'submission', submissionId);
+    if (pending) return { operation: this.toDeletionOperation(pending), created: false };
+    await this.getSubmission(teacherId, submissionId);
+    const storageKeys = await this.deps.repo.listStorageKeysForSubmissionScope(teacherId, submissionId);
+    const operation = await this.deps.repo.createDeletionOperation({
+      teacherId,
+      targetType: 'submission',
+      targetId: submissionId,
+      storageKeys,
+    });
+    await this.enqueueDeletion(operation.id, 'submission');
+    return { operation: this.toDeletionOperation(operation), created: true };
+  }
+
+  /** DELETE /classes/:classId/students/:studentId/data (api-routes-hierarchy.md §1.10). */
+  async deleteStudentData(
+    teacherId: string,
+    classId: string,
+    studentId: string,
+  ): Promise<{ operation: DeletionOperation; created: boolean }> {
+    const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'student_data', studentId);
+    if (pending) return { operation: this.toDeletionOperation(pending), created: false };
+    await this.getClass(teacherId, classId);
+    await this.assertStudentInClass(teacherId, classId, studentId);
+    const storageKeys = await this.deps.repo.listStorageKeysForStudentDataScope(teacherId, studentId);
+    const operation = await this.deps.repo.createDeletionOperation({
+      teacherId,
+      targetType: 'student_data',
+      targetId: studentId,
+      storageKeys,
+    });
+    await this.enqueueDeletion(operation.id, 'student_data');
+    return { operation: this.toDeletionOperation(operation), created: true };
+  }
+
+  /** DELETE /assignments/:assignmentId (api-routes-hierarchy.md §2.5). */
+  async deleteAssignment(
+    teacherId: string,
+    assignmentId: string,
+  ): Promise<{ operation: DeletionOperation; created: boolean }> {
+    const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'assignment', assignmentId);
+    if (pending) return { operation: this.toDeletionOperation(pending), created: false };
+    await this.getAssignment(teacherId, assignmentId);
+    const storageKeys = await this.deps.repo.listStorageKeysForAssignmentScope(teacherId, assignmentId);
+    const operation = await this.deps.repo.createDeletionOperation({
+      teacherId,
+      targetType: 'assignment',
+      targetId: assignmentId,
+      storageKeys,
+    });
+    await this.enqueueDeletion(operation.id, 'assignment');
+    return { operation: this.toDeletionOperation(operation), created: true };
+  }
+
+  /** DELETE /classes/:classId (api-routes-hierarchy.md §1.5). */
+  async deleteClass(
+    teacherId: string,
+    classId: string,
+  ): Promise<{ operation: DeletionOperation; created: boolean }> {
+    const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'class', classId);
+    if (pending) return { operation: this.toDeletionOperation(pending), created: false };
+    await this.getClass(teacherId, classId);
+    const storageKeys = await this.deps.repo.listStorageKeysForClassScope(teacherId, classId);
+    const operation = await this.deps.repo.createDeletionOperation({
+      teacherId,
+      targetType: 'class',
+      targetId: classId,
+      storageKeys,
+    });
+    await this.enqueueDeletion(operation.id, 'class');
+    return { operation: this.toDeletionOperation(operation), created: true };
+  }
+
+  /** DELETE /user/account (api-routes-review.md §3.1), called after the
+   * caller has already soft-disabled access and revoked sessions. Enumerates
+   * and schedules every Assignment Reader relational/R2 key the teacher
+   * owns; not teacher-replayable once the session is revoked (401 instead). */
+  async scheduleAccountDeletion(
+    teacherId: string,
+  ): Promise<{ operation: DeletionOperation; created: boolean }> {
+    const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'account', teacherId);
+    if (pending) return { operation: this.toDeletionOperation(pending), created: false };
+    const storageKeys = await this.deps.repo.listStorageKeysForAccountScope(teacherId);
+    const operation = await this.deps.repo.createDeletionOperation({
+      teacherId,
+      targetType: 'account',
+      targetId: teacherId,
+      storageKeys,
+    });
+    await this.enqueueDeletion(operation.id, 'account');
+    return { operation: this.toDeletionOperation(operation), created: true };
+  }
+
   // ——— Seating charts (TASK-009) ——————————————————————————————————————————————
 
   async listSavedSeatingCharts(
@@ -1114,6 +1824,26 @@ const toIso = (value: number | string | null | undefined): string | null => {
   const numeric = typeof value === 'number' ? value : Number(value);
   return new Date(numeric).toISOString();
 };
+
+const toNumber = (value: string | number | null | undefined): number | null => {
+  if (value === null || value === undefined) return null;
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+/** Guards against float drift in a summed `numeric(6,2)` total (REQ-018). */
+const roundTo2 = (value: number): number => Math.round(value * 100) / 100;
+
+const EMPTY_DRAFT: AssignmentDraft = {
+  schemaVersion: 1,
+  doc: { type: 'doc', content: [] },
+};
+
+/** A completed page always has a draft (`pages_completed_has_content`), but
+ * the column type stays `unknown` at the repository boundary; this trusts
+ * that DB invariant rather than re-validating the draft shape on every read. */
+const emptyDraftIfMissing = (draft: unknown): AssignmentDraft =>
+  (draft ?? EMPTY_DRAFT) as AssignmentDraft;
 
 
 const failureSummaryOf = (row: PageRow): import('@classprints/assignment-reader-shared').SafeFailure | null => {
