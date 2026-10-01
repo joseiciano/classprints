@@ -27,6 +27,7 @@ import {
   seatingChartListQuerySchema,
   processingListQuerySchema,
   confirmDocumentBodySchema,
+  retranscribeDocumentBodySchema,
   pageImageQuerySchema,
 } from '@classprints/assignment-reader-shared';
 import { ZodError, z } from 'zod';
@@ -463,6 +464,35 @@ export const registerAssignmentReaderRoutes = (app: Hono<SeatingHonoEnv>): void 
         user.id,
         documentType,
         c.req.param('documentId'),
+      );
+      return c.json({ data: result }, 202);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  // ——— Retry and retranscription (TASK-015) ——————————————————————————————————
+
+  app.post('/pages/:pageId/retry', async (c) => {
+    try {
+      const user = getUser(c);
+      const result = await createService(c).retryPage(user.id, c.req.param('pageId'));
+      return c.json({ data: result }, 202);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.post('/documents/:documentType/:documentId/retranscribe', async (c) => {
+    try {
+      const user = getUser(c);
+      const documentType = documentTypeParamSchema.parse(c.req.param('documentType'));
+      const body = retranscribeDocumentBodySchema.parse(await c.req.json());
+      const result = await createService(c).retranscribeDocument(
+        user.id,
+        documentType,
+        c.req.param('documentId'),
+        body,
       );
       return c.json({ data: result }, 202);
     } catch (error) {

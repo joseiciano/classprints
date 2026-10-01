@@ -48,6 +48,9 @@ import type {
   RemovePageResultRow,
   ReplacePageInput,
   ReplacePageResultRow,
+  RetranscribeDocumentRowsInput,
+  RetranscribeDocumentRowsResult,
+  RetryPageRowResult,
   RewriteOrderInput,
   StudentListOptions,
   StudentRow,
@@ -413,6 +416,15 @@ export interface AssignmentReaderRepository {
   ): Promise<DeletionOperationRow | null>;
   // Processing (TASK-008): per-page canonical list for one document.
   listProcessing(options: ProcessingListOptions): Promise<ListResponse<ProcessingPageItem>>;
+  // Retry and retranscription (TASK-015)
+  retryPageRow(teacherId: string, pageId: string): Promise<RetryPageRowResult | null>;
+  retranscribeDocumentRows(
+    input: RetranscribeDocumentRowsInput,
+  ): Promise<RetranscribeDocumentRowsResult | null>;
+  /** Whether any judgment currently exists on a current (live page-revision)
+   * segment of this submission (api-routes-documents.md §3.4 consent gate).
+   * Materials never have judgments. */
+  hasCurrentQuestionJudgments(teacherId: string, submissionId: string): Promise<boolean>;
   // Submissions
   listSubmissions(options: SubmissionListOptions): Promise<ListResponse<SubmissionListItem>>;
   findSubmission(teacherId: string, submissionId: string): Promise<SubmissionRecord | null>;
@@ -1462,6 +1474,134 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
       };
     },
 
+    // ——— Retry and retranscription (TASK-015) ——————————————————————————————————
+
+    /**
+     * Single-page retry (api-routes-documents.md §3.3). One transaction:
+     * conditionally bump only this page's `pageRevision` back to `queued`
+     * (resetting attempt/failure/generated-content/timing columns), then bump
+     * the owning document's `documentRevision` and clear its review state;
+     * a submission also returns to `not_graded` with a null `gradedAt`
+     * while its score/comments are untouched. The `processing_state =
+     * 'failed'` guard makes a pre-commit race (page changed between the
+     * service's eligibility check and this write) a no-op `null` result
+     * rather than a silent overwrite (SEC-004).
+     */
+    async retryPageRow(teacherId, pageId) {
+      const now = Date.now();
+      return sql.begin(async (tx) => {
+        const pageRows = await tx<PageRow[]>`
+          update pages p set
+            page_revision = page_revision + 1,
+            processing_state = 'queued',
+            attempt_count = 0,
+            failure_code = null,
+            failure_message = null,
+            draft = null,
+            started_at_ms = null,
+            completed_at_ms = null,
+            queued_at_ms = ${now},
+            updated_at_ms = ${now}
+          where p.teacher_id = ${teacherId} and p.id = ${pageId} and p.processing_state = 'failed'
+          returning ${pageColumns(tx)}
+        `;
+        const page = pageRows[0];
+        if (!page) return null;
+        if (page.document_type === 'materials') {
+          const docRows = await tx<({ document_revision: number })[]>`
+            update assignment_material_versions set
+              document_revision = document_revision + 1,
+              review_state = null,
+              updated_at_ms = ${now}
+            where id = ${page.materials_version_id} and teacher_id = ${teacherId}
+            returning document_revision
+          `;
+          return { page, documentRevision: Number(docRows[0]?.document_revision ?? 0) };
+        }
+        const docRows = await tx<({ document_revision: number })[]>`
+          update submissions set
+            document_revision = document_revision + 1,
+            review_state = null,
+            grading_state = 'not_graded', graded_at_ms = null,
+            updated_at_ms = ${now}
+          where id = ${page.submission_id} and teacher_id = ${teacherId}
+          returning document_revision
+        `;
+        return { page, documentRevision: Number(docRows[0]?.document_revision ?? 0) };
+      });
+    },
+
+    /**
+     * Whole-document retranscription (api-routes-documents.md §3.4). One
+     * transaction: conditionally bump the document's `documentRevision` only
+     * when it still equals `expectedDocumentRevision` (compare-and-swap;
+     * `null` return is 409 REVISION_CONFLICT with nothing committed), clear
+     * its review state (and, for a submission, return grading to
+     * `not_graded` with a null `gradedAt`), then bump every current
+     * `completed` page back to `queued` with reset attempt/failure/
+     * generated-content/timing columns. Page IDs, order, and
+     * `contentRevision` are untouched; old question segments stay tied to
+     * the superseded `pageRevision` as audit history (PAT-004).
+     */
+    async retranscribeDocumentRows({ teacherId, documentType, documentId, expectedDocumentRevision }) {
+      const now = Date.now();
+      const isMaterials = documentType === 'materials';
+      return sql.begin(async (tx) => {
+        const revRows = isMaterials
+          ? await tx<({ document_revision: number })[]>`
+              update assignment_material_versions set
+                document_revision = document_revision + 1,
+                review_state = null,
+                updated_at_ms = ${now}
+              where id = ${documentId} and teacher_id = ${teacherId}
+                and document_revision = ${expectedDocumentRevision}
+              returning document_revision
+            `
+          : await tx<({ document_revision: number })[]>`
+              update submissions set
+                document_revision = document_revision + 1,
+                review_state = null,
+                grading_state = 'not_graded', graded_at_ms = null,
+                updated_at_ms = ${now}
+              where id = ${documentId} and teacher_id = ${teacherId}
+                and document_revision = ${expectedDocumentRevision}
+              returning document_revision
+            `;
+        if (revRows.length === 0) return null;
+        const parentConditionTx = isMaterials
+          ? tx`materials_version_id = ${documentId}`
+          : tx`submission_id = ${documentId}`;
+        const pages = await tx<PageRow[]>`
+          update pages set
+            page_revision = page_revision + 1,
+            processing_state = 'queued',
+            attempt_count = 0,
+            failure_code = null,
+            failure_message = null,
+            draft = null,
+            started_at_ms = null,
+            completed_at_ms = null,
+            queued_at_ms = ${now},
+            updated_at_ms = ${now}
+          where teacher_id = ${teacherId} and ${parentConditionTx} and processing_state = 'completed'
+          returning ${pageColumns(tx)}
+        `;
+        return { documentRevision: Number(revRows[0]?.document_revision ?? 0), pages };
+      });
+    },
+
+    async hasCurrentQuestionJudgments(teacherId, submissionId) {
+      const rows = await sql<({ exists: boolean })[]>`
+        select exists (
+          select 1 from question_judgments qj
+          join pages p on p.id = qj.page_id
+          where qj.teacher_id = ${teacherId}
+            and p.submission_id = ${submissionId}
+            and qj.page_revision = p.page_revision
+        ) as exists
+      `;
+      return rows[0]?.exists ?? false;
+    },
 
     async findSubmission(teacherId, submissionId) {
       const rows = await sql<(SubmissionRow & { student_name: string; page_count: number | string; page_states: string[] | null })[]>`

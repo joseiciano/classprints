@@ -222,6 +222,31 @@ export interface RemovePageResultRow {
   removedStorageKey: string;
 }
 
+/** Result of an atomic single-page retry (TASK-015 §3.3). Null from the
+ * repository means the page was no longer exactly `failed` when the
+ * conditional update ran (pre-commit race): the caller returns 409 rather
+ * than replaying the retry. */
+export interface RetryPageRowResult {
+  page: PageRow;
+  documentRevision: number;
+}
+
+export interface RetranscribeDocumentRowsInput {
+  teacherId: string;
+  documentType: 'materials' | 'submission';
+  documentId: string;
+  /** Compare-and-swap guard matching `RetranscribeDocumentBody.expectedDocumentRevision`. */
+  expectedDocumentRevision: number;
+}
+
+/** Null means the document's revision no longer matched
+ * `expectedDocumentRevision` when the conditional update ran (409
+ * REVISION_CONFLICT); nothing was committed. */
+export interface RetranscribeDocumentRowsResult {
+  documentRevision: number;
+  pages: PageRow[];
+}
+
 export interface SubmissionListRow extends SubmissionRow {
   student_name: string;
   student_active: boolean;

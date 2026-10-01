@@ -16,6 +16,8 @@ import type {
   ConfirmDocumentResult,
   ReplacePageResult,
   RetryPageResult,
+  RetranscribeDocumentBody,
+  DocumentProcessingResponse,
   DeletionOperation,
   ImageVariant,
   Rotation,
@@ -26,6 +28,9 @@ import type {
 import {
   computeDocumentProcessingState,
   computeProcessingCounts,
+  isPageRetryEligible,
+  canRetranscribeDocument,
+  evaluateRetranscriptionConsent,
 } from '@classprints/assignment-reader-shared';
 import type { AssignmentReaderRepository } from './assignment-reader.repository';
 import type { AssignmentReaderErrorCode, PageRow } from './assignment-reader.types';
@@ -58,6 +63,7 @@ export interface AssignmentReaderHttpErrorShape extends Error {
   readonly status: number;
   readonly code: AssignmentReaderErrorCode;
   readonly details?: Array<{ path: string; message: string }>;
+  readonly context?: Record<string, unknown>;
 }
 
 /** Domain error carrying the manifest's envelope code and HTTP status. */
@@ -65,18 +71,24 @@ export class AssignmentReaderError extends Error implements AssignmentReaderHttp
   public readonly status: number;
   public readonly code: AssignmentReaderErrorCode;
   public readonly details?: Array<{ path: string; message: string }>;
+  /** Safe, non-content machine-readable context for a 409 response — for
+   * example REVISION_CONFLICT's current revision or CONSENT_REQUIRED's
+   * missing-consent issue codes (api-routes-documents.md §3.4). */
+  public readonly context?: Record<string, unknown>;
 
   constructor(
     status: number,
     code: AssignmentReaderErrorCode,
     message: string,
     details?: Array<{ path: string; message: string }>,
+    context?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'AssignmentReaderError';
     this.status = status;
     this.code = code;
     this.details = details;
+    this.context = context;
   }
 }
 export interface AssignmentReaderServiceDeps {
@@ -348,7 +360,7 @@ export class AssignmentReaderService {
     return { version: existing, created: false };
   }
 
-  // ——— Processing (TASK-008) ——————————————————————————————————————————————————
+  // ——— Processing, retry, and retranscription (TASK-015) ———————————————————————
 
   /**
    * Per-page canonical list for one document (api-routes-documents.md §3.1).
@@ -357,21 +369,207 @@ export class AssignmentReaderService {
    * deletion-pending document id is indistinguishable from a missing one;
    * archived ancestry stays readable, and historical material versions
    * remain listed read-only for later-phase workspace wiring.
+   *
+   * The document-level rollup fields (`processingState`, `processingCounts`,
+   * `reviewState`, `documentRevision`) come from the same finder's full,
+   * unfiltered page-state aggregate, never from the paginated/filtered page
+   * list below it — a search/status filter or a later page must not change
+   * what the rollup reports (REQ-010).
    */
   async listProcessing(
     teacherId: string,
-    documentType: 'materials' | 'submission',
+    documentType: DocumentType,
     documentId: string,
     query: ProcessingListQuery,
-  ) {
-    if (documentType === 'materials') {
-      const version = await this.deps.repo.findMaterialVersion(teacherId, documentId);
-      if (!version) throw notFound();
-    } else {
-      const submission = await this.deps.repo.findSubmission(teacherId, documentId);
-      if (!submission) throw notFound();
+  ): Promise<DocumentProcessingResponse> {
+    const aggregate =
+      documentType === 'materials'
+        ? await this.deps.repo.findMaterialVersion(teacherId, documentId)
+        : await this.deps.repo.findSubmission(teacherId, documentId);
+    if (!aggregate) throw notFound();
+    const list = await this.deps.repo.listProcessing({ teacherId, documentType, documentId, query });
+    return {
+      ...list,
+      documentType,
+      documentId,
+      documentRevision: aggregate.documentRevision,
+      processingState: aggregate.processingState,
+      processingCounts: aggregate.processingCounts,
+      reviewState: aggregate.reviewState,
+    };
+  }
+
+  /**
+   * Retries exactly one failed page (api-routes-documents.md §3.3). Only a
+   * page that is currently `failed` is eligible (REQ-013/ALT-006): default
+   * recovery never re-bills or reprocesses successful siblings. The
+   * repository's conditional update is the real race guard; this
+   * pre-check only produces the right 404 vs. 409 before it.
+   */
+  async retryPage(teacherId: string, pageId: string): Promise<RetryPageResult> {
+    const page = await this.deps.repo.findPage(teacherId, pageId);
+    if (!page) throw notFound();
+    if (!isPageRetryEligible({ processingState: page.processing_state })) {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'Only a failed page can be retried');
     }
-    return this.deps.repo.listProcessing({ teacherId, documentType, documentId, query });
+    const documentType = page.document_type;
+    const documentId = this.parentIdOf(page);
+    // Looser guard than requireDocumentStatus (api-routes-documents.md §3.3
+    // applies to a confirmed/current document, not only a draft materials
+    // version): active ancestry, owned, non-historical, not deletion-pending.
+    await this.requireNonHistoricalDocumentStatus(teacherId, documentType, documentId);
+
+    const result = await this.deps.repo.retryPageRow(teacherId, pageId);
+    if (!result) {
+      // Pre-commit race: the page stopped being exactly `failed` between the
+      // check above and the conditional write. Nothing changed.
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'This page changed; refresh and try again');
+    }
+
+    const queues = this.requireQueues();
+    try {
+      await queues.sendTranscriptionPage({
+        kind: 'transcription_page',
+        pageId: result.page.id,
+        transcriptionRevision: result.page.page_revision,
+        documentType,
+        attemptCount: 0,
+        queuedAtMs: Date.now(),
+        isRetry: true,
+      });
+    } catch (error) {
+      console.error('retryPage: transcription queue send failed', { pageId, error });
+      // The new revision is already committed; delivery recovers through
+      // retry-confirm (api-routes-documents.md §2.6), never a second retry.
+      throw new AssignmentReaderError(
+        500,
+        'QUEUE_DELIVERY_FAILED',
+        'Retry committed, but transcription delivery failed; use retry-confirm',
+      );
+    }
+
+    const siblings = await this.deps.repo.listDocumentPageRows(teacherId, documentType, documentId);
+    const pageStates = siblings.map((row) => row.processing_state);
+    return {
+      page: this.mapPageSummary(result.page),
+      documentRevision: result.documentRevision,
+      documentProcessingState: (computeDocumentProcessingState(pageStates) ?? 'queued') as ProcessingState,
+      processingCounts: computeProcessingCounts(pageStates),
+    };
+  }
+
+  /**
+   * Whole-document retranscription (api-routes-documents.md §3.4): the
+   * explicit, separately-confirmed alternative to page retry (ALT-006). Every
+   * current page must already be `completed`; `expectedDocumentRevision` is a
+   * compare-and-swap guard, and missing teacher-edit/judgment-reset consent
+   * blocks the command before anything commits (REQ-013, PAT-004).
+   */
+  async retranscribeDocument(
+    teacherId: string,
+    documentType: DocumentType,
+    documentId: string,
+    body: RetranscribeDocumentBody,
+  ): Promise<ConfirmDocumentResult> {
+    const status = await this.requireNonHistoricalDocumentStatus(teacherId, documentType, documentId);
+    if (!status.draft_confirmed) {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'This document is not confirmed');
+    }
+    const currentPages = await this.deps.repo.listDocumentPageRows(teacherId, documentType, documentId);
+    if (currentPages.length === 0) {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'This document has no pages to retranscribe');
+    }
+    const pageStates = currentPages.map((row) => row.processing_state);
+    if (!canRetranscribeDocument(pageStates)) {
+      throw new AssignmentReaderError(
+        409,
+        'INVALID_STATE',
+        'Every current page must be completed before retranscription',
+      );
+    }
+    if (body.expectedDocumentRevision !== status.document_revision) {
+      throw new AssignmentReaderError(
+        409,
+        'REVISION_CONFLICT',
+        'This document changed since it was loaded',
+        undefined,
+        { currentRevision: status.document_revision },
+      );
+    }
+    const anyPageEditedByTeacher = currentPages.some((row) => row.edited_by_teacher);
+    const submissionHasJudgments =
+      documentType === 'submission'
+        ? await this.deps.repo.hasCurrentQuestionJudgments(teacherId, documentId)
+        : false;
+    const issues = evaluateRetranscriptionConsent({
+      confirmed: body.confirmed,
+      anyPageEditedByTeacher,
+      overwriteTeacherEdits: body.overwriteTeacherEdits,
+      submissionHasJudgments,
+      resetQuestionJudgments: body.resetQuestionJudgments,
+    });
+    if (issues.length > 0) {
+      throw new AssignmentReaderError(
+        409,
+        'CONSENT_REQUIRED',
+        'Retranscription requires explicit consent',
+        undefined,
+        { issues },
+      );
+    }
+
+    const result = await this.deps.repo.retranscribeDocumentRows({
+      teacherId,
+      documentType,
+      documentId,
+      expectedDocumentRevision: body.expectedDocumentRevision,
+    });
+    if (!result) {
+      // The revision moved between the pre-check above and the conditional
+      // write (another committed mutation); nothing from this call committed.
+      throw new AssignmentReaderError(
+        409,
+        'REVISION_CONFLICT',
+        'This document changed since it was loaded',
+      );
+    }
+
+    const queues = this.requireQueues();
+    let queueFailed = false;
+    for (const row of result.pages) {
+      try {
+        await queues.sendTranscriptionPage({
+          kind: 'transcription_page',
+          pageId: row.id,
+          transcriptionRevision: row.page_revision,
+          documentType,
+          attemptCount: 0,
+          queuedAtMs: Date.now(),
+          isRetry: true,
+        });
+      } catch (error) {
+        queueFailed = true;
+        console.error('retranscribeDocument: transcription queue send failed', { pageId: row.id, error });
+      }
+    }
+    const pages = result.pages.map((row) => this.mapPageSummary(row));
+    const states = pages.map((page) => page.processingState);
+    if (queueFailed) {
+      throw new AssignmentReaderError(
+        500,
+        'QUEUE_DELIVERY_FAILED',
+        'Retranscription committed, but delivery failed for one or more pages; use retry-confirm',
+      );
+    }
+    return {
+      documentType,
+      documentId,
+      documentRevision: result.documentRevision,
+      pages,
+      processingState: (computeDocumentProcessingState(states) ?? 'queued') as ProcessingState,
+      processingCounts: computeProcessingCounts(states),
+      acceptedAt: new Date().toISOString(),
+    };
   }
 
   // ——— Pages: upload, ordering, replacement, removal, delivery (TASK-010/011/012) ———

@@ -47,6 +47,9 @@ interface FakeState {
   pages: Map<string, PageRow>;
   deletionOps: DeletionOperationRow[];
   nextPosition: Map<string, number>;
+  /** Submission IDs that currently have a judgment on a current segment
+   * (TASK-015 §3.4 consent gate); materials never enter this set. */
+  submissionsWithJudgments: Set<string>;
 }
 
 const newPageRow = (overrides: Partial<PageRow> & { id: string }): PageRow => ({
@@ -130,7 +133,13 @@ const freshState = (): FakeState => {
     student_name: 'Maya Rodriguez',
     lifecycle: null,
   });
-  return { docs, pages: new Map(), deletionOps: [], nextPosition: new Map() };
+  return {
+    docs,
+    pages: new Map(),
+    deletionOps: [],
+    nextPosition: new Map(),
+    submissionsWithJudgments: new Set(),
+  };
 };
 
 const buildFakeRepository = (state: FakeState): AssignmentReaderRepository => {
@@ -345,6 +354,63 @@ const buildFakeRepository = (state: FakeState): AssignmentReaderRepository => {
           (op) => op.target_type === targetType && op.target_id === targetId && op.status === 'pending',
         ) ?? null
       );
+    },
+
+    async retryPageRow(teacherId, pageId) {
+      const page = state.pages.get(pageId);
+      if (!page || page.teacher_id !== teacherId || page.processing_state !== 'failed') return null;
+      const now = Date.now();
+      const updated: PageRow = {
+        ...page,
+        page_revision: page.page_revision + 1,
+        processing_state: 'queued',
+        attempt_count: 0,
+        failure_code: null,
+        failure_message: null,
+        draft: null,
+        started_at_ms: null,
+        completed_at_ms: null,
+        queued_at_ms: now,
+        updated_at_ms: now,
+      };
+      state.pages.set(pageId, updated);
+      const parentId = (page.materials_version_id ?? page.submission_id)!;
+      const doc = state.docs.get(parentId)!;
+      const documentRevision = doc.document_revision + 1;
+      state.docs.set(parentId, { ...doc, document_revision: documentRevision });
+      return { page: updated, documentRevision };
+    },
+
+    async retranscribeDocumentRows({ teacherId, documentType, documentId, expectedDocumentRevision }) {
+      const doc = state.docs.get(documentId);
+      if (!doc || doc.document_revision !== expectedDocumentRevision) return null;
+      const documentRevision = doc.document_revision + 1;
+      state.docs.set(documentId, { ...doc, document_revision: documentRevision });
+      const now = Date.now();
+      const pages = pagesFor(documentType, documentId)
+        .filter((page) => page.processing_state === 'completed')
+        .map((page) => {
+          const updated: PageRow = {
+            ...page,
+            page_revision: page.page_revision + 1,
+            processing_state: 'queued',
+            attempt_count: 0,
+            failure_code: null,
+            failure_message: null,
+            draft: null,
+            started_at_ms: null,
+            completed_at_ms: null,
+            queued_at_ms: now,
+            updated_at_ms: now,
+          };
+          state.pages.set(page.id, updated);
+          return updated;
+        });
+      return { documentRevision, pages };
+    },
+
+    async hasCurrentQuestionJudgments(teacherId, submissionId) {
+      return state.submissionsWithJudgments.has(submissionId);
     },
   };
 };
@@ -758,6 +824,250 @@ describe('AssignmentReaderService — remove page (TASK-011)', () => {
     const service = buildService(state);
     const result = await service.removePage(TEACHER_A, 'p1');
     expect(result.operation.status).toBe('pending');
+  });
+});
+
+describe('AssignmentReaderService — single-page retry (TASK-015)', () => {
+  it('retries a failed confirmed page: revision bump, reset state, queued delivery', async () => {
+    const state = freshState();
+    state.pages.set(
+      'p1',
+      newPageRow({
+        id: 'p1',
+        materials_version_id: MATERIALS_CURRENT,
+        position: 1,
+        processing_state: 'failed',
+        attempt_count: 2,
+        failure_code: 'provider_timeout',
+        failure_message: 'timed out',
+        page_revision: 3,
+      }),
+    );
+    const queues = buildFakeQueues();
+    const service = buildService(state, buildFakeImages(), queues);
+    const beforeRevision = state.docs.get(MATERIALS_CURRENT)!.document_revision;
+    const result = await service.retryPage(TEACHER_A, 'p1');
+    expect(result.page.processingState).toBe('queued');
+    expect(result.page.pageRevision).toBe(4);
+    expect(result.page.attemptCount).toBe(0);
+    expect(result.page.failure).toBeNull();
+    expect(result.documentRevision).toBe(beforeRevision + 1);
+    expect(queues.transcriptionSent).toHaveLength(1);
+    expect(queues.transcriptionSent[0]).toMatchObject({
+      pageId: 'p1',
+      transcriptionRevision: 4,
+      isRetry: true,
+    });
+  });
+
+  it('rejects retrying a page that is not exactly failed', async () => {
+    const state = freshState();
+    state.pages.set(
+      'p1',
+      newPageRow({
+        id: 'p1',
+        materials_version_id: MATERIALS_CURRENT,
+        position: 1,
+        processing_state: 'completed',
+        draft: { schemaVersion: 1 },
+      }),
+    );
+    const service = buildService(state);
+    await expect(service.retryPage(TEACHER_A, 'p1')).rejects.toMatchObject({
+      code: 'INVALID_STATE',
+      status: 409,
+    });
+  });
+
+  it('rejects retrying a page on a historical materials version', async () => {
+    const state = freshState();
+    state.pages.set(
+      'p1',
+      newPageRow({
+        id: 'p1',
+        materials_version_id: MATERIALS_HISTORICAL,
+        position: 1,
+        processing_state: 'failed',
+        failure_code: 'invalid_image',
+        failure_message: 'bad image',
+      }),
+    );
+    const service = buildService(state);
+    await expect(service.retryPage(TEACHER_A, 'p1')).rejects.toMatchObject({
+      code: 'HISTORICAL_VERSION_READ_ONLY',
+      status: 409,
+    });
+  });
+
+  it('rejects retrying a missing or cross-owner page as 404, not 403', async () => {
+    const state = freshState();
+    state.pages.set(
+      'p1',
+      newPageRow({
+        id: 'p1',
+        materials_version_id: MATERIALS_CURRENT,
+        position: 1,
+        processing_state: 'failed',
+        failure_code: 'invalid_image',
+        failure_message: 'bad image',
+      }),
+    );
+    const service = buildService(state);
+    await expect(service.retryPage(TEACHER_B, 'p1')).rejects.toMatchObject({
+      code: 'RESOURCE_NOT_FOUND',
+      status: 404,
+    });
+    await expect(service.retryPage(TEACHER_A, 'nonexistent')).rejects.toMatchObject({
+      code: 'RESOURCE_NOT_FOUND',
+      status: 404,
+    });
+  });
+
+  it('surfaces 500 QUEUE_DELIVERY_FAILED but keeps the committed revision bump', async () => {
+    const state = freshState();
+    state.pages.set(
+      'p1',
+      newPageRow({
+        id: 'p1',
+        materials_version_id: MATERIALS_CURRENT,
+        position: 1,
+        processing_state: 'failed',
+        failure_code: 'invalid_image',
+        failure_message: 'bad image',
+      }),
+    );
+    const queues = buildFakeQueues();
+    queues.failTranscription = true;
+    const service = buildService(state, buildFakeImages(), queues);
+    await expect(service.retryPage(TEACHER_A, 'p1')).rejects.toMatchObject({
+      code: 'QUEUE_DELIVERY_FAILED',
+      status: 500,
+    });
+    // The DB side already committed despite the thrown response.
+    expect(state.pages.get('p1')?.processing_state).toBe('queued');
+  });
+});
+
+describe('AssignmentReaderService — whole-document retranscription (TASK-015)', () => {
+  const seedCompletedSubmission = (state: FakeState, options: { edited?: boolean } = {}) => {
+    state.docs.set(SUBMISSION_1, {
+      ...state.docs.get(SUBMISSION_1)!,
+      draft_confirmed: true,
+      document_revision: 2,
+    });
+    state.pages.set(
+      'sp1',
+      newPageRow({
+        id: 'sp1',
+        document_type: 'submission',
+        materials_version_id: null,
+        submission_id: SUBMISSION_1,
+        student_id: 'student-1',
+        position: 1,
+        processing_state: 'completed',
+        draft: { schemaVersion: 1 },
+        page_revision: 1,
+        edited_by_teacher: options.edited ?? false,
+      }),
+    );
+    state.pages.set(
+      'sp2',
+      newPageRow({
+        id: 'sp2',
+        document_type: 'submission',
+        materials_version_id: null,
+        submission_id: SUBMISSION_1,
+        student_id: 'student-1',
+        position: 2,
+        processing_state: 'completed',
+        draft: { schemaVersion: 1 },
+        page_revision: 1,
+      }),
+    );
+  };
+
+  const consentedBody = {
+    expectedDocumentRevision: 2,
+    confirmed: true as const,
+    overwriteTeacherEdits: false,
+    resetQuestionJudgments: false,
+  };
+
+  it('retranscribes every current completed page with consent and bumps both revisions', async () => {
+    const state = freshState();
+    seedCompletedSubmission(state);
+    const queues = buildFakeQueues();
+    const service = buildService(state, buildFakeImages(), queues);
+    const result = await service.retranscribeDocument(TEACHER_A, 'submission', SUBMISSION_1, consentedBody);
+    expect(result.documentRevision).toBe(3);
+    expect(result.pages).toHaveLength(2);
+    expect(result.pages.every((page) => page.processingState === 'queued')).toBe(true);
+    expect(result.pages.every((page) => page.pageRevision === 2)).toBe(true);
+    expect(queues.transcriptionSent).toHaveLength(2);
+    expect(queues.transcriptionSent.every((message) => message.isRetry)).toBe(true);
+  });
+
+  it('rejects when a current page is not completed', async () => {
+    const state = freshState();
+    seedCompletedSubmission(state);
+    state.pages.set('sp2', { ...state.pages.get('sp2')!, processing_state: 'queued' });
+    const service = buildService(state);
+    await expect(
+      service.retranscribeDocument(TEACHER_A, 'submission', SUBMISSION_1, consentedBody),
+    ).rejects.toMatchObject({ code: 'INVALID_STATE', status: 409 });
+  });
+
+  it('rejects a stale expectedDocumentRevision with REVISION_CONFLICT context', async () => {
+    const state = freshState();
+    seedCompletedSubmission(state);
+    const service = buildService(state);
+    await expect(
+      service.retranscribeDocument(TEACHER_A, 'submission', SUBMISSION_1, {
+        ...consentedBody,
+        expectedDocumentRevision: 1,
+      }),
+    ).rejects.toMatchObject({
+      code: 'REVISION_CONFLICT',
+      status: 409,
+      context: { currentRevision: 2 },
+    });
+  });
+
+  it('requires overwriteTeacherEdits consent when a current page was teacher-edited', async () => {
+    const state = freshState();
+    seedCompletedSubmission(state, { edited: true });
+    const service = buildService(state);
+    await expect(
+      service.retranscribeDocument(TEACHER_A, 'submission', SUBMISSION_1, consentedBody),
+    ).rejects.toMatchObject({ code: 'CONSENT_REQUIRED', status: 409 });
+  });
+
+  it('requires resetQuestionJudgments consent when the submission has current judgments', async () => {
+    const state = freshState();
+    seedCompletedSubmission(state);
+    state.submissionsWithJudgments.add(SUBMISSION_1);
+    const service = buildService(state);
+    await expect(
+      service.retranscribeDocument(TEACHER_A, 'submission', SUBMISSION_1, consentedBody),
+    ).rejects.toMatchObject({ code: 'CONSENT_REQUIRED', status: 409 });
+  });
+
+  it('rejects retranscribing an unconfirmed document', async () => {
+    const state = freshState();
+    seedCompletedSubmission(state);
+    state.docs.set(SUBMISSION_1, { ...state.docs.get(SUBMISSION_1)!, draft_confirmed: false });
+    const service = buildService(state);
+    await expect(
+      service.retranscribeDocument(TEACHER_A, 'submission', SUBMISSION_1, consentedBody),
+    ).rejects.toMatchObject({ code: 'INVALID_STATE', status: 409 });
+  });
+
+  it('rejects retranscribing a historical materials version', async () => {
+    const state = freshState();
+    const service = buildService(state);
+    await expect(
+      service.retranscribeDocument(TEACHER_A, 'materials', MATERIALS_HISTORICAL, consentedBody),
+    ).rejects.toMatchObject({ code: 'HISTORICAL_VERSION_READ_ONLY', status: 409 });
   });
 });
 

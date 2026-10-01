@@ -85,6 +85,64 @@ d('integration: assignment-reader repository against live Postgres', () => {
     return rows[0]!;
   };
 
+  const readSubmissionFull = async (submissionId: string) => {
+    const rows = await sql<
+      ({
+        document_revision: number;
+        review_state: string | null;
+        grading_state: string;
+        graded_at_ms: string | null;
+        score: string | null;
+      })[]
+    >`
+      select document_revision, review_state, grading_state, graded_at_ms, score
+      from public.submissions where id = ${submissionId}
+    `;
+    return rows[0]!;
+  };
+
+  const readPage = async (pageId: string) => {
+    const rows = await sql<
+      ({
+        processing_state: string;
+        page_revision: number;
+        attempt_count: number;
+        failure_code: string | null;
+        failure_message: string | null;
+        draft: unknown;
+        started_at_ms: string | null;
+        completed_at_ms: string | null;
+        queued_at_ms: string | null;
+      })[]
+    >`
+      select processing_state, page_revision, attempt_count, failure_code, failure_message,
+             draft, started_at_ms, completed_at_ms, queued_at_ms
+      from public.pages where id = ${pageId}
+    `;
+    return rows[0]!;
+  };
+
+  const insertCompletedPage = async (
+    pageId: string,
+    scope: Scope,
+    position: number,
+    now: number,
+    editedByTeacher = false,
+  ): Promise<void> => {
+    await sql`insert into public.pages (
+        id, document_type, submission_id, student_id, class_id, assignment_id, teacher_id,
+        position, label, storage_key, processing_state, attempt_count, page_revision,
+        edited_by_teacher, draft, queued_at_ms, started_at_ms, completed_at_ms,
+        uploaded_at_ms, created_at_ms, updated_at_ms
+      ) values (
+        ${pageId}, 'submission', ${scope.submissionId}, ${scope.studentId}, ${scope.classId}, ${scope.assignmentId}, ${scope.teacherId},
+        ${position}, 'Page', 'it/' || ${pageId} || '.jpg', 'completed', 1, 1,
+        ${editedByTeacher}, ${sql.json({ schemaVersion: 1, doc: { type: 'doc', content: [] } })}::jsonb,
+        ${now}, ${now}, ${now},
+        ${now}, ${now}, ${now}
+      )`;
+  };
+
   const cleanup = async (teacherId: string): Promise<void> => {
     await sql`delete from public.users where id = ${teacherId}`;
   };
@@ -245,6 +303,246 @@ d('integration: assignment-reader repository against live Postgres', () => {
       const after = await readSubmission(scope.submissionId);
       expect(after.draft_confirmed).toBe(false);
       expect(after.confirmed_at_ms).toBeNull();
+
+      await cleanup(scope.teacherId);
+    },
+  );
+
+  it(
+    'retryPageRow (TASK-015): bumps only the page and document revision, resets attempt/failure/timing, and returns the submission to not_graded',
+    { timeout: 30000 },
+    async () => {
+      sql = postgres(connectionString, { prepare: false, max: 2 });
+      const repo = createAssignmentReaderRepository(sql as unknown as Sql);
+      const scope: Scope = {
+        teacherId: 'a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1',
+        classId: 'a2a2a2a2-a2a2-4a2a-8a2a-a2a2a2a2a2a2',
+        studentId: 'a3a3a3a3-a3a3-4a3a-8a3a-a3a3a3a3a3a3',
+        assignmentId: 'a4a4a4a4-a4a4-4a4a-8a4a-a4a4a4a4a4a4',
+        submissionId: 'a5a5a5a5-a5a5-4a5a-8a5a-a5a5a5a5a5a5',
+      };
+      const failedPageId = 'a6a6a6a6-a6a6-4a6a-8a6a-a6a6a6a6a6a6';
+      const siblingPageId = 'a7a7a7a7-a7a7-4a7a-8a7a-a7a7a7a7a7a7';
+      const now = Date.now();
+
+      await cleanup(scope.teacherId);
+      await seedSubmissionScope(scope, now);
+      await insertPage(failedPageId, scope, 1, 'failed', now);
+      await insertCompletedPage(siblingPageId, scope, 2, now);
+      await sql`
+        update public.submissions set
+          draft_confirmed = true, confirmed_at_ms = ${now}, document_revision = 2,
+          review_state = 'ready_to_grade', grading_state = 'graded', graded_at_ms = ${now},
+          score = 9
+        where id = ${scope.submissionId}
+      `;
+
+      const result = await repo.retryPageRow(scope.teacherId, failedPageId);
+      expect(result).not.toBeNull();
+      expect(result!.page.page_revision).toBe(2);
+      expect(result!.page.processing_state).toBe('queued');
+      expect(result!.documentRevision).toBe(3);
+
+      const page = await readPage(failedPageId);
+      expect(page.processing_state).toBe('queued');
+      expect(page.page_revision).toBe(2);
+      expect(page.attempt_count).toBe(0);
+      expect(page.failure_code).toBeNull();
+      expect(page.failure_message).toBeNull();
+      expect(page.draft).toBeNull();
+      expect(page.started_at_ms).toBeNull();
+      expect(page.completed_at_ms).toBeNull();
+      expect(page.queued_at_ms).not.toBeNull();
+
+      // The untouched sibling keeps its own revision and completed draft.
+      const sibling = await readPage(siblingPageId);
+      expect(sibling.page_revision).toBe(1);
+      expect(sibling.processing_state).toBe('completed');
+
+      const submission = await readSubmissionFull(scope.submissionId);
+      expect(submission.document_revision).toBe(3);
+      expect(submission.review_state).toBeNull();
+      expect(submission.grading_state).toBe('not_graded');
+      expect(submission.graded_at_ms).toBeNull();
+      // Score is retained across a retry (REQ-013 §3.3: only review/grading
+      // state resets, draft grading fields are untouched).
+      expect(Number(submission.score)).toBe(9);
+
+      await cleanup(scope.teacherId);
+    },
+  );
+
+  it(
+    'retryPageRow (TASK-015): returns null without writing when the page is not exactly failed (conditional-update race guard)',
+    { timeout: 30000 },
+    async () => {
+      sql = postgres(connectionString, { prepare: false, max: 2 });
+      const repo = createAssignmentReaderRepository(sql as unknown as Sql);
+      const scope: Scope = {
+        teacherId: 'b1b1b1b1-b1b1-4b1b-8b1b-b1b1b1b1b1b1',
+        classId: 'b2b2b2b2-b2b2-4b2b-8b2b-b2b2b2b2b2b2',
+        studentId: 'b3b3b3b3-b3b3-4b3b-8b3b-b3b3b3b3b3b3',
+        assignmentId: 'b4b4b4b4-b4b4-4b4b-8b4b-b4b4b4b4b4b4',
+        submissionId: 'b5b5b5b5-b5b5-4b5b-8b5b-b5b5b5b5b5b5',
+      };
+      const uploadingPageId = 'b6b6b6b6-b6b6-4b6b-8b6b-b6b6b6b6b6b6';
+      const now = Date.now();
+
+      await cleanup(scope.teacherId);
+      await seedSubmissionScope(scope, now);
+      await insertPage(uploadingPageId, scope, 1, 'uploading', now);
+
+      const result = await repo.retryPageRow(scope.teacherId, uploadingPageId);
+      expect(result).toBeNull();
+
+      const page = await readPage(uploadingPageId);
+      expect(page.processing_state).toBe('uploading');
+      expect(page.page_revision).toBe(1);
+      const submission = await readSubmissionFull(scope.submissionId);
+      expect(submission.document_revision).toBe(1); // nothing committed
+
+      await cleanup(scope.teacherId);
+    },
+  );
+
+  it(
+    'retranscribeDocumentRows (TASK-015): bumps every current completed page and the document revision once, clears generated content, and resets submission grading',
+    { timeout: 30000 },
+    async () => {
+      sql = postgres(connectionString, { prepare: false, max: 2 });
+      const repo = createAssignmentReaderRepository(sql as unknown as Sql);
+      const scope: Scope = {
+        teacherId: 'c1c1c1c1-c1c1-4c1c-8c1c-c1c1c1c1c1c1',
+        classId: 'c2c2c2c2-c2c2-4c2c-8c2c-c2c2c2c2c2c2',
+        studentId: 'c3c3c3c3-c3c3-4c3c-8c3c-c3c3c3c3c3c3',
+        assignmentId: 'c4c4c4c4-c4c4-4c4c-8c4c-c4c4c4c4c4c4',
+        submissionId: 'c5c5c5c5-c5c5-4c5c-8c5c-c5c5c5c5c5c5',
+      };
+      const page1 = 'c6c6c6c6-c6c6-4c6c-8c6c-c6c6c6c6c6c6';
+      const page2 = 'c7c7c7c7-c7c7-4c7c-8c7c-c7c7c7c7c7c7';
+      const now = Date.now();
+
+      await cleanup(scope.teacherId);
+      await seedSubmissionScope(scope, now);
+      await insertCompletedPage(page1, scope, 1, now);
+      await insertCompletedPage(page2, scope, 2, now);
+      await sql`
+        update public.submissions set
+          draft_confirmed = true, confirmed_at_ms = ${now}, document_revision = 2,
+          review_state = 'ready_to_grade', grading_state = 'graded', graded_at_ms = ${now},
+          score = 10
+        where id = ${scope.submissionId}
+      `;
+
+      const result = await repo.retranscribeDocumentRows({
+        teacherId: scope.teacherId,
+        documentType: 'submission',
+        documentId: scope.submissionId,
+        expectedDocumentRevision: 2,
+      });
+      expect(result).not.toBeNull();
+      expect(result!.documentRevision).toBe(3);
+      expect(result!.pages).toHaveLength(2);
+      expect(result!.pages.every((page) => page.page_revision === 2)).toBe(true);
+      expect(result!.pages.every((page) => page.processing_state === 'queued')).toBe(true);
+
+      const p1 = await readPage(page1);
+      expect(p1.processing_state).toBe('queued');
+      expect(p1.page_revision).toBe(2);
+      expect(p1.draft).toBeNull();
+      expect(p1.completed_at_ms).toBeNull();
+      expect(p1.started_at_ms).toBeNull();
+
+      const submission = await readSubmissionFull(scope.submissionId);
+      expect(submission.document_revision).toBe(3);
+      expect(submission.review_state).toBeNull();
+      expect(submission.grading_state).toBe('not_graded');
+      expect(submission.graded_at_ms).toBeNull();
+      expect(Number(submission.score)).toBe(10); // score retained
+
+      await cleanup(scope.teacherId);
+    },
+  );
+
+  it(
+    'retranscribeDocumentRows (TASK-015): returns null and commits nothing on a stale expectedDocumentRevision',
+    { timeout: 30000 },
+    async () => {
+      sql = postgres(connectionString, { prepare: false, max: 2 });
+      const repo = createAssignmentReaderRepository(sql as unknown as Sql);
+      const scope: Scope = {
+        teacherId: 'd1d1d1d1-d1d1-4d1d-8d1d-d1d1d1d1d1d1',
+        classId: 'd2d2d2d2-d2d2-4d2d-8d2d-d2d2d2d2d2d2',
+        studentId: 'd3d3d3d3-d3d3-4d3d-8d3d-d3d3d3d3d3d3',
+        assignmentId: 'd4d4d4d4-d4d4-4d4d-8d4d-d4d4d4d4d4d4',
+        submissionId: 'd5d5d5d5-d5d5-4d5d-8d5d-d5d5d5d5d5d5',
+      };
+      const page1 = 'd6d6d6d6-d6d6-4d6d-8d6d-d6d6d6d6d6d6';
+      const now = Date.now();
+
+      await cleanup(scope.teacherId);
+      await seedSubmissionScope(scope, now);
+      await insertCompletedPage(page1, scope, 1, now);
+      await sql`
+        update public.submissions set
+          draft_confirmed = true, confirmed_at_ms = ${now}, document_revision = 2
+        where id = ${scope.submissionId}
+      `;
+
+      const result = await repo.retranscribeDocumentRows({
+        teacherId: scope.teacherId,
+        documentType: 'submission',
+        documentId: scope.submissionId,
+        expectedDocumentRevision: 1, // stale
+      });
+      expect(result).toBeNull();
+
+      const page = await readPage(page1);
+      expect(page.processing_state).toBe('completed'); // untouched
+      expect(page.page_revision).toBe(1);
+      const submission = await readSubmissionFull(scope.submissionId);
+      expect(submission.document_revision).toBe(2); // nothing committed
+
+      await cleanup(scope.teacherId);
+    },
+  );
+
+  it(
+    'hasCurrentQuestionJudgments (TASK-015): true only for a judgment tied to the page\'s current revision',
+    { timeout: 30000 },
+    async () => {
+      sql = postgres(connectionString, { prepare: false, max: 2 });
+      const repo = createAssignmentReaderRepository(sql as unknown as Sql);
+      const scope: Scope = {
+        teacherId: 'e1e1e1e1-e1e1-4e1e-8e1e-e1e1e1e1e1e1',
+        classId: 'e2e2e2e2-e2e2-4e2e-8e2e-e2e2e2e2e2e2',
+        studentId: 'e3e3e3e3-e3e3-4e3e-8e3e-e3e3e3e3e3e3',
+        assignmentId: 'e4e4e4e4-e4e4-4e4e-8e4e-e4e4e4e4e4e4',
+        submissionId: 'e5e5e5e5-e5e5-4e5e-8e5e-e5e5e5e5e5e5',
+      };
+      const pageId = 'e6e6e6e6-e6e6-4e6e-8e6e-e6e6e6e6e6e6';
+      const segmentId = 'e7e7e7e7-e7e7-4e7e-8e7e-e7e7e7e7e7e7';
+      const now = Date.now();
+
+      await cleanup(scope.teacherId);
+      await seedSubmissionScope(scope, now);
+      await insertCompletedPage(pageId, scope, 1, now);
+
+      expect(await repo.hasCurrentQuestionJudgments(scope.teacherId, scope.submissionId)).toBe(false);
+
+      await sql`insert into public.question_segments (
+          id, page_id, page_revision, ordinal, created_at_ms
+        ) values (${segmentId}, ${pageId}, 1, 1, ${now})`;
+      await sql`insert into public.question_judgments (
+          id, segment_id, page_id, page_revision, teacher_id, judgment, created_at_ms, updated_at_ms
+        ) values (${'e8e8e8e8-e8e8-4e8e-8e8e-e8e8e8e8e8e8'}, ${segmentId}, ${pageId}, 1, ${scope.teacherId}, 'correct', ${now}, ${now})`;
+
+      expect(await repo.hasCurrentQuestionJudgments(scope.teacherId, scope.submissionId)).toBe(true);
+
+      // Bumping the page's current revision leaves the judgment tied to the
+      // now-superseded revision — PAT-004: it is audit history, not current.
+      await sql`update public.pages set page_revision = 2 where id = ${pageId}`;
+      expect(await repo.hasCurrentQuestionJudgments(scope.teacherId, scope.submissionId)).toBe(false);
 
       await cleanup(scope.teacherId);
     },
