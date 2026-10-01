@@ -29,6 +29,13 @@ import {
   confirmDocumentBodySchema,
   retranscribeDocumentBodySchema,
   pageImageQuerySchema,
+  updatePageDraftBodySchema,
+  reviewPageBodySchema,
+  documentRevisionCommandBodySchema,
+  updateQuestionJudgmentBodySchema,
+  updateGradingDraftBodySchema,
+  questionPointsTotalQuerySchema,
+  applyQuestionPointsBodySchema,
 } from '@classprints/assignment-reader-shared';
 import { ZodError, z } from 'zod';
 /**
@@ -617,6 +624,223 @@ export const registerAssignmentReaderRoutes = (app: Hono<SeatingHonoEnv>): void 
       const user = getUser(c);
       const record = await createService(c).getSavedSeatingChart(user.id, c.req.param('chartId'));
       return c.json({ data: record }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  // ——— Workspace, draft editing, and page review (TASK-016) ——————————————————
+
+  app.get('/documents/:documentType/:documentId/workspace', async (c) => {
+    try {
+      const user = getUser(c);
+      const documentType = documentTypeParamSchema.parse(c.req.param('documentType'));
+      const result = await createService(c).getWorkspace(user.id, documentType, c.req.param('documentId'));
+      return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.get('/pages/:pageId', async (c) => {
+    try {
+      const user = getUser(c);
+      const result = await createService(c).getPageWorkspace(user.id, c.req.param('pageId'));
+      return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.patch('/pages/:pageId/draft', async (c) => {
+    try {
+      const user = getUser(c);
+      const body = updatePageDraftBodySchema.parse(await c.req.json());
+      const result = await createService(c).updatePageDraft(user.id, c.req.param('pageId'), body);
+      return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.post('/pages/:pageId/review', async (c) => {
+    try {
+      const user = getUser(c);
+      const body = reviewPageBodySchema.parse(await c.req.json());
+      const result = await createService(c).reviewPage(user.id, c.req.param('pageId'), body);
+      return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.post('/documents/:documentType/:documentId/mark-ready', async (c) => {
+    try {
+      const user = getUser(c);
+      const documentType = documentTypeParamSchema.parse(c.req.param('documentType'));
+      const body = documentRevisionCommandBodySchema.parse(await c.req.json());
+      const result = await createService(c).markDocumentReady(
+        user.id,
+        documentType,
+        c.req.param('documentId'),
+        body,
+      );
+      return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.post('/documents/:documentType/:documentId/return-to-needs-review', async (c) => {
+    try {
+      const user = getUser(c);
+      const documentType = documentTypeParamSchema.parse(c.req.param('documentType'));
+      const body = documentRevisionCommandBodySchema.parse(await c.req.json());
+      const result = await createService(c).returnToNeedsReview(
+        user.id,
+        documentType,
+        c.req.param('documentId'),
+        body,
+      );
+      return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  // ——— Question judgments and grading (TASK-017) ——————————————————————————————
+
+  app.put('/pages/:pageId/question-segments/:segmentId/judgment', async (c) => {
+    try {
+      const user = getUser(c);
+      const body = updateQuestionJudgmentBodySchema.parse(await c.req.json());
+      const result = await createService(c).updateQuestionJudgment(
+        user.id,
+        c.req.param('pageId'),
+        c.req.param('segmentId'),
+        body,
+      );
+      return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.patch('/submissions/:submissionId/grading', async (c) => {
+    try {
+      const user = getUser(c);
+      const body = updateGradingDraftBodySchema.parse(await c.req.json());
+      const result = await createService(c).updateGradingDraft(user.id, c.req.param('submissionId'), body);
+      return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.get('/submissions/:submissionId/question-points-total', async (c) => {
+    try {
+      const user = getUser(c);
+      const raw = c.req.query('expectedDocumentRevision');
+      const query = questionPointsTotalQuerySchema.parse({
+        expectedDocumentRevision: raw === undefined ? undefined : Number(raw),
+      });
+      const result = await createService(c).getQuestionPointsTotal(
+        user.id,
+        c.req.param('submissionId'),
+        query,
+      );
+      return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.post('/submissions/:submissionId/apply-question-points-to-score', async (c) => {
+    try {
+      const user = getUser(c);
+      const body = applyQuestionPointsBodySchema.parse(await c.req.json());
+      const result = await createService(c).applyQuestionPointsToScore(
+        user.id,
+        c.req.param('submissionId'),
+        body,
+      );
+      return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.post('/submissions/:submissionId/mark-graded', async (c) => {
+    try {
+      const user = getUser(c);
+      const body = documentRevisionCommandBodySchema.parse(await c.req.json());
+      const result = await createService(c).markSubmissionGraded(user.id, c.req.param('submissionId'), body);
+      return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  // ——— Deletion (TASK-018) ————————————————————————————————————————————————————
+
+  app.delete('/classes/:classId', async (c) => {
+    try {
+      const user = getUser(c);
+      const { operation, created } = await createService(c).deleteClass(user.id, c.req.param('classId'));
+      return c.json({ data: operation }, created ? 202 : 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.delete('/classes/:classId/students/:studentId/data', async (c) => {
+    try {
+      const user = getUser(c);
+      const { operation, created } = await createService(c).deleteStudentData(
+        user.id,
+        c.req.param('classId'),
+        c.req.param('studentId'),
+      );
+      return c.json({ data: operation }, created ? 202 : 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.delete('/assignments/:assignmentId', async (c) => {
+    try {
+      const user = getUser(c);
+      const { operation, created } = await createService(c).deleteAssignment(
+        user.id,
+        c.req.param('assignmentId'),
+      );
+      return c.json({ data: operation }, created ? 202 : 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.delete('/assignments/:assignmentId/materials', async (c) => {
+    try {
+      const user = getUser(c);
+      const { operation, created } = await createService(c).deleteMaterials(
+        user.id,
+        c.req.param('assignmentId'),
+      );
+      return c.json({ data: operation }, created ? 202 : 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.delete('/submissions/:submissionId', async (c) => {
+    try {
+      const user = getUser(c);
+      const { operation, created } = await createService(c).deleteSubmission(
+        user.id,
+        c.req.param('submissionId'),
+      );
+      return c.json({ data: operation }, created ? 202 : 200);
     } catch (error) {
       return handleRouteError(error, c);
     }
