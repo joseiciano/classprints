@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type FormEvent } from 'react';
+import { isDecimal2 } from '@classprints/assignment-reader-shared';
 import { Button } from '../ui/button';
 import { Dialog } from '../ui/dialog';
 
@@ -10,61 +11,66 @@ export interface AssignmentFormValues {
 export interface AssignmentFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  mode: 'create' | 'edit';
-  initialValues?: AssignmentFormValues;
+  mode: 'create' | 'rename';
+  initialName?: string;
+  initialMaxScore?: number | null;
   isSubmitting?: boolean;
   errorMessage?: string | null;
   onSubmit: (values: AssignmentFormValues) => void;
 }
 
 /**
- * The single assignment create/edit form (TASK-020's "assignment create/edit"
- * smart/view pair). `maxScore` omission and an empty field both mean "no
- * maximum", matching `CreateAssignmentBody`/`UpdateAssignmentBody`.
+ * The single assignment create/edit form (TASK-020's "assignment
+ * create/edit" smart/view pair). An empty maximum-score field means "no
+ * maximum" (`null`), matching `CreateAssignmentBody`/`UpdateAssignmentBody`;
+ * a provided value must be a non-negative `Decimal2` (at most two decimal
+ * places), exactly like the server's `decimal2Schema`.
  */
 export function AssignmentFormDialog({
   open,
   onOpenChange,
   mode,
-  initialValues,
+  initialName = '',
+  initialMaxScore = null,
   isSubmitting = false,
   errorMessage,
   onSubmit,
 }: AssignmentFormDialogProps) {
-  const [name, setName] = useState(initialValues?.name ?? '');
+  const [name, setName] = useState(initialName);
   const [maxScoreInput, setMaxScoreInput] = useState(
-    initialValues?.maxScore != null ? String(initialValues.maxScore) : '',
+    initialMaxScore != null ? String(initialMaxScore) : '',
   );
   const nameId = useId();
   const maxScoreId = useId();
 
   useEffect(() => {
     if (open) {
-      setName(initialValues?.name ?? '');
-      setMaxScoreInput(initialValues?.maxScore != null ? String(initialValues.maxScore) : '');
+      setName(initialName);
+      setMaxScoreInput(initialMaxScore != null ? String(initialMaxScore) : '');
     }
-  }, [open, initialValues?.name, initialValues?.maxScore]);
+  }, [open, initialName, initialMaxScore]);
 
   const trimmedName = name.trim();
-  const maxScoreValue = maxScoreInput.trim() === '' ? null : Number(maxScoreInput);
+  const isNameValid = trimmedName.length > 0 && trimmedName.length <= 200;
+
+  const trimmedMaxScore = maxScoreInput.trim();
+  const maxScoreValue = trimmedMaxScore === '' ? null : Number(trimmedMaxScore);
   const isMaxScoreValid =
-    maxScoreValue === null || (Number.isFinite(maxScoreValue) && maxScoreValue >= 0);
-  const isValid = trimmedName.length > 0 && trimmedName.length <= 200 && isMaxScoreValid;
+    maxScoreValue === null ||
+    (Number.isFinite(maxScoreValue) && maxScoreValue >= 0 && isDecimal2(maxScoreValue));
+  const isValid = isNameValid && isMaxScoreValid;
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!isValid || isSubmitting) return;
-    onSubmit({
-      name: trimmedName,
-      maxScore: maxScoreValue === null ? null : Math.round(maxScoreValue * 100) / 100,
-    });
+    onSubmit({ name: trimmedName, maxScore: maxScoreValue });
   };
 
   return (
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title={mode === 'create' ? 'New assignment' : 'Edit assignment'}
+      title={mode === 'create' ? 'New assignment' : 'Rename assignment'}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -97,7 +103,9 @@ export function AssignmentFormDialog({
             className="min-h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm text-foreground outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
           />
           {!isMaxScoreValid ? (
-            <p className="mt-1.5 text-xs text-destructive">Enter a maximum score of 0 or more.</p>
+            <p className="mt-1.5 text-xs text-destructive">
+              Enter a maximum score of 0 or more, with at most two decimal places.
+            </p>
           ) : null}
         </div>
         {errorMessage ? (

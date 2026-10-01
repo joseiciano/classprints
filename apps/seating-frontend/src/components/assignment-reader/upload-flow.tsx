@@ -11,15 +11,17 @@ import {
   useConfirmDocument,
   useDocumentPages,
 } from '../../hooks/use-assignment-reader';
+import {
+  MAX_DOCUMENT_PAGES,
+  UPLOAD_CONCURRENCY,
+  uploadWithConcurrency,
+  validateUploadFile,
+  validateUploadSelection,
+} from '../../hooks/use-upload-flow';
 import { assignmentReaderKeys } from '../../lib/assignment-reader-query-keys';
 import { SeatingApiError } from '../../lib/http';
+import { defaultSubmissionsSearch } from './submissions-panel';
 import { UploadFlowView, type UploadFlowItem } from './upload-flow-view';
-
-const MAX_PAGES = 20;
-const MAX_FILE_BYTES = 10_000_000;
-const ACCEPTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.heic', '.heif'];
-const ACCEPTED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/heic', 'image/heif']);
-const UPLOAD_CONCURRENCY = 3;
 
 interface QueueItem {
   id: string;
@@ -34,12 +36,6 @@ interface QueueItem {
 let localIdCounter = 0;
 const nextLocalId = () => `local-${(localIdCounter += 1)}`;
 
-function isAcceptedFile(file: File): boolean {
-  if (ACCEPTED_MIME_TYPES.has(file.type)) return true;
-  const lowerName = file.name.toLowerCase();
-  return ACCEPTED_EXTENSIONS.some((extension) => lowerName.endsWith(extension));
-}
-
 function messageFor(error: unknown): string {
   return error instanceof SeatingApiError ? error.message : 'Upload failed. Try again.';
 }
@@ -48,8 +44,10 @@ function messageFor(error: unknown): string {
  * The single shared ordered upload flow (TASK-022): used for both material
  * and submission documents. Each file is its own independent one-page
  * upload request — never a presigned URL or one giant request — uploaded
- * with bounded concurrency 3. Client-side checks are UX only; the server
- * remains the source of truth and its validation is surfaced per row.
+ * with bounded concurrency 3 via `uploadWithConcurrency`. Client-side
+ * checks (`validateUploadFile`/`validateUploadSelection`) are UX only; the
+ * server remains the source of truth and its validation is surfaced per
+ * row.
  */
 export function UploadFlow({
   documentType,
@@ -67,7 +65,6 @@ export function UploadFlow({
   const [items, setItems] = useState<QueueItem[]>([]);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
-  const inFlightRef = useRef(new Set<string>());
   const itemsRef = useRef<QueueItem[]>([]);
   itemsRef.current = items;
 
@@ -105,90 +102,63 @@ export function UploadFlow({
     setItems((current) => current.filter((item) => item.id !== id));
   };
 
-  // Bounded-concurrency uploader: whenever `items` changes, fill any free
-  // slot (up to UPLOAD_CONCURRENCY) with the next queued row.
-  useEffect(() => {
-    let cancelled = false;
-
-    const launch = (item: QueueItem) => {
-      inFlightRef.current.add(item.id);
-      updateItem(item.id, { status: 'uploading', errorMessage: undefined });
-      uploadDocumentPage(documentType, documentId, item.file as File)
-        .then((page) => {
-          if (cancelled) return;
-          updateItem(item.id, { pageId: page.id, status: 'uploaded', fileName: page.label });
-        })
-        .catch((error) => {
-          if (cancelled) return;
-          updateItem(item.id, { status: 'failed', errorMessage: messageFor(error) });
-        })
-        .finally(() => {
-          inFlightRef.current.delete(item.id);
-          if (!cancelled) fillSlots();
-        });
-    };
-
-    const fillSlots = () => {
-      while (inFlightRef.current.size < UPLOAD_CONCURRENCY) {
-        const next = itemsRef.current.find(
-          (item) => item.status === 'queued' && !inFlightRef.current.has(item.id),
-        );
-        if (!next) return;
-        launch(next);
-      }
-    };
-
-    fillSlots();
-    return () => {
-      cancelled = true;
-    };
-  }, [items, documentType, documentId]);
-
   const addFiles = (fileList: FileList | File[]) => {
     const incoming = Array.from(fileList);
-    const currentCount = itemsRef.current.length;
-    const room = MAX_PAGES - currentCount;
-    if (room <= 0) {
-      setBannerMessage(`This document already has the maximum of ${MAX_PAGES} pages.`);
-      return;
-    }
+    let occupiedCount = itemsRef.current.length;
+    const toUpload: QueueItem[] = [];
+    const rejected: QueueItem[] = [];
+    let lastLimitMessage: string | null = null;
 
-    const accepted: QueueItem[] = [];
-    let rejectedReason: string | null = null;
-    for (const file of incoming.slice(0, room)) {
-      if (!isAcceptedFile(file)) {
-        rejectedReason = `"${file.name}" is not a JPEG, PNG, or HEIC image.`;
+    for (const file of incoming) {
+      const limitMessage = validateUploadSelection(file, occupiedCount);
+      if (limitMessage) {
+        lastLimitMessage = limitMessage;
         continue;
       }
-      if (file.size > MAX_FILE_BYTES) {
-        rejectedReason = `"${file.name}" is larger than 10 MB.`;
-        continue;
-      }
-      accepted.push({
+      const fileMessage = validateUploadFile(file);
+      const row: QueueItem = {
         id: nextLocalId(),
         file,
         pageId: null,
         fileName: file.name,
-        status: 'queued',
+        status: fileMessage ? 'failed' : 'queued',
+        errorMessage: fileMessage ?? undefined,
         isExisting: false,
-      });
+      };
+      occupiedCount += 1;
+      if (fileMessage) {
+        rejected.push(row);
+      } else {
+        toUpload.push(row);
+      }
     }
-    if (incoming.length > room) {
-      rejectedReason = `Only ${room} more page${room === 1 ? '' : 's'} can be added (${MAX_PAGES} max).`;
+
+    setBannerMessage(lastLimitMessage);
+    const newRows = [...rejected, ...toUpload];
+    if (newRows.length > 0) {
+      setItems((current) => [...current, ...newRows]);
     }
-    setBannerMessage(rejectedReason);
-    if (accepted.length > 0) {
-      setItems((current) => [...current, ...accepted]);
+    if (toUpload.length > 0) {
+      runUploads(toUpload);
     }
   };
 
+  const runUploads = (rows: QueueItem[]) => {
+    void uploadWithConcurrency(rows, UPLOAD_CONCURRENCY, async (row) => {
+      updateItem(row.id, { status: 'uploading', errorMessage: undefined });
+      try {
+        const page = await uploadDocumentPage(documentType, documentId, row.file as File);
+        updateItem(row.id, { pageId: page.id, status: 'uploaded', fileName: page.label });
+      } catch (error) {
+        updateItem(row.id, { status: 'failed', errorMessage: messageFor(error) });
+      }
+    });
+  };
+
   const handleReplace = (itemId: string, file: File) => {
-    if (!isAcceptedFile(file)) {
-      updateItem(itemId, { errorMessage: 'Only JPEG, PNG, or HEIC images are supported.' });
-      return;
-    }
-    if (file.size > MAX_FILE_BYTES) {
-      updateItem(itemId, { errorMessage: 'File is larger than 10 MB.' });
+    const fileMessage = validateUploadFile(file);
+    if (fileMessage) {
+      updateItem(itemId, { errorMessage: fileMessage });
       return;
     }
     const item = itemsRef.current.find((candidate) => candidate.id === itemId);
@@ -196,7 +166,9 @@ export function UploadFlow({
 
     if (!item.pageId) {
       // Never made it to the server; just re-queue with the new file.
-      updateItem(itemId, { file, fileName: file.name, status: 'queued', errorMessage: undefined });
+      const row: QueueItem = { ...item, file, fileName: file.name, status: 'queued', errorMessage: undefined };
+      updateItem(itemId, row);
+      runUploads([row]);
       return;
     }
 
@@ -244,6 +216,7 @@ export function UploadFlow({
   const backTo = {
     to: '/classes/$classId/assignments/$assignmentId' as const,
     params: { classId, assignmentId },
+    search: defaultSubmissionsSearch,
   };
 
   return (
@@ -263,7 +236,7 @@ export function UploadFlow({
           isExisting: item.isExisting,
         }),
       )}
-      maxPages={MAX_PAGES}
+      maxPages={MAX_DOCUMENT_PAGES}
       onFilesSelected={addFiles}
       onReplace={handleReplace}
       onRemove={handleRemove}
@@ -284,6 +257,7 @@ export function UploadFlow({
         <Link
           to={backTo.to}
           params={backTo.params}
+          search={backTo.search}
           className="inline-flex min-h-11 items-center gap-2 rounded-full text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <ArrowLeft aria-hidden="true" className="h-4 w-4" />

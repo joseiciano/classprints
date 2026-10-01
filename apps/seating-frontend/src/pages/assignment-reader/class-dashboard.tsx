@@ -7,12 +7,8 @@ import {
   type AssignmentsTabSearch,
 } from '../../components/assignment-reader/assignments-tab';
 import { ConfirmActionDialog } from '../../components/assignment-reader/confirm-action-dialog';
-import { NameFormDialog } from '../../components/assignment-reader/name-form-dialog';
-import {
-  defaultRosterSearch,
-  RosterTab,
-  type RosterTabSearch,
-} from '../../components/assignment-reader/roster-tab';
+import { ClassFormDialog } from '../../components/assignment-reader/class-form-dialog';
+import { RosterPanel } from '../../components/assignment-reader/roster-panel';
 import {
   defaultSeatingChartsSearch,
   SeatingChartsTab,
@@ -22,6 +18,17 @@ import { ClassStatusChip } from '../../components/assignment-reader/status-chips
 import { useClass, useDeleteClass, useUpdateClass } from '../../hooks/use-assignment-reader';
 import { SeatingApiError } from '../../lib/http';
 import { LoadingScreen } from '../../components/ui/loading-screen';
+import type { ClassesSearch } from './classes';
+
+// A literal default (not imported from `./classes`) so this module and
+// `./classes` — which needs this page's own default tab search to link back
+// in — never form an import cycle.
+const classesListDefaultSearch: ClassesSearch = {
+  q: '',
+  sort: 'createdAt',
+  direction: 'desc',
+  page: 1,
+};
 
 export type ClassDashboardTab = 'assignments' | 'roster' | 'seating-charts';
 
@@ -45,9 +52,12 @@ const TABS: { id: ClassDashboardTab; label: string }[] = [
   { id: 'seating-charts', label: 'Seating Charts' },
 ];
 
+// The Roster panel has no search/sort/pagination of its own (it isn't one
+// of REQ-003's canonical-list surfaces), so switching to it just reuses the
+// Assignments defaults as inert filler for the shared search shape.
 export const classDashboardTabDefaults: Record<ClassDashboardTab, Omit<ClassDashboardSearch, 'tab'>> = {
   assignments: defaultAssignmentsSearch,
-  roster: defaultRosterSearch,
+  roster: defaultAssignmentsSearch,
   'seating-charts': defaultSeatingChartsSearch,
 };
 
@@ -181,12 +191,7 @@ export function ClassDashboardPage({
             onSearchChange={(next) => onSearchChange({ ...search, ...next })}
           />
         ) : search.tab === 'roster' ? (
-          <RosterTab
-            classId={classId}
-            isArchived={isArchived}
-            search={search as unknown as RosterTabSearch}
-            onSearchChange={(next) => onSearchChange({ ...search, ...next })}
-          />
+          <RosterPanel classId={classId} isArchived={isArchived} />
         ) : (
           <SeatingChartsTab
             classId={classId}
@@ -196,14 +201,11 @@ export function ClassDashboardPage({
         )}
       </div>
 
-      <NameFormDialog
+      <ClassFormDialog
         open={isRenameOpen}
         onOpenChange={setIsRenameOpen}
-        title="Rename class"
-        label="Class name"
-        initialValue={classRecord.name}
-        maxLength={120}
-        submitLabel="Save"
+        mode="rename"
+        initialName={classRecord.name}
         isSubmitting={updateClass.isPending}
         errorMessage={updateClass.error instanceof SeatingApiError ? updateClass.error.message : null}
         onSubmit={(name) =>
@@ -241,7 +243,7 @@ export function ClassDashboardPage({
         errorMessage={deleteClass.error instanceof SeatingApiError ? deleteClass.error.message : null}
         onConfirm={() =>
           deleteClass.mutate(undefined, {
-            onSuccess: () => void navigate({ to: '/classes' }),
+            onSuccess: () => void navigate({ to: '/classes', search: classesListDefaultSearch }),
           })
         }
       />
@@ -253,6 +255,7 @@ function BackLink() {
   return (
     <Link
       to="/classes"
+      search={classesListDefaultSearch}
       className="inline-flex min-h-11 items-center gap-2 rounded-full text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <ArrowLeft aria-hidden="true" className="h-4 w-4" />

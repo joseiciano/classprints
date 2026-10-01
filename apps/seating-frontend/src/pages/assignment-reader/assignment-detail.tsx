@@ -16,6 +16,7 @@ import {
   useUpdateAssignment,
 } from '../../hooks/use-assignment-reader';
 import { SeatingApiError } from '../../lib/http';
+import { defaultClassDashboardSearch } from './class-dashboard';
 
 export function AssignmentDetailPage({
   classId,
@@ -114,8 +115,9 @@ export function AssignmentDetailPage({
       <AssignmentFormDialog
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
-        mode="edit"
-        initialValues={{ name: assignment.name, maxScore: assignment.maxScore }}
+        mode="rename"
+        initialName={assignment.name}
+        initialMaxScore={assignment.maxScore}
         isSubmitting={updateAssignment.isPending}
         errorMessage={updateAssignment.error instanceof SeatingApiError ? updateAssignment.error.message : null}
         onSubmit={(values) =>
@@ -134,7 +136,12 @@ export function AssignmentDetailPage({
         errorMessage={deleteAssignment.error instanceof SeatingApiError ? deleteAssignment.error.message : null}
         onConfirm={() =>
           deleteAssignment.mutate(undefined, {
-            onSuccess: () => void navigate({ to: '/classes/$classId', params: { classId } }),
+            onSuccess: () =>
+              void navigate({
+                to: '/classes/$classId',
+                params: { classId },
+                search: defaultClassDashboardSearch,
+              }),
           })
         }
       />
@@ -147,6 +154,7 @@ function BackLink({ classId }: { classId: string }) {
     <Link
       to="/classes/$classId"
       params={{ classId }}
+      search={defaultClassDashboardSearch}
       className="inline-flex min-h-11 items-center gap-2 rounded-full text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <ArrowLeft aria-hidden="true" className="h-4 w-4" />

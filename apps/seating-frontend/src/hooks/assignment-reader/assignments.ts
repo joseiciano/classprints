@@ -26,6 +26,9 @@ export function useAssignment(assignmentId: string | undefined) {
     queryKey: assignmentReaderKeys.assignments.detail(assignmentId ?? ''),
     queryFn: () => fetchAssignment(assignmentId as string),
     enabled: Boolean(assignmentId),
+    // The assignment route must show live processing/review/grading state
+    // (materials counts, PAT-003 status) without a manual refresh.
+    refetchInterval: 5000,
   });
 }
 

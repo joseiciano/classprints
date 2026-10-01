@@ -8,6 +8,7 @@ import { SeatingApiError } from '../../lib/http';
 import { Button } from '../ui/button';
 import { AssignmentFormDialog } from './assignment-form-dialog';
 import { CanonicalList, type CanonicalListColumn } from './canonical-list';
+import { defaultSubmissionsSearch } from './submissions-panel';
 import { AssignmentStatusChip } from './status-chips';
 
 export interface AssignmentsTabSearch {
@@ -71,6 +72,7 @@ export function AssignmentsTab({
           void navigate({
             to: '/classes/$classId/assignments/$assignmentId',
             params: { classId, assignmentId: row.id },
+            search: defaultSubmissionsSearch,
           })
         }
         rowAriaLabel={(row) => `Open assignment ${row.name}`}
@@ -124,6 +126,7 @@ export function AssignmentsTab({
               void navigate({
                 to: '/classes/$classId/assignments/$assignmentId',
                 params: { classId, assignmentId: created.id },
+                search: defaultSubmissionsSearch,
               });
             },
           })

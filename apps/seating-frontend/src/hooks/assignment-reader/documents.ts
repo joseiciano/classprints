@@ -13,6 +13,9 @@ export function useDocumentAggregate(documentType: DocumentType, documentId: str
     queryKey: assignmentReaderKeys.documents.aggregate(documentType, documentId ?? ''),
     queryFn: () => fetchDocumentAggregate(documentType, documentId as string),
     enabled: Boolean(documentId),
+    // Backs the live processing/workspace placeholder pages; background
+    // transcription can complete at any time.
+    refetchInterval: 5000,
   });
 }
 

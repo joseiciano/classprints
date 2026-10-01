@@ -3,12 +3,13 @@ import { useNavigate } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import type { ClassListQuery, ClassRecord } from '@classprints/assignment-reader-shared';
 import { CanonicalList, type CanonicalListColumn } from '../../components/assignment-reader/canonical-list';
-import { NameFormDialog } from '../../components/assignment-reader/name-form-dialog';
+import { ClassFormDialog } from '../../components/assignment-reader/class-form-dialog';
 import { ClassStatusChip } from '../../components/assignment-reader/status-chips';
 import { Button } from '../../components/ui/button';
 import { useClassesList, useCreateClass } from '../../hooks/use-assignment-reader';
 import { SeatingApiError } from '../../lib/http';
 import { formatDate } from '../../lib/assignment-reader-format';
+import { defaultClassDashboardSearch } from './class-dashboard';
 
 export interface ClassesSearch {
   q: string;
@@ -74,7 +75,7 @@ export function ClassesPage({
         columns={columns}
         rows={data?.data ?? []}
         getRowId={(row) => row.id}
-        onRowActivate={(row) => void navigate({ to: '/classes/$classId', params: { classId: row.id } })}
+        onRowActivate={(row) => void navigate({ to: '/classes/$classId', params: { classId: row.id }, search: defaultClassDashboardSearch })}
         rowAriaLabel={(row) => `Open class ${row.name}`}
         search={search.q}
         onSearchChange={(q) => onSearchChange({ q, page: 1 })}
@@ -118,13 +119,10 @@ export function ClassesPage({
         }
       />
 
-      <NameFormDialog
+      <ClassFormDialog
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
-        title="New class"
-        label="Class name"
-        maxLength={120}
-        submitLabel="Create class"
+        mode="create"
         isSubmitting={createClass.isPending}
         errorMessage={
           createClass.error instanceof SeatingApiError ? createClass.error.message : null
@@ -136,7 +134,7 @@ export function ClassesPage({
               onSuccess: (created) => {
                 setIsCreateOpen(false);
                 createClass.reset();
-                void navigate({ to: '/classes/$classId', params: { classId: created.id } });
+                void navigate({ to: '/classes/$classId', params: { classId: created.id }, search: defaultClassDashboardSearch });
               },
             },
           );

@@ -53,9 +53,9 @@ export type {
  * Serializes a `CanonicalListQuery` (never `pageSize`, per the API contract)
  * into a query string, omitting empty/undefined values.
  */
-function canonicalListParams(query: Record<string, unknown> | undefined): string {
+function canonicalListParams(query: object | undefined): string {
   const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query ?? {})) {
+  for (const [key, value] of Object.entries(query ?? {}) as [string, unknown][]) {
     if (value === undefined || value === null || value === '') continue;
     params.set(key, String(value));
   }

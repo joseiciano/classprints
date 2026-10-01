@@ -2,8 +2,8 @@ import { useState } from 'react';
 import type { SavedSeatingChart, SeatingChartListQuery } from '@classprints/assignment-reader-shared';
 import { useSeatingChartsList } from '../../hooks/use-assignment-reader';
 import { formatDate } from '../../lib/assignment-reader-format';
-import { Dialog } from '../ui/dialog';
 import { CanonicalList, type CanonicalListColumn } from './canonical-list';
+import { SavedChartPanelView } from './saved-chart-panel-view';
 
 export interface SeatingChartsTabSearch {
   q: string;
@@ -83,40 +83,13 @@ export function SeatingChartsTab({
         )}
       />
 
-      <Dialog
+      <SavedChartPanelView
         open={openChart !== null}
         onOpenChange={(open) => !open && setOpenChart(null)}
-        title={openChart ? `Seating chart · ${formatDate(openChart.createdAt)}` : undefined}
-        description={openChart ? `${openChart.studentCount} students` : undefined}
-      >
-        {openChart ? <ReadOnlySeatingGrid grid={openChart.grid} /> : null}
-      </Dialog>
-    </div>
-  );
-}
-
-function ReadOnlySeatingGrid({ grid }: { grid: Array<Array<string | null>> }) {
-  const columnCount = Math.max(...grid.map((row) => row.length), 1);
-  return (
-    <div
-      role="table"
-      aria-label="Saved seating arrangement"
-      className="grid gap-2"
-      style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
-    >
-      {grid.map((row, rowIndex) =>
-        row.map((seat, columnIndex) => (
-          <div
-            role="cell"
-            key={`${rowIndex}-${columnIndex}`}
-            className={`flex min-h-16 items-center justify-center rounded-lg border px-1.5 text-center text-xs font-medium ${
-              seat ? 'border-primary/25 bg-secondary text-secondary-foreground' : 'border-dashed border-border text-muted-foreground'
-            }`}
-          >
-            {seat ?? '—'}
-          </div>
-        )),
-      )}
+        chart={openChart}
+        loading={false}
+        error={null}
+      />
     </div>
   );
 }

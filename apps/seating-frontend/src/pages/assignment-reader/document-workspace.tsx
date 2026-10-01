@@ -2,6 +2,7 @@ import type { DocumentType } from '@classprints/assignment-reader-shared';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { GradingStateChip, ReviewStateChip } from '../../components/assignment-reader/status-chips';
+import { defaultSubmissionsSearch } from '../../components/assignment-reader/submissions-panel';
 import { LoadingScreen } from '../../components/ui/loading-screen';
 import { useDocumentAggregate } from '../../hooks/use-assignment-reader';
 
@@ -60,6 +61,7 @@ function BackLink({ classId, assignmentId }: { classId: string; assignmentId: st
     <Link
       to="/classes/$classId/assignments/$assignmentId"
       params={{ classId, assignmentId }}
+      search={defaultSubmissionsSearch}
       className="inline-flex min-h-11 items-center gap-2 rounded-full text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <ArrowLeft aria-hidden="true" className="h-4 w-4" />
