@@ -85,4 +85,15 @@ export const assignmentReaderKeys = {
     workspace: (documentType: DocumentType, documentId: string) =>
       [...assignmentReaderKeys.documents.aggregate(documentType, documentId), 'workspace'] as const,
   },
+
+  pages: {
+    detail: (pageId: string) => [...assignmentReaderKeys.all, 'pages', pageId] as const,
+  },
+
+  questionPointsTotal: (submissionId: string, expectedDocumentRevision: number) =>
+    [
+      ...assignmentReaderKeys.submission.detail(submissionId),
+      'question-points-total',
+      expectedDocumentRevision,
+    ] as const,
 } as const;

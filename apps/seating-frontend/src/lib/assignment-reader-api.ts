@@ -1,4 +1,5 @@
 import type {
+  ApplyQuestionPointsBody,
   AssignmentListItem,
   AssignmentListQuery,
   AssignmentRecord,
@@ -15,12 +16,26 @@ import type {
   DeletionOperation,
   DocumentAggregate,
   DocumentProcessingResponse,
+  DocumentRevisionCommandBody,
+  DocumentStateResult,
   DocumentType,
+  DocumentWorkspace,
+  GradingDraft,
   ListResponse,
   MaterialVersionSummary,
+  PageImageQuery,
   PageSummary,
+  PageWorkspace,
   ProcessingListQuery,
+  QuestionJudgment,
+  QuestionPointsTotal,
+  QuestionPointsTotalQuery,
   ReplacePageResult,
+  RetranscribeDocumentBody,
+  RetryPageResult,
+  ReviewContextResult,
+  ReviewPageBody,
+  ReviewPageResult,
   SavedSeatingChart,
   SeatingChartListQuery,
   StudentListQuery,
@@ -30,8 +45,12 @@ import type {
   SubmissionRecord,
   UpdateAssignmentBody,
   UpdateClassBody,
+  UpdateGradingDraftBody,
+  UpdatePageDraftBody,
+  UpdateQuestionJudgmentBody,
   UpdateStudentBody,
 } from '@classprints/assignment-reader-shared';
+import { resolveWorkerBaseUrl } from '@classprints/shared';
 import { request } from './http';
 
 export type {
@@ -41,8 +60,12 @@ export type {
   DeletionOperation,
   DocumentAggregate,
   DocumentType,
+  DocumentWorkspace,
+  GradingDraft,
   MaterialVersionSummary,
   PageSummary,
+  PageWorkspace,
+  QuestionJudgment,
   SavedSeatingChart,
   StudentRecord,
   SubmissionListItem,
@@ -413,6 +436,170 @@ export const confirmDocument = async (
 ): Promise<ConfirmDocumentResult> => {
   const response = await request<DataResponse<ConfirmDocumentResult>>(
     `/documents/${documentType}/${documentId}/confirm`,
+    { method: 'POST', body },
+  );
+  return response.data;
+};
+
+/**
+ * Builds the authenticated image-delivery URL (TASK-012) for direct use as
+ * an `<img src>`/background: the API is reached same-origin (session cookies
+ * attach automatically, see `resolveWorkerBaseUrl`), so no separate blob
+ * fetch is needed. Region crops always pass normalized `x`/`y`/`width`/
+ * `height` alongside `variant: "region"`.
+ */
+export const pageImageUrl = (pageId: string, query?: PageImageQuery): string => {
+  const params = new URLSearchParams();
+  if (query?.variant) params.set('variant', query.variant);
+  if (query?.rotation) params.set('rotation', String(query.rotation));
+  if (query?.variant === 'region') {
+    if (query.x !== undefined) params.set('x', String(query.x));
+    if (query.y !== undefined) params.set('y', String(query.y));
+    if (query.width !== undefined) params.set('width', String(query.width));
+    if (query.height !== undefined) params.set('height', String(query.height));
+  }
+  const serialized = params.toString();
+  return `${resolveWorkerBaseUrl()}/api/v1/pages/${pageId}/image${serialized ? `?${serialized}` : ''}`;
+};
+
+export const retryPage = async (pageId: string): Promise<RetryPageResult> => {
+  const response = await request<DataResponse<RetryPageResult>>(`/pages/${pageId}/retry`, {
+    method: 'POST',
+  });
+  return response.data;
+};
+
+export const retranscribeDocument = async (
+  documentType: DocumentType,
+  documentId: string,
+  body: RetranscribeDocumentBody,
+): Promise<ConfirmDocumentResult> => {
+  const response = await request<DataResponse<ConfirmDocumentResult>>(
+    `/documents/${documentType}/${documentId}/retranscribe`,
+    { method: 'POST', body },
+  );
+  return response.data;
+};
+
+// ——— Workspace, draft editing, review, and grading ————————————————————————
+
+export const fetchDocumentWorkspace = async (
+  documentType: DocumentType,
+  documentId: string,
+): Promise<DocumentWorkspace> => {
+  const response = await request<DataResponse<DocumentWorkspace>>(
+    `/documents/${documentType}/${documentId}/workspace`,
+  );
+  return response.data;
+};
+
+export const captureReviewContext = async (submissionId: string): Promise<ReviewContextResult> => {
+  const response = await request<DataResponse<ReviewContextResult>>(
+    `/submissions/${submissionId}/review-context`,
+    { method: 'POST', body: {} },
+  );
+  return response.data;
+};
+
+export const fetchPageWorkspace = async (pageId: string): Promise<PageWorkspace> => {
+  const response = await request<DataResponse<PageWorkspace>>(`/pages/${pageId}`);
+  return response.data;
+};
+
+export const updatePageDraft = async (
+  pageId: string,
+  body: UpdatePageDraftBody,
+): Promise<PageWorkspace> => {
+  const response = await request<DataResponse<PageWorkspace>>(`/pages/${pageId}/draft`, {
+    method: 'PATCH',
+    body,
+  });
+  return response.data;
+};
+
+export const reviewPage = async (
+  pageId: string,
+  body: ReviewPageBody,
+): Promise<ReviewPageResult> => {
+  const response = await request<DataResponse<ReviewPageResult>>(`/pages/${pageId}/review`, {
+    method: 'POST',
+    body,
+  });
+  return response.data;
+};
+
+export const markDocumentReady = async (
+  documentType: DocumentType,
+  documentId: string,
+  body: DocumentRevisionCommandBody,
+): Promise<DocumentStateResult> => {
+  const response = await request<DataResponse<DocumentStateResult>>(
+    `/documents/${documentType}/${documentId}/mark-ready`,
+    { method: 'POST', body },
+  );
+  return response.data;
+};
+
+export const returnToNeedsReview = async (
+  documentType: DocumentType,
+  documentId: string,
+  body: DocumentRevisionCommandBody,
+): Promise<DocumentStateResult> => {
+  const response = await request<DataResponse<DocumentStateResult>>(
+    `/documents/${documentType}/${documentId}/return-to-needs-review`,
+    { method: 'POST', body },
+  );
+  return response.data;
+};
+
+export const updateQuestionJudgment = async (
+  pageId: string,
+  segmentId: string,
+  body: UpdateQuestionJudgmentBody,
+): Promise<QuestionJudgment> => {
+  const response = await request<DataResponse<QuestionJudgment>>(
+    `/pages/${pageId}/question-segments/${segmentId}/judgment`,
+    { method: 'PUT', body },
+  );
+  return response.data;
+};
+
+export const updateGradingDraft = async (
+  submissionId: string,
+  body: UpdateGradingDraftBody,
+): Promise<GradingDraft> => {
+  const response = await request<DataResponse<GradingDraft>>(`/submissions/${submissionId}/grading`, {
+    method: 'PATCH',
+    body,
+  });
+  return response.data;
+};
+
+export const getQuestionPointsTotal = async (
+  submissionId: string,
+  query: QuestionPointsTotalQuery,
+): Promise<QuestionPointsTotal> =>
+  request<DataResponse<QuestionPointsTotal>>(
+    `/submissions/${submissionId}/question-points-total?expectedDocumentRevision=${query.expectedDocumentRevision}`,
+  ).then((response) => response.data);
+
+export const applyQuestionPointsToScore = async (
+  submissionId: string,
+  body: ApplyQuestionPointsBody,
+): Promise<GradingDraft> => {
+  const response = await request<DataResponse<GradingDraft>>(
+    `/submissions/${submissionId}/apply-question-points-to-score`,
+    { method: 'POST', body },
+  );
+  return response.data;
+};
+
+export const markSubmissionGraded = async (
+  submissionId: string,
+  body: DocumentRevisionCommandBody,
+): Promise<GradingDraft> => {
+  const response = await request<DataResponse<GradingDraft>>(
+    `/submissions/${submissionId}/mark-graded`,
     { method: 'POST', body },
   );
   return response.data;

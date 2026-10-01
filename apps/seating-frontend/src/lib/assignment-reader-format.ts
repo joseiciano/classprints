@@ -27,3 +27,19 @@ export function formatScore(score: number | null, maxScore: number | null): stri
   if (score === null) return '—';
   return maxScore !== null ? `${score} / ${maxScore}` : String(score);
 }
+
+/**
+ * Formats a millisecond duration as "m:ss" (or "h:mm:ss" past an hour) for
+ * the processing list's live elapsed-time display (TASK-023). The caller
+ * computes the duration itself, client-side, from the page's `queuedAt`
+ * timestamp on every tick — nothing here is persisted to the server.
+ */
+export function formatElapsed(ms: number | null): string {
+  if (ms === null || !Number.isFinite(ms) || ms < 0) return '—';
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
+}
