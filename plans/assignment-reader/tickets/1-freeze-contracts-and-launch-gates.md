@@ -45,4 +45,4 @@ The shared package compiles; transition contract tests pass; no blocking artifac
 
 - Files: `packages/assignment-reader-shared/**` (FILE-003).
 - Tests: TEST-001 (shared contract tests); package command `pnpm --filter @classprints/assignment-reader-shared typecheck` (TEST-009).
-- See also: [Assignment Reader API Manifest](../api-routes/api-manifest.md), REQ-026, DEP-009, RISK-005, ASSUMPTION-003.
+- See also: [Assignment Reader API Manifest](../api-routes/api-manifest.md), [Provider & Privacy Launch Evidence](../provider-privacy-evidence.md) (TASK-003 evidence artifact), REQ-026, DEP-009, RISK-005, ASSUMPTION-003.
