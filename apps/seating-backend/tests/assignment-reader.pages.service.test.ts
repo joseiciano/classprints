@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   AssignmentReaderService,
@@ -285,7 +287,13 @@ const buildFakeRepository = (state: FakeState): AssignmentReaderRepository => {
       state.docs.set(parentId, {
         ...doc,
         document_revision: documentRevision,
-        draft_confirmed: input.documentType === 'submission' ? input.requeueImmediately : doc.draft_confirmed,
+        // Mirrors assignment-reader.repository.ts's replacePageRow: a
+        // `failed`-page recovery (requeueImmediately=true) preserves
+        // whatever draft_confirmed already was rather than forcing it true,
+        // because a newer sibling page can have reset it to false; an
+        // `uploading`-page recovery (requeueImmediately=false) always forces
+        // it false, matching the already-unconfirmed state that implies.
+        draft_confirmed: input.documentType === 'submission' ? doc.draft_confirmed && input.requeueImmediately : doc.draft_confirmed,
       });
       return { page: row, documentRevision, replacedStorageKey: old.storage_key };
     },
@@ -638,6 +646,57 @@ describe('AssignmentReaderService — replace page (TASK-011)', () => {
       status: 409,
     });
   });
+
+  it('does not strand an unconfirmed sibling page when recovering a failed page (draft_confirmed regression)', async () => {
+    // SUBMISSION_1 has one page that already failed (so it had previously
+    // been confirmed) and one newer sibling page still `uploading` (i.e.
+    // added after that confirmation, which resets draft_confirmed to
+    // false — see insertPageRow / addPageRow). Recovering the failed page
+    // must not flip draft_confirmed back to true: that would permanently
+    // strand the uploading sibling, since confirmDocument() 409s once
+    // draft_confirmed is already true.
+    const state = freshState();
+    state.pages.set(
+      'failed-1',
+      newPageRow({
+        id: 'failed-1',
+        document_type: 'submission',
+        materials_version_id: null,
+        submission_id: SUBMISSION_1,
+        student_id: 'student-1',
+        position: 1,
+        processing_state: 'failed',
+        failure_code: 'invalid_image',
+        failure_message: 'bad image',
+      }),
+    );
+    state.pages.set(
+      'sibling-1',
+      newPageRow({
+        id: 'sibling-1',
+        document_type: 'submission',
+        materials_version_id: null,
+        submission_id: SUBMISSION_1,
+        student_id: 'student-1',
+        position: 2,
+        processing_state: 'uploading',
+      }),
+    );
+    const queues = buildFakeQueues();
+    const service = buildService(state, buildFakeImages(), queues);
+
+    const result = await service.replacePage(TEACHER_A, 'failed-1', new ArrayBuffer(10));
+    expect(result.page.processingState).toBe('queued'); // recovered immediately
+
+    // Confirming the document (now with the replacement + the still-
+    // uploading sibling) must succeed rather than 409 'already confirmed'.
+    const confirmed = await service.confirmDocument(TEACHER_A, 'submission', SUBMISSION_1, [
+      result.page.id,
+      'sibling-1',
+    ]);
+    expect(confirmed.processingState).toBe('queued');
+    expect(confirmed.pages.map((page) => page.processingState)).toEqual(['queued', 'queued']);
+  });
 });
 
 describe('AssignmentReaderService — remove page (TASK-011)', () => {
@@ -732,6 +791,19 @@ describe('page-image.repository pure helpers', () => {
     heic.set([0x68, 0x65, 0x69, 0x63], 8); // 'heic'
     expect(sniffImageSignature(heic)).toBe('image/heic');
     expect(sniffImageSignature(new Uint8Array([0x25, 0x50, 0x44, 0x46]))).toBeNull(); // %PDF
+  });
+
+  // TASK-010 acceptance: "real JPEG, PNG, and HEIC fixtures" — not just
+  // hand-built magic-byte stubs, but actual encoder output (fixtures
+  // generated with ImageMagick/sips; see tests/fixtures/images).
+  it('sniffs real JPEG/PNG/HEIC fixture files', () => {
+    const fixtureDir = join(__dirname, 'fixtures', 'images');
+    const jpeg = new Uint8Array(readFileSync(join(fixtureDir, 'test.jpg')));
+    const png = new Uint8Array(readFileSync(join(fixtureDir, 'test.png')));
+    const heic = new Uint8Array(readFileSync(join(fixtureDir, 'test.heic')));
+    expect(sniffImageSignature(jpeg)).toBe('image/jpeg');
+    expect(sniffImageSignature(png)).toBe('image/png');
+    expect(sniffImageSignature(heic)).toBe('image/heic');
   });
 
   it('converts a normalized region to a clamped pixel box', () => {

@@ -801,11 +801,20 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
           `;
           return { page: row, documentRevision: Number(docRows[0]?.document_revision ?? 0), replacedStorageKey };
         }
+        // requeueImmediately=true means the replaced page was `failed`
+        // (recovery of an already-confirmed submission), so draft_confirmed
+        // is left as-is rather than forced true: a newer sibling page can
+        // have reset it to false (addPageRow) while this page failed, and
+        // forcing it back to true here would strand that sibling in
+        // 'uploading' forever, since confirmDocument() 409s once
+        // draft_confirmed is already true. requeueImmediately=false (the
+        // replaced page was `uploading`) always forces it false, matching
+        // the already-unconfirmed state that implies.
         const docRows = await tx<({ document_revision: number })[]>`
           update submissions set
             document_revision = document_revision + 1,
-            draft_confirmed = ${input.requeueImmediately},
-            confirmed_at_ms = case when ${input.requeueImmediately} then confirmed_at_ms else null end,
+            draft_confirmed = draft_confirmed and ${input.requeueImmediately},
+            confirmed_at_ms = case when draft_confirmed and ${input.requeueImmediately} then confirmed_at_ms else null end,
             review_state = null,
             grading_state = 'not_graded', graded_at_ms = null, updated_at_ms = ${now}
           where id = ${input.submissionId} and teacher_id = ${input.teacherId}
