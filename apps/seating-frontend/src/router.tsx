@@ -7,6 +7,7 @@ import {
   createRouter,
   redirect,
   useLocation,
+  useNavigate,
 } from '@tanstack/react-router';
 import {
   BookOpen,
@@ -307,10 +308,20 @@ const documentProcessingRoute = createRoute({
   component: DocumentProcessingRouteComponent,
 });
 
+interface DocumentWorkspaceSearch {
+  /** Deep-links the workspace to one page, e.g. from the processing list's
+   * per-page "Review now" action (TASK-023/025). Omitted, it defaults to the
+   * first current page. */
+  pageId?: string;
+}
+
 const documentWorkspaceRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/workspace',
   component: DocumentWorkspaceRouteComponent,
+  validateSearch: (search: Record<string, unknown>): DocumentWorkspaceSearch => ({
+    pageId: typeof search.pageId === 'string' ? search.pageId : undefined,
+  }),
 });
 
 const settingsRoute = createRoute({
@@ -794,12 +805,18 @@ function DocumentProcessingRouteComponent() {
 
 function DocumentWorkspaceRouteComponent() {
   const { classId, assignmentId, documentType, documentId } = documentWorkspaceRoute.useParams();
+  const { pageId } = documentWorkspaceRoute.useSearch();
+  const navigate = useNavigate({ from: documentWorkspaceRoute.fullPath });
   return (
     <DocumentWorkspacePage
       classId={classId}
       assignmentId={assignmentId}
       documentType={asDocumentType(documentType)}
       documentId={documentId}
+      selectedPageId={pageId}
+      onSelectedPageIdChange={(nextPageId) =>
+        void navigate({ search: { pageId: nextPageId ?? undefined }, replace: true })
+      }
     />
   );
 }

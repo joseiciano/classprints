@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   DocumentType,
+  PageSummary,
   ReviewPageBody,
   UpdatePageDraftBody,
   UpdateQuestionJudgmentBody,
@@ -83,5 +84,47 @@ export function useUpdateQuestionJudgment(
     mutationFn: ({ segmentId, body }: { segmentId: string; body: UpdateQuestionJudgmentBody }) =>
       updateQuestionJudgment(pageId, segmentId, body),
     onSuccess: () => invalidatePage(queryClient, pageId, documentType, documentId),
+  });
+}
+
+/**
+ * Reads every current, completed page's editable workspace for one
+ * submission (TASK-026): the question-review panel shows one row per
+ * current parsed segment across every page, not just the active one, so it
+ * fetches each page's segments in parallel rather than reusing the
+ * single-page `usePageWorkspace` read.
+ */
+export function useSubmissionPageWorkspaces(
+  pages: Pick<PageSummary, 'id' | 'processingState' | 'position' | 'label' | 'pageRevision'>[],
+) {
+  const completed = pages.filter((page) => page.processingState === 'completed');
+  return useQueries({
+    queries: completed.map((page) => ({
+      queryKey: assignmentReaderKeys.pages.detail(page.id),
+      queryFn: () => fetchPageWorkspace(page.id),
+    })),
+    combine: (results) => ({
+      data: results.map((result, index) => ({ page: completed[index], workspace: result.data })),
+      isLoading: results.some((result) => result.isLoading),
+    }),
+  });
+}
+
+/** Targets any page's question judgment by ID, for the submission-wide
+ * question-review panel where the active segment's owning page varies. */
+export function useUpdateQuestionJudgmentOnDocument(documentType: DocumentType, documentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      pageId,
+      segmentId,
+      body,
+    }: {
+      pageId: string;
+      segmentId: string;
+      body: UpdateQuestionJudgmentBody;
+    }) => updateQuestionJudgment(pageId, segmentId, body),
+    onSuccess: (_result, variables) =>
+      invalidatePage(queryClient, variables.pageId, documentType, documentId),
   });
 }
