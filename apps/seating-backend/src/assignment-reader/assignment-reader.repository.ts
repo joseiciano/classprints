@@ -1479,7 +1479,10 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
     /**
      * Single-page retry (api-routes-documents.md §3.3). One transaction:
      * conditionally bump only this page's `pageRevision` back to `queued`
-     * (resetting attempt/failure/generated-content/timing columns), then bump
+     * (resetting attempt/failure/generated-content/timing columns, plus
+     * `contentRevision`, `editedByTeacher`, `teacherEditCount`,
+     * `reviewedContentRevision`, and `reviewedAt` back to their defaults
+     * since the new attempt's draft has no edits or review yet), then bump
      * the owning document's `documentRevision` and clear its review state;
      * a submission also returns to `not_graded` with a null `gradedAt`
      * while its score/comments are untouched. The `processing_state =
@@ -1498,6 +1501,11 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
             failure_code = null,
             failure_message = null,
             draft = null,
+            content_revision = 0,
+            reviewed_content_revision = null,
+            reviewed_at_ms = null,
+            edited_by_teacher = false,
+            teacher_edit_count = 0,
             started_at_ms = null,
             completed_at_ms = null,
             queued_at_ms = ${now},
@@ -1539,9 +1547,13 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
      * its review state (and, for a submission, return grading to
      * `not_graded` with a null `gradedAt`), then bump every current
      * `completed` page back to `queued` with reset attempt/failure/
-     * generated-content/timing columns. Page IDs, order, and
-     * `contentRevision` are untouched; old question segments stay tied to
-     * the superseded `pageRevision` as audit history (PAT-004).
+     * generated-content/timing columns, plus `contentRevision`,
+     * `editedByTeacher`, `teacherEditCount`, `reviewedContentRevision`, and
+     * `reviewedAt` back to their defaults, since the new attempt's draft has
+     * no edits or review yet (teacher-edit consent for this call is already
+     * covered by `overwriteTeacherEdits`). Page IDs and order are untouched;
+     * old question segments stay tied to the superseded `pageRevision` as
+     * audit history (PAT-004).
      */
     async retranscribeDocumentRows({ teacherId, documentType, documentId, expectedDocumentRevision }) {
       const now = Date.now();
@@ -1579,6 +1591,11 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
             failure_code = null,
             failure_message = null,
             draft = null,
+            content_revision = 0,
+            reviewed_content_revision = null,
+            reviewed_at_ms = null,
+            edited_by_teacher = false,
+            teacher_edit_count = 0,
             started_at_ms = null,
             completed_at_ms = null,
             queued_at_ms = ${now},

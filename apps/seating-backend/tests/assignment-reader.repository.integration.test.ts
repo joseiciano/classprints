@@ -113,10 +113,17 @@ d('integration: assignment-reader repository against live Postgres', () => {
         started_at_ms: string | null;
         completed_at_ms: string | null;
         queued_at_ms: string | null;
+        content_revision: number;
+        reviewed_content_revision: number | null;
+        reviewed_at_ms: string | null;
+        edited_by_teacher: boolean;
+        teacher_edit_count: number;
       })[]
     >`
       select processing_state, page_revision, attempt_count, failure_code, failure_message,
-             draft, started_at_ms, completed_at_ms, queued_at_ms
+             draft, started_at_ms, completed_at_ms, queued_at_ms,
+             content_revision, reviewed_content_revision, reviewed_at_ms,
+             edited_by_teacher, teacher_edit_count
       from public.pages where id = ${pageId}
     `;
     return rows[0]!;
@@ -336,6 +343,15 @@ d('integration: assignment-reader repository against live Postgres', () => {
           score = 9
         where id = ${scope.submissionId}
       `;
+      // Simulate a page that was completed, edited and reviewed by the
+      // teacher, then re-queued and failed again before this retry — its
+      // stale edit/review state must not survive the new attempt.
+      await sql`
+        update public.pages set
+          content_revision = 3, reviewed_content_revision = 2, reviewed_at_ms = ${now},
+          edited_by_teacher = true, teacher_edit_count = 2
+        where id = ${failedPageId}
+      `;
 
       const result = await repo.retryPageRow(scope.teacherId, failedPageId);
       expect(result).not.toBeNull();
@@ -353,6 +369,13 @@ d('integration: assignment-reader repository against live Postgres', () => {
       expect(page.started_at_ms).toBeNull();
       expect(page.completed_at_ms).toBeNull();
       expect(page.queued_at_ms).not.toBeNull();
+      // A new transcription attempt starts with no edits or review (TASK-015
+      // regression: these must not leak from the superseded page_revision).
+      expect(page.content_revision).toBe(0);
+      expect(page.reviewed_content_revision).toBeNull();
+      expect(page.reviewed_at_ms).toBeNull();
+      expect(page.edited_by_teacher).toBe(false);
+      expect(page.teacher_edit_count).toBe(0);
 
       // The untouched sibling keeps its own revision and completed draft.
       const sibling = await readPage(siblingPageId);
@@ -424,8 +447,16 @@ d('integration: assignment-reader repository against live Postgres', () => {
 
       await cleanup(scope.teacherId);
       await seedSubmissionScope(scope, now);
-      await insertCompletedPage(page1, scope, 1, now);
+      await insertCompletedPage(page1, scope, 1, now, true);
       await insertCompletedPage(page2, scope, 2, now);
+      // page1 was edited and reviewed by the teacher before this
+      // retranscription; the new attempt must not inherit that state.
+      await sql`
+        update public.pages set
+          content_revision = 4, reviewed_content_revision = 4, reviewed_at_ms = ${now},
+          teacher_edit_count = 3
+        where id = ${page1}
+      `;
       await sql`
         update public.submissions set
           draft_confirmed = true, confirmed_at_ms = ${now}, document_revision = 2,
@@ -452,6 +483,15 @@ d('integration: assignment-reader repository against live Postgres', () => {
       expect(p1.draft).toBeNull();
       expect(p1.completed_at_ms).toBeNull();
       expect(p1.started_at_ms).toBeNull();
+      // TASK-015 regression: a fresh transcription attempt must not keep
+      // the superseded revision's teacher-edit/review state, otherwise
+      // evaluateRetranscriptionConsent() would permanently require
+      // overwriteTeacherEdits consent for a page nobody has edited yet.
+      expect(p1.content_revision).toBe(0);
+      expect(p1.reviewed_content_revision).toBeNull();
+      expect(p1.reviewed_at_ms).toBeNull();
+      expect(p1.edited_by_teacher).toBe(false);
+      expect(p1.teacher_edit_count).toBe(0);
 
       const submission = await readSubmissionFull(scope.submissionId);
       expect(submission.document_revision).toBe(3);
