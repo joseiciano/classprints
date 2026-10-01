@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
 import type { SeatingGrid } from '@classprints/seating-shared';
 import type {
   SeatingJobStatusResponse,
@@ -236,6 +236,7 @@ export function ResultsPanel({
   jobId,
   summary,
   status,
+  onActiveResultChange,
 }: {
   results: SeatingResultsResponse | null;
   fallbackCols?: number;
@@ -243,9 +244,22 @@ export function ResultsPanel({
   jobId?: string;
   summary?: SeatingJobSummary;
   status?: SeatingJobStatusResponse | null;
+  /** Fires with the currently selected result option, including on mount. */
+  onActiveResultChange?: (result: SeatingResultsResponse['results'][number] | null) => void;
 }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const activeStatus = status?.status ?? summary?.status ?? results?.status;
+
+  useEffect(() => {
+    if (!onActiveResultChange) return;
+    if (!results || results.results.length === 0) {
+      onActiveResultChange(null);
+      return;
+    }
+    const index = Math.min(selectedIndex, results.results.length - 1);
+    onActiveResultChange(results.results[index]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results, selectedIndex]);
 
   if (!results) {
     if (activeStatus === 'failed') {

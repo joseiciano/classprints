@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
+import type { SeatingResultsResponse } from '../lib/seating-api';
 import { DownloadCsvButton } from '../components/download-csv-button';
 import {
   FormAlert,
@@ -8,6 +10,7 @@ import {
   ResultsPanel,
   formatDate,
 } from '../components/job-panels';
+import { SaveToClassButton } from '../components/save-to-class';
 import { Button } from '../components/ui/button';
 import { useSeatingJobSummary } from '../hooks/use-seating-job-summary';
 import { useJobMonitor } from '../hooks/use-job-monitor';
@@ -28,6 +31,9 @@ export function JobDetailPage({ jobId }: { jobId: string }) {
     isAutoRefreshing,
     refresh: refreshStatus,
   } = useJobMonitor(jobId);
+  const [activeResult, setActiveResult] = useState<
+    SeatingResultsResponse['results'][number] | null
+  >(null);
 
   if (isLoading) {
     return <DetailLoadingState />;
@@ -123,12 +129,19 @@ export function JobDetailPage({ jobId }: { jobId: string }) {
           </div>
         </div>
         {results?.results.length ? (
-          <DownloadCsvButton
-            results={results.results}
-            filename={`seating-${jobId}.csv`}
-            label="Export all options"
-            className="w-full sm:w-auto"
-          />
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <SaveToClassButton
+              jobId={jobId}
+              resultId={activeResult?.resultId ?? null}
+              resultLabel="the selected option"
+            />
+            <DownloadCsvButton
+              results={results.results}
+              filename={`seating-${jobId}.csv`}
+              label="Export all options"
+              className="w-full sm:w-auto"
+            />
+          </div>
         ) : null}
       </header>
 
@@ -149,7 +162,13 @@ export function JobDetailPage({ jobId }: { jobId: string }) {
         />
       </div>
 
-      <ResultsPanel results={results} jobId={jobId} summary={summary} status={status} />
+      <ResultsPanel
+        results={results}
+        jobId={jobId}
+        summary={summary}
+        status={status}
+        onActiveResultChange={setActiveResult}
+      />
     </section>
   );
 }

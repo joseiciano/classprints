@@ -140,6 +140,9 @@ importers:
 
   apps/seating-frontend:
     dependencies:
+      '@classprints/assignment-reader-shared':
+        specifier: workspace:*
+        version: link:../../packages/assignment-reader-shared
       '@classprints/seating-shared':
         specifier: workspace:*
         version: link:../../packages/seating-shared
