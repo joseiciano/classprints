@@ -252,23 +252,38 @@ export const registerUserRoutes = (app: Hono<SeatingHonoEnv>): void => {
         // Don't fail the deletion, but log the error
       }
     }
+
+    // Schedule Assignment Reader's cross-store (Postgres + R2) cleanup
+    // (TASK-018) BEFORE the irreversible soft-delete below. Nothing
+    // irreversible has happened yet at this point (the `deleted_at` gate
+    // above hasn't tripped, and the billing cancellation above is already
+    // tolerant of being retried), so if this enumeration/handoff throws
+    // (e.g. a transient DB error locking the teacher's material versions and
+    // submissions in createScopeDeletionOperation), the request safely 500s
+    // and the client can just retry the same request - exactly like
+    // deleteClass/deleteAssignment/deleteMaterials/deleteSubmission/
+    // deleteStudentData. Doing this after softDeleteProfile instead would
+    // leave the account permanently soft-deleted (and the route's own
+    // `deleted_at` gate above would then 400 any retry) with no
+    // deletion_operations row ever created - the exact gap this ordering
+    // avoids.
+    const assignmentReaderService = createAssignmentReaderServiceForDeletion(c);
+    const { operation } = await assignmentReaderService.scheduleAccountDeletion(user.id);
+
     // Soft delete by setting deleted_at timestamp and revoking sessions. This
     // immediately disables access (api-routes-review.md §3.1): a repeated
     // request after this point has no valid session and 401s, which is what
-    // makes account deletion intentionally not teacher-replayable.
+    // makes account deletion intentionally not teacher-replayable through
+    // this route once it succeeds. (A retry after a failure here still
+    // works: scheduleAccountDeletion above is idempotent via
+    // findPendingDeletionOperation, so it just returns the existing pending
+    // operation instead of creating a second one.)
     try {
       await authService.softDeleteProfile(user.id);
     } catch (error) {
       console.error('[DELETE /user/account] Failed to soft-delete:', error);
       throw new HttpError(500, 'Failed to delete account');
     }
-
-    // Schedule Assignment Reader's cross-store (Postgres + R2) cleanup
-    // (TASK-018). Access and sessions are already revoked above; this only
-    // enumerates and hands off Assignment Reader data to the durable
-    // deletion pipeline apps/assignment-worker/src/deletion owns.
-    const assignmentReaderService = createAssignmentReaderServiceForDeletion(c);
-    const { operation } = await assignmentReaderService.scheduleAccountDeletion(user.id);
 
     const responseBody: { data: DeletionOperation } = { data: operation };
 

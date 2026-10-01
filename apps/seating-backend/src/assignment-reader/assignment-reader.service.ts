@@ -1729,10 +1729,14 @@ export class AssignmentReaderService {
     return { operation: this.toDeletionOperation(operation), created: true };
   }
 
-  /** DELETE /user/account (api-routes-review.md §3.1), called after the
-   * caller has already soft-disabled access and revoked sessions. Enumerates
-   * and schedules every Assignment Reader relational/R2 key the teacher
-   * owns; not teacher-replayable once the session is revoked (401 instead). */
+  /** DELETE /user/account (api-routes-review.md §3.1), called BEFORE the
+   * caller soft-disables access and revokes sessions, so a failure here
+   * (e.g. a transient DB error) is safely retryable by the client the same
+   * way the other deletion routes are. Enumerates and schedules every
+   * Assignment Reader relational/R2 key the teacher owns; once the session
+   * is revoked by the subsequent soft-delete, the route itself is no longer
+   * teacher-replayable (401 instead), but this method stays idempotent via
+   * `findPendingDeletionOperation`. */
   async scheduleAccountDeletion(
     teacherId: string,
   ): Promise<{ operation: DeletionOperation; created: boolean }> {
