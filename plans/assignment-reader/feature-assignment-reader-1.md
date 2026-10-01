@@ -2,14 +2,14 @@
 goal: Deliver the Assignment Reader MVP end to end
 
 date_created: 2026-09-23
-last_updated: 2026-09-23
-status: 'Planned'
+last_updated: 2026-10-01
+status: 'In Progress'
 tags: [feature, assignment-reader, cloudflare-workers, postgres, react, ai]
 ---
 
 # Introduction
 
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+![Status: In Progress](https://img.shields.io/badge/status-In%20Progress-yellow)
 
 This plan delivers the complete teacher-only Assignment Reader MVP defined by
 [`plan/assignment-reader/product-doc.md`](assignment-reader/product-doc.md), using the infrastructure decisions in
@@ -71,13 +71,13 @@ The plan closes the functional specification's editor blocker: drafts are stored
 
 - **GOAL-001**: Establish one deterministic data/API/editor/privacy contract so schema, API, worker, and frontend tracks can proceed without later interpretation.
 
-- [ ] **TASK-001**: Create `packages/assignment-reader-shared` and encode the cross-runtime contract.
+- [x] **TASK-001**: Create `packages/assignment-reader-shared` and encode the cross-runtime contract.
   - Add `package.json`, `tsconfig.json`, `src/index.ts`, `src/types.ts`, `src/schemas.ts`, `src/content-schema.ts`, and `src/queue-messages.ts`; export every enum, list request/response schema, command payload, draft node, question segment, error code, and discriminated queue message declared by `plan/assignment-reader/api-manifest.md`.
   - Add the package to `apps/seating-backend/package.json`, `apps/seating-frontend/package.json`, and the new worker package in TASK-006; update `pnpm-lock.yaml` once.
   - Use Zod schemas at every API/provider boundary and plain TypeScript types internally; do not put React, Hono, Postgres, or Worker binding types in the package.
   - Acceptance: backend, frontend, and worker import the same processing/review/grading enums and `schemaVersion: 1` validator; malformed nodes, unsafe crop coordinates, automatic judgments, and unknown fields are rejected.
 
-- [ ] **TASK-002**: Record and enforce the resolved state and lifecycle rules in service-level transition functions.
+- [x] **TASK-002**: Record and enforce the resolved state and lifecycle rules in service-level transition functions.
   - Add pure functions to the shared package for document processing rollup, allowed review/grading transitions, score validation, assignment aggregate status, and retranscription consent requirements.
   - Encode the exact decisions in REQ-010, REQ-016 through REQ-019, PAT-002, PAT-003, and PAT-004; do not derive these rules independently in UI and API.
   - Acceptance: table-driven contract tests cover every allowed/forbidden transition, mixed page-state precedence, zero-submission assignment status, decimal scores, and edit-triggered review invalidation.
@@ -93,7 +93,7 @@ The plan closes the functional specification's editor blocker: drafts are stored
 
 - **GOAL-002**: Provide durable relational, object-storage, queue, binding, and deployment foundations for every Assignment Reader lifecycle.
 
-- [ ] **TASK-004**: Add `database/migrations/20260923090000_create_assignment_reader.sql` with complete constraints and indexes.
+- [x] **TASK-004**: Add `database/migrations/20260923090000_create_assignment_reader.sql` with complete constraints and indexes.
   - Create `classes`, `students`, `assignments`, `assignment_material_versions`, `submissions`, `pages`, `page_reviews`, `question_segments`, `question_judgments`, `transcription_attempts`, `saved_seating_charts`, `deletion_operations`, and `deletion_objects`.
   - Use UUID primary keys, existing `public.users(id)` ownership, bigint millisecond timestamps to match the repository, `numeric(...,2)` for score/points, `numeric(18,8)` for per-attempt cost, JSONB for versioned editor nodes, per-page/per-revision question-segment arrays, and grid snapshots, plus check constraints for enums, score precision/range, normalized crop data, page parent exclusivity, and page position.
   - Enforce unique `(assignment_id, student_id)`, unique material `(assignment_id, version)`, one current material version per assignment with a partial unique index, unique page position within its parent, one question-segment payload per page/revision, one teacher judgment per segment ID within that page/revision, and unique saved chart source per class/job.
@@ -102,13 +102,13 @@ The plan closes the functional specification's editor blocker: drafts are stored
   - Dependencies: TASK-001 and TASK-002.
   - Acceptance: `sh scripts/migrate.sh` applies the migration to an isolated Postgres database; replay is idempotent; invalid parent combinations, duplicate submissions/current materials, invalid scores, and invalid states fail at the database boundary.
 
-- [ ] **TASK-005**: Provision and bind storage, image, and queue resources in both environments.
+- [x] **TASK-005**: Provision and bind storage, image, and queue resources in both environments.
   - Extend `scripts/bootstrap.sh` with `assignment-reader-staging|production` R2 buckets and `transcription-jobs`, `transcription-jobs-dlq`, `document-cleanup-jobs`, and `document-cleanup-jobs-dlq`; retain idempotent check-before-create behavior.
   - Extend `apps/seating-backend/wrangler.jsonc` in both top-level staging and `env.production` with `ASSIGNMENT_IMAGES` R2, `IMAGES`, `TRANSCRIPTION_JOBS`, and `DOCUMENT_CLEANUP_JOBS` bindings.
   - Generate Wrangler binding declarations and adapt `apps/seating-backend/src/types/env.ts` to compose the generated bindings with Hono variables rather than adding unverified handwritten platform types.
   - Acceptance: Wrangler dry-run resolves identical binding names in staging and production; bootstrap replay creates no duplicate resource; R2 has no public development URL or custom public domain.
 
-- [ ] **TASK-006**: Create the dedicated transcriber/cleanup Worker at `apps/assignment-worker`.
+- [x] **TASK-006**: Create the dedicated transcriber/cleanup Worker at `apps/assignment-worker`.
   - Add `package.json`, `tsconfig.json`, `wrangler.jsonc`, generated binding declarations, `src/index.ts`, `src/types.ts`, `src/transcription/`, `src/deletion/`, `src/db/`, and `tests/`.
   - Deploy as `classprints-transcriber`; bind Hyperdrive, `ASSIGNMENT_IMAGES` R2, `IMAGES`, Analytics Engine, `transcription-jobs` + DLQ, and `document-cleanup-jobs` + DLQ in both environments.
   - Configure transcription consumption with `max_batch_size: 1`, `max_batch_timeout: 1`, `max_retries: 3`, and bounded concurrency 5. Acknowledge/retry each message explicitly so one failed vision call never redelivers an acknowledged page.
