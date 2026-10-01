@@ -13,8 +13,8 @@
   "observability": {
     "enabled": true,
   },
-  // Staging (default) — replace <...> placeholders with real values after bootstrap
-  // (scripts/bootstrap.sh prints the IDs; see plan TASK-006).
+  // Staging (default) — replace <...> placeholders with real values after
+  // bootstrap (scripts/bootstrap.sh prints the IDs).
   "vars": {
     "ENVIRONMENT": "staging",
     "APPLICATION_NAME": "seating-backend",
@@ -47,8 +47,25 @@
         "binding": "SEATING_JOBS",
         "queue": "seating-jobs",
       },
+      {
+        "binding": "TRANSCRIPTION_JOBS",
+        "queue": "transcription-jobs",
+      },
+      {
+        "binding": "DOCUMENT_CLEANUP_JOBS",
+        "queue": "document-cleanup-jobs",
+      },
     ],
   },
+  "images": {
+    "binding": "IMAGES",
+  },
+  "r2_buckets": [
+    {
+      "binding": "ASSIGNMENT_IMAGES",
+      "bucket_name": "assignment-reader-staging",
+    },
+  ],
   "ratelimits": [
     {
       "name": "API_RATELIMITER",
@@ -101,8 +118,25 @@
             "binding": "SEATING_JOBS",
             "queue": "seating-jobs",
           },
+          {
+            "binding": "TRANSCRIPTION_JOBS",
+            "queue": "transcription-jobs",
+          },
+          {
+            "binding": "DOCUMENT_CLEANUP_JOBS",
+            "queue": "document-cleanup-jobs",
+          },
         ],
       },
+      "images": {
+        "binding": "IMAGES",
+      },
+      "r2_buckets": [
+        {
+          "binding": "ASSIGNMENT_IMAGES",
+          "bucket_name": "assignment-reader-production",
+        },
+      ],
       "ratelimits": [
         {
           "name": "API_RATELIMITER",

@@ -1,12 +1,12 @@
-# Reusable deploy workflow (TASK-013) — parameterized by `environment`.
+# Reusable deploy workflow — parameterized by `environment`.
 # staging caller: deploy-staging.yml (push to `staging`)
 # production caller: deploy-production.yml (push to `main`)
 #
-# Deploy-target mapping (REQ-007: top-level config = staging):
+# Deploy-target mapping (CON-001: top-level config = staging):
 #   environment=staging    -> bare `wrangler deploy` (top-level = staging)
 #   environment=production -> `wrangler deploy --env production`
 #
-# Required GitHub Environment secrets (TASK-015):
+# Required GitHub Environment secrets:
 #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, DATABASE_URL
 
 name: Deploy
@@ -91,6 +91,24 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: pnpm --filter @classprints/optimizer-worker exec wrangler deploy $DEPLOY_ENV_FLAG
+
+      # Assignment worker (Phase 2, GOAL-002): deployed after migrations and
+      # before the frontend. It runs after the API deploy, so there is a
+      # brief window where the API can enqueue pages before this consumer is
+      # attached — messages simply wait in the queue (no data loss; queue
+      # retention outlives the window). Order within this job keeps the
+      # database schema ahead of any consumer that starts running.
+      - name: Reconcile queue consumers (assignment)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: sh scripts/reconcile-queues.sh apps/assignment-worker classprints-transcriber
+
+      - name: Deploy classprints-transcriber
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm --filter @classprints/assignment-worker exec wrangler deploy $DEPLOY_ENV_FLAG
 
       # No VITE_SEATING_API_URL: the frontend reaches the API same-origin via a
       # service binding, so auth cookies are first-party and sessions survive a

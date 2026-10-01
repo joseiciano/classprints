@@ -1,4 +1,4 @@
-# PR validation (TASK-013 companion) — required status check for merges.
+# PR validation — required status check for merges.
 # Deploy workflows intentionally do NOT run on pull requests: `Deploy Staging`
 # fires only on pushes to `staging` (post-merge), and a deploy of the merge
 # commit cannot precede the merge it would gate. This workflow provides the
@@ -16,6 +16,23 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    # Assignment-worker integration tests (TEST-006) run the real cleanup
+    # consumer against live Postgres seeded from database/migrations. Skipped
+    # gracefully when the service is unavailable, so tests stay green locally.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: assignment_reader_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,5 +52,20 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # TEST-006/TEST-002: worker integration tests + migration boundary
+      # verification against the seeded service database. DATABASE_URL seeds
+      # the schema; AR_TEST_DATABASE_URL gates the vitest integration suite.
+      - name: Seed Postgres schema
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/assignment_reader_ci
+        run: sh scripts/migrate.sh
+
+      - name: Migration boundary verification
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/assignment_reader_ci
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/assignment-reader-migration-verify.sql | tee /dev/stderr | grep -q BOUNDARY_VERIFICATION_PASSED
+
       - name: Test
+        env:
+          AR_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/assignment_reader_ci
         run: pnpm test

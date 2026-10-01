@@ -1,0 +1,145 @@
+{
+  // ClassPrints assignment worker — consumes transcription-jobs (one message per
+  // page, vision transcription via OpenRouter) and document-cleanup-jobs
+  // (replay-safe relational/R2 deletion). Top-level = staging (default),
+  // env.production = production overrides.
+  // Secrets (LLM_API_KEY) are set per account via `wrangler secret put` (SEC-002).
+  // Required vars: TRANSCRIPTION_MODEL, TRANSCRIPTION_FALLBACK_MODELS
+  // (comma-separated); deployment fails rather than defaulting when absent
+  // (ASSUMPTION-003).
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "classprints-transcriber",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "TRANSCRIPTION_MODEL": "",
+    "TRANSCRIPTION_FALLBACK_MODELS": "",
+    "TRANSCRIPTION_STRUCTURED_OUTPUTS": "true"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "00c42d1a16da45f0a7e9d9ef1d2aa99c"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ASSIGNMENT_IMAGES",
+      "bucket_name": "assignment-reader-staging"
+    }
+  ],
+  "images": {
+    "binding": "IMAGES"
+  },
+  "queues": {
+    "consumers": [
+      {
+        "queue": "transcription-jobs",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 3,
+        "max_concurrency": 5,
+        "dead_letter_queue": "transcription-jobs-dlq"
+      },
+      {
+        "queue": "transcription-jobs-dlq",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 3,
+        "max_concurrency": 5
+      },
+      {
+        "queue": "document-cleanup-jobs",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 3,
+        "max_concurrency": 5,
+        "dead_letter_queue": "document-cleanup-jobs-dlq"
+      },
+      {
+        "queue": "document-cleanup-jobs-dlq",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 3,
+        "max_concurrency": 5
+      }
+    ]
+  },
+  "analytics_engine_datasets": [
+    {
+      "binding": "ANALYTICS",
+      "dataset": "classprints_assignment_staging"
+    }
+  ],
+  "env": {
+    "production": {
+      "name": "classprints-transcriber",
+      "workers_dev": false,
+      "vars": {
+        "TRANSCRIPTION_MODEL": "<TRANSCRIPTION_MODEL_PRODUCTION>",
+        "TRANSCRIPTION_FALLBACK_MODELS": "<TRANSCRIPTION_FALLBACK_MODELS_PRODUCTION>",
+        "TRANSCRIPTION_STRUCTURED_OUTPUTS": "<TRANSCRIPTION_STRUCTURED_OUTPUTS_PRODUCTION>"
+      },
+      "hyperdrive": [
+        {
+          "binding": "HYPERDRIVE",
+          "id": "<PRODUCTION_HYPERDRIVE_ID>"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "ASSIGNMENT_IMAGES",
+          "bucket_name": "assignment-reader-production"
+        }
+      ],
+      "images": {
+        "binding": "IMAGES"
+      },
+      "queues": {
+        "consumers": [
+          {
+            "queue": "transcription-jobs",
+            "max_batch_size": 1,
+            "max_batch_timeout": 1,
+            "max_retries": 3,
+            "max_concurrency": 5,
+            "dead_letter_queue": "transcription-jobs-dlq"
+          },
+          {
+            "queue": "transcription-jobs-dlq",
+            "max_batch_size": 1,
+            "max_batch_timeout": 1,
+            "max_retries": 3,
+            "max_concurrency": 5
+          },
+          {
+            "queue": "document-cleanup-jobs",
+            "max_batch_size": 1,
+            "max_batch_timeout": 1,
+            "max_retries": 3,
+            "max_concurrency": 5,
+            "dead_letter_queue": "document-cleanup-jobs-dlq"
+          },
+          {
+            "queue": "document-cleanup-jobs-dlq",
+            "max_batch_size": 1,
+            "max_batch_timeout": 1,
+            "max_retries": 3,
+            "max_concurrency": 5
+          }
+        ]
+      },
+      "analytics_engine_datasets": [
+        {
+          "binding": "ANALYTICS",
+          "dataset": "classprints_assignment_production"
+        }
+      ]
+    }
+  }
+}

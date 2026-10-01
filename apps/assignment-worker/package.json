@@ -1,5 +1,5 @@
 {
-  "name": "@classprints/api",
+  "name": "@classprints/assignment-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,18 +10,15 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@hono-rate-limiter/cloudflare": "^0.2.2",
     "@classprints/assignment-reader-shared": "workspace:*",
-    "@classprints/seating-shared": "workspace:*",
-    "@classprints/server": "workspace:*",
-    "@classprints/shared": "workspace:*",
-    "hono": "^4.6.12",
+    "@classprints/server": "workspace:^",
     "postgres": "3.4.7",
-    "zod": "^3.23.8"
+    "zod": "3.24.4"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "4.20260702.1",
     "typescript": "~5.9.3",
+    "vitest": "4.0.14",
     "wrangler": "4.57.0"
   }
 }

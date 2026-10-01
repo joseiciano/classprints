@@ -1,6 +1,6 @@
 #!/bin/sh
 # scripts/reconcile-queues.sh — remove stale queue consumers before a deploy
-# (TASK-017).
+# (deploy.yml).
 #
 # Wrangler's consumer reconciliation matches the existing consumer's script
 # name against the script being deployed. A consumer owned by any other script
