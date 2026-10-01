@@ -12,7 +12,10 @@ const STATUS_OPTIONS: { value: StudentListQuery['status']; label: string }[] = [
 
 export interface RosterPanelViewProps {
   students: StudentRecord[];
-  /** True under an archived class: every mutation control is disabled. */
+  /**
+   * True under an archived class: Add, Rename, and Remove are disabled.
+   * Delete-data stays enabled regardless, per REQ-021/REQ-022.
+   */
   readOnly?: boolean;
   isLoading?: boolean;
   isFetching?: boolean;
@@ -44,10 +47,11 @@ export interface RosterPanelViewProps {
  * `StudentListQuery`, not just the first page of active students, so this
  * view exposes search, sortable columns, a status filter, and pagination
  * rather than silently truncating at the server's 10-per-page ceiling. An
- * archived class is read-only end to end: Add, Rename, Remove, and
- * Delete-data are all disabled, since the sanctioned destructive action for
- * an archived class is deleting the whole class, not its individual
- * students.
+ * archived class disables Add, Rename, and Remove, but not Delete-data:
+ * REQ-021/REQ-022 exempt the destructive class, student-data, and
+ * assignment deletion routes from the archived-read-only rule, so
+ * Delete-data stays enabled here the same way Delete assignment and Delete
+ * materials do elsewhere.
  */
 export function RosterPanelView({
   students,
@@ -112,7 +116,6 @@ export function RosterPanelView({
             label={`Delete ${student.name}'s data`}
             icon={UserX}
             tone="destructive"
-            disabled={readOnly}
             onClick={() => onDeleteStudentData?.(student)}
           />
         </div>
