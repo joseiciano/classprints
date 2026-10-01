@@ -18,6 +18,7 @@ import type {
   RetryPageResult,
   RetranscribeDocumentBody,
   DocumentProcessingResponse,
+  DocumentAggregate,
   DeletionOperation,
   DeletionTargetType,
   ImageVariant,
@@ -421,6 +422,54 @@ export class AssignmentReaderService {
       processingState: aggregate.processingState,
       processingCounts: aggregate.processingCounts,
       reviewState: aggregate.reviewState,
+    };
+  }
+
+  /**
+   * GET /documents/:documentType/:documentId: the lightweight rollup the
+   * frontend's `useDocumentAggregate` polls (every 5s) to back the
+   * Processing/Workspace route shells (materials-panel.tsx
+   * `documentRouteFor`, submissions-panel.tsx `routeForSubmission`) while a
+   * document is still in progress. `readOnly` mirrors `getWorkspace`'s rule:
+   * a historical material version or anything under archived ancestry is
+   * read-only, never only the repo row's own (archived-blind) flag.
+   */
+  async getDocumentAggregate(
+    teacherId: string,
+    documentType: DocumentType,
+    documentId: string,
+  ): Promise<DocumentAggregate> {
+    if (documentType === 'materials') {
+      const materialVersion = await this.deps.repo.findMaterialVersion(teacherId, documentId);
+      if (!materialVersion) throw notFound();
+      const assignment = await this.getAssignment(teacherId, materialVersion.assignmentId);
+      const historical = materialVersion.lifecycle === 'historical';
+      const archived = assignment.classStatus === 'archived';
+      return {
+        documentType: 'materials',
+        documentId,
+        documentRevision: materialVersion.documentRevision,
+        processingState: materialVersion.processingState,
+        processingCounts: materialVersion.processingCounts,
+        reviewState: materialVersion.reviewState,
+        pageCount: materialVersion.pageCount,
+        draftConfirmed: materialVersion.confirmedAt !== null,
+        readOnly: historical || archived,
+      };
+    }
+    const submission = await this.getSubmission(teacherId, documentId);
+    const assignment = await this.getAssignment(teacherId, submission.assignmentId);
+    const archived = assignment.classStatus === 'archived';
+    return {
+      documentType: 'submission',
+      documentId,
+      documentRevision: submission.documentRevision,
+      processingState: submission.processingState,
+      processingCounts: submission.processingCounts,
+      reviewState: submission.reviewState,
+      pageCount: submission.pageCount,
+      draftConfirmed: submission.confirmedAt !== null,
+      readOnly: archived,
     };
   }
 

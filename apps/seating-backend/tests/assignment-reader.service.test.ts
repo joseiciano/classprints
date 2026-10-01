@@ -613,6 +613,81 @@ describe('AssignmentReaderService — processing list ownership (TASK-008)', () 
   });
 });
 
+describe('AssignmentReaderService — document aggregate rollup (GET /documents/:documentType/:documentId)', () => {
+  it('returns the rollup for an owned submission', async () => {
+    const state = buildState();
+    const service = buildService(state);
+    await service.createSubmission(TEACHER_A, 'assignment-1', 'student-1');
+    const aggregate = await service.getDocumentAggregate(TEACHER_A, 'submission', 'sub-1');
+    expect(aggregate).toEqual({
+      documentType: 'submission',
+      documentId: 'sub-1',
+      documentRevision: 1,
+      processingState: null,
+      processingCounts: { uploading: 0, queued: 0, transcribing: 0, completed: 0, failed: 0, total: 0 },
+      reviewState: null,
+      pageCount: 0,
+      draftConfirmed: false,
+      readOnly: false,
+    });
+  });
+
+  it('returns the rollup for an owned materials draft', async () => {
+    const state = buildState();
+    const service = buildService(state);
+    await service.createDraftMaterialVersion(TEACHER_A, 'assignment-1');
+    const aggregate = await service.getDocumentAggregate(TEACHER_A, 'materials', 'mv-1');
+    expect(aggregate).toEqual({
+      documentType: 'materials',
+      documentId: 'mv-1',
+      documentRevision: 1,
+      processingState: null,
+      processingCounts: { uploading: 0, queued: 0, transcribing: 0, completed: 0, failed: 0, total: 0 },
+      reviewState: null,
+      pageCount: 0,
+      draftConfirmed: false,
+      readOnly: false,
+    });
+  });
+
+  it('marks the rollup read-only under archived ancestry, unlike the repo row\'s own flag', async () => {
+    const state = buildState();
+    const service = buildService(state);
+    await service.createSubmission(TEACHER_A, 'assignment-1', 'student-1');
+    state.classes[0] = classRecord(TEACHER_A, 'class-1', 'Class A', 'archived');
+    const aggregate = await service.getDocumentAggregate(TEACHER_A, 'submission', 'sub-1');
+    expect(aggregate.readOnly).toBe(true);
+  });
+
+  it('marks a historical material version read-only even when the class is active', async () => {
+    const state = buildState();
+    const service = buildService(state);
+    state.materialVersions.push(materialVersion(TEACHER_A, 'mv-historical', 'assignment-1', 'historical'));
+    const aggregate = await service.getDocumentAggregate(TEACHER_A, 'materials', 'mv-historical');
+    expect(aggregate.readOnly).toBe(true);
+  });
+
+  it('rejects an unknown submission id with 404', async () => {
+    const state = buildState();
+    const service = buildService(state);
+    await expectError(
+      service.getDocumentAggregate(TEACHER_A, 'submission', 'no-such-submission'),
+      404,
+      'RESOURCE_NOT_FOUND',
+    );
+  });
+
+  it('rejects an unknown materials id with 404', async () => {
+    const state = buildState();
+    const service = buildService(state);
+    await expectError(
+      service.getDocumentAggregate(TEACHER_A, 'materials', 'no-such-version'),
+      404,
+      'RESOURCE_NOT_FOUND',
+    );
+  });
+});
+
 describe('AssignmentReaderService — deletion scopes (TASK-018 review fix)', () => {
   /**
    * A minimal fake standing in for the deletion-operations table: pending

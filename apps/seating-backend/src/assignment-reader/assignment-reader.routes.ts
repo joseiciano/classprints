@@ -584,6 +584,23 @@ export const registerAssignmentReaderRoutes = (app: Hono<SeatingHonoEnv>): void 
     }
   });
 
+  // ——— Document aggregate rollup ——————————————————————————————————————————————
+
+  app.get('/documents/:documentType/:documentId', async (c) => {
+    try {
+      const user = getUser(c);
+      const documentType = documentTypeParamSchema.parse(c.req.param('documentType'));
+      const result = await createService(c).getDocumentAggregate(
+        user.id,
+        documentType,
+        c.req.param('documentId'),
+      );
+      return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
   // ——— Processing (TASK-008) ————————————————————————————————————————————————————
 
   app.get('/documents/:documentType/:documentId/processing', async (c) => {
