@@ -1087,6 +1087,11 @@ export class AssignmentReaderService {
     historical: boolean;
     archived: boolean;
     pageCount: number;
+    /** Whether the current page set has been explicitly confirmed
+     * (`confirmedAt !== null`), independent of `processingState`/
+     * `reviewState`, both of which are non-null for an unconfirmed document
+     * that has pages (e.g. `processingState: 'uploading'`). */
+    confirmed: boolean;
     processingState: ProcessingState | null;
     reviewState: import('@classprints/assignment-reader-shared').ReviewState | null;
     gradingState: import('@classprints/assignment-reader-shared').GradingState | null;
@@ -1094,9 +1099,8 @@ export class AssignmentReaderService {
     if (input.historical) return [];
     if (input.archived) return ['delete'];
     const actions: DocumentAction[] = ['upload_page', 'delete'];
-    const unconfirmed = input.pageCount === 0 || (input.processingState === null && input.reviewState === null);
     if (input.pageCount > 0) {
-      if (unconfirmed) {
+      if (!input.confirmed) {
         actions.push('confirm');
       } else {
         actions.push('retry_page', 'replace_page');
@@ -1157,6 +1161,7 @@ export class AssignmentReaderService {
           historical,
           archived,
           pageCount: materialVersion.pageCount,
+          confirmed: materialVersion.confirmedAt !== null,
           processingState: materialVersion.processingState,
           reviewState: materialVersion.reviewState,
           gradingState: null,
@@ -1192,6 +1197,7 @@ export class AssignmentReaderService {
         historical: false,
         archived,
         pageCount: submission.pageCount,
+        confirmed: submission.confirmedAt !== null,
         processingState: submission.processingState,
         reviewState: submission.reviewState,
         gradingState: submission.gradingState,
@@ -1608,22 +1614,24 @@ export class AssignmentReaderService {
     };
   }
 
-  /** Wraps `repo.createDeletionOperation`, translating the DB-level
-   * `DeletionScopeConflictError` (two scopes sharing one id's `target_id`,
-   * e.g. `materials` and `assignment` both keyed by the assignment id — see
-   * `notDeletionPending`'s doc comment in assignment-reader.repository.ts)
-   * into a 409 instead of letting the raw unique-violation surface as a
-   * 500. `findPendingDeletionOperation` only pre-checks the SAME scope, so
-   * this is the backstop for a concurrent delete under a *different*,
-   * id-colliding scope. */
+  /** Wraps `repo.createScopeDeletionOperation` (which enumerates the
+   * scope's storage keys and creates its deletion-operation rows
+   * atomically — see that method's doc comment for why the enumeration
+   * must be locked rather than a plain prior read), translating the
+   * DB-level `DeletionScopeConflictError` (two scopes sharing one id's
+   * `target_id`, e.g. `materials` and `assignment` both keyed by the
+   * assignment id — see `notDeletionPending`'s doc comment in
+   * assignment-reader.repository.ts) into a 409 instead of letting the raw
+   * unique-violation surface as a 500. `findPendingDeletionOperation` only
+   * pre-checks the SAME scope, so this is the backstop for a concurrent
+   * delete under a *different*, id-colliding scope. */
   private async createScopedDeletionOperation(
     teacherId: string,
-    targetType: DeletionTargetType,
+    targetType: Exclude<DeletionTargetType, 'page'>,
     targetId: string,
-    storageKeys: string[],
   ): Promise<DeletionOperationRow> {
     try {
-      return await this.deps.repo.createDeletionOperation({ teacherId, targetType, targetId, storageKeys });
+      return await this.deps.repo.createScopeDeletionOperation({ teacherId, targetType, targetId });
     } catch (error) {
       if (error instanceof DeletionScopeConflictError) {
         throw new AssignmentReaderError(
@@ -1662,8 +1670,7 @@ export class AssignmentReaderService {
     const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'materials', assignmentId);
     if (pending) return { operation: this.toDeletionOperation(pending), created: false };
     await this.getAssignment(teacherId, assignmentId);
-    const storageKeys = await this.deps.repo.listStorageKeysForMaterialsScope(teacherId, assignmentId);
-    const operation = await this.createScopedDeletionOperation(teacherId, 'materials', assignmentId, storageKeys);
+    const operation = await this.createScopedDeletionOperation(teacherId, 'materials', assignmentId);
     await this.enqueueDeletion(operation.id, 'materials');
     return { operation: this.toDeletionOperation(operation), created: true };
   }
@@ -1676,8 +1683,7 @@ export class AssignmentReaderService {
     const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'submission', submissionId);
     if (pending) return { operation: this.toDeletionOperation(pending), created: false };
     await this.getSubmission(teacherId, submissionId);
-    const storageKeys = await this.deps.repo.listStorageKeysForSubmissionScope(teacherId, submissionId);
-    const operation = await this.createScopedDeletionOperation(teacherId, 'submission', submissionId, storageKeys);
+    const operation = await this.createScopedDeletionOperation(teacherId, 'submission', submissionId);
     await this.enqueueDeletion(operation.id, 'submission');
     return { operation: this.toDeletionOperation(operation), created: true };
   }
@@ -1692,8 +1698,7 @@ export class AssignmentReaderService {
     if (pending) return { operation: this.toDeletionOperation(pending), created: false };
     await this.getClass(teacherId, classId);
     await this.assertStudentInClass(teacherId, classId, studentId);
-    const storageKeys = await this.deps.repo.listStorageKeysForStudentDataScope(teacherId, studentId);
-    const operation = await this.createScopedDeletionOperation(teacherId, 'student_data', studentId, storageKeys);
+    const operation = await this.createScopedDeletionOperation(teacherId, 'student_data', studentId);
     await this.enqueueDeletion(operation.id, 'student_data');
     return { operation: this.toDeletionOperation(operation), created: true };
   }
@@ -1706,8 +1711,7 @@ export class AssignmentReaderService {
     const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'assignment', assignmentId);
     if (pending) return { operation: this.toDeletionOperation(pending), created: false };
     await this.getAssignment(teacherId, assignmentId);
-    const storageKeys = await this.deps.repo.listStorageKeysForAssignmentScope(teacherId, assignmentId);
-    const operation = await this.createScopedDeletionOperation(teacherId, 'assignment', assignmentId, storageKeys);
+    const operation = await this.createScopedDeletionOperation(teacherId, 'assignment', assignmentId);
     await this.enqueueDeletion(operation.id, 'assignment');
     return { operation: this.toDeletionOperation(operation), created: true };
   }
@@ -1720,8 +1724,7 @@ export class AssignmentReaderService {
     const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'class', classId);
     if (pending) return { operation: this.toDeletionOperation(pending), created: false };
     await this.getClass(teacherId, classId);
-    const storageKeys = await this.deps.repo.listStorageKeysForClassScope(teacherId, classId);
-    const operation = await this.createScopedDeletionOperation(teacherId, 'class', classId, storageKeys);
+    const operation = await this.createScopedDeletionOperation(teacherId, 'class', classId);
     await this.enqueueDeletion(operation.id, 'class');
     return { operation: this.toDeletionOperation(operation), created: true };
   }
@@ -1735,8 +1738,7 @@ export class AssignmentReaderService {
   ): Promise<{ operation: DeletionOperation; created: boolean }> {
     const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'account', teacherId);
     if (pending) return { operation: this.toDeletionOperation(pending), created: false };
-    const storageKeys = await this.deps.repo.listStorageKeysForAccountScope(teacherId);
-    const operation = await this.createScopedDeletionOperation(teacherId, 'account', teacherId, storageKeys);
+    const operation = await this.createScopedDeletionOperation(teacherId, 'account', teacherId);
     await this.enqueueDeletion(operation.id, 'account');
     return { operation: this.toDeletionOperation(operation), created: true };
   }

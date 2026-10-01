@@ -68,6 +68,7 @@ const submissionRecord = (teacherId: string, id: string, assignmentId: string, s
   gradedAt: null,
   createdAt: '2026-09-23T10:00:00.000Z',
   updatedAt: '2026-09-23T10:00:00.000Z',
+  confirmedAt: null,
   readOnly: false,
 });
 
@@ -655,9 +656,7 @@ describe('AssignmentReaderService — deletion scopes (TASK-018 review fix)', ()
         const existing = pendingByTargetId.get(targetId);
         return Promise.resolve(existing && existing.target_type === targetType ? existing : null);
       },
-      listStorageKeysForMaterialsScope: () => Promise.resolve([]),
-      listStorageKeysForAssignmentScope: () => Promise.resolve([]),
-      createDeletionOperation: ({ targetType, targetId }: { targetType: string; targetId: string }) => {
+      createScopeDeletionOperation: ({ targetType, targetId }: { targetType: string; targetId: string }) => {
         const existing = pendingByTargetId.get(targetId);
         if (existing) {
           return Promise.reject(new DeletionScopeConflictError(existing));

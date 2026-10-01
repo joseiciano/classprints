@@ -309,6 +309,7 @@ export interface SubmissionRecord {
   gradedAt: ISODateTime | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
+  confirmedAt: ISODateTime | null;
   readOnly: boolean;
 }
 

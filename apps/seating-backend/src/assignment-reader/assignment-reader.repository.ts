@@ -520,12 +520,23 @@ export interface AssignmentReaderRepository {
   }): Promise<MarkGradedOutcome>;
 
   // ——— Deletion scopes (TASK-018) ——————————————————————————————————————————
-  listStorageKeysForMaterialsScope(teacherId: string, assignmentId: string): Promise<string[]>;
-  listStorageKeysForSubmissionScope(teacherId: string, submissionId: string): Promise<string[]>;
-  listStorageKeysForStudentDataScope(teacherId: string, studentId: string): Promise<string[]>;
-  listStorageKeysForAssignmentScope(teacherId: string, assignmentId: string): Promise<string[]>;
-  listStorageKeysForClassScope(teacherId: string, classId: string): Promise<string[]>;
-  listStorageKeysForAccountScope(teacherId: string): Promise<string[]>;
+  /** Enumerates the scope's current storage keys and creates its
+   * `deletion_operations`/`deletion_objects` rows in one transaction, after
+   * locking every document row the scope owns (review fix: a plain,
+   * unlocked `list storage keys` read followed by a separate, later
+   * `insert` transaction left a window in which a page uploaded into the
+   * scope — e.g. to a still-draft materials version — was never enumerated
+   * yet was still deleted wholesale by the worker's `deleteScopeRelationalRows`
+   * at finalize time, permanently orphaning its R2 object; REQ-022). Throws
+   * `DeletionScopeConflictError` exactly like `createDeletionOperation` on an
+   * id-colliding concurrent scope. Excludes `target_type: 'page'`, which
+   * already knows its one storage key at the call site and deletes the row
+   * synchronously before scheduling cleanup. */
+  createScopeDeletionOperation(input: {
+    teacherId: string;
+    targetType: Exclude<DeletionTargetType, 'page'>;
+    targetId: string;
+  }): Promise<DeletionOperationRow>;
 
   // Submissions
   listSubmissions(options: SubmissionListOptions): Promise<ListResponse<SubmissionListItem>>;
@@ -2384,47 +2395,106 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
 
     // ——— Deletion scopes (TASK-018) ————————————————————————————————————————
 
-    async listStorageKeysForMaterialsScope(teacherId, assignmentId) {
-      const rows = await sql<({ storage_key: string })[]>`
-        select storage_key from pages
-        where teacher_id = ${teacherId} and assignment_id = ${assignmentId} and document_type = 'materials'
-      `;
-      return rows.map((row) => row.storage_key);
-    },
-
-    async listStorageKeysForSubmissionScope(teacherId, submissionId) {
-      const rows = await sql<({ storage_key: string })[]>`
-        select storage_key from pages where teacher_id = ${teacherId} and submission_id = ${submissionId}
-      `;
-      return rows.map((row) => row.storage_key);
-    },
-
-    async listStorageKeysForStudentDataScope(teacherId, studentId) {
-      const rows = await sql<({ storage_key: string })[]>`
-        select storage_key from pages where teacher_id = ${teacherId} and student_id = ${studentId}
-      `;
-      return rows.map((row) => row.storage_key);
-    },
-
-    async listStorageKeysForAssignmentScope(teacherId, assignmentId) {
-      const rows = await sql<({ storage_key: string })[]>`
-        select storage_key from pages where teacher_id = ${teacherId} and assignment_id = ${assignmentId}
-      `;
-      return rows.map((row) => row.storage_key);
-    },
-
-    async listStorageKeysForClassScope(teacherId, classId) {
-      const rows = await sql<({ storage_key: string })[]>`
-        select storage_key from pages where teacher_id = ${teacherId} and class_id = ${classId}
-      `;
-      return rows.map((row) => row.storage_key);
-    },
-
-    async listStorageKeysForAccountScope(teacherId) {
-      const rows = await sql<({ storage_key: string })[]>`
-        select storage_key from pages where teacher_id = ${teacherId}
-      `;
-      return rows.map((row) => row.storage_key);
+    async createScopeDeletionOperation({ teacherId, targetType, targetId }) {
+      const now = Date.now();
+      try {
+        return await sql.begin(async (tx) => {
+          // Lock every existing document row the scope owns, `for update`,
+          // before enumerating its storage keys. `insertPageRow` locks the
+          // same parent row (`assignment_material_versions`/`submissions`)
+          // before it inserts a new page, so a concurrent upload either
+          // commits before this lock is taken — and is therefore included
+          // in the enumeration below — or blocks on the row lock until this
+          // transaction commits, after which the scope's pending deletion
+          // is visible to every `notDeletionPending`/`notDeletionPendingParent`
+          // read guard and the upload is rejected. Without this lock, the
+          // plain unlocked read this replaces left a window in which a page
+          // uploaded into the scope (e.g. to a still-draft materials
+          // version) was never enumerated here, yet was still deleted
+          // wholesale by the worker's `deleteScopeRelationalRows` at
+          // finalize time — permanently orphaning its R2 object (REQ-022).
+          switch (targetType) {
+            case 'materials':
+              await tx`select id from assignment_material_versions
+                where teacher_id = ${teacherId} and assignment_id = ${targetId} for update`;
+              break;
+            case 'submission':
+              await tx`select id from submissions
+                where teacher_id = ${teacherId} and id = ${targetId} for update`;
+              break;
+            case 'student_data':
+              await tx`select id from submissions
+                where teacher_id = ${teacherId} and student_id = ${targetId} for update`;
+              break;
+            case 'assignment':
+              await tx`select id from assignment_material_versions
+                where teacher_id = ${teacherId} and assignment_id = ${targetId} for update`;
+              await tx`select id from submissions
+                where teacher_id = ${teacherId} and assignment_id = ${targetId} for update`;
+              break;
+            case 'class':
+              await tx`select v.id from assignment_material_versions v
+                join assignments a on a.id = v.assignment_id
+                where v.teacher_id = ${teacherId} and a.class_id = ${targetId} for update`;
+              await tx`select id from submissions
+                where teacher_id = ${teacherId} and class_id = ${targetId} for update`;
+              break;
+            case 'account':
+              await tx`select id from assignment_material_versions where teacher_id = ${teacherId} for update`;
+              await tx`select id from submissions where teacher_id = ${teacherId} for update`;
+              break;
+          }
+          // Mirrors the scope predicates the removed `listStorageKeysForXScope`
+          // helpers used; `pages` denormalizes `class_id`/`assignment_id` for
+          // both document types, so only the `materials` scope (which shares
+          // the assignment's own id with submission pages) needs the extra
+          // `document_type` filter.
+          const scopeCondition = (() => {
+            switch (targetType) {
+              case 'materials':
+                return tx`and assignment_id = ${targetId} and document_type = 'materials'`;
+              case 'submission':
+                return tx`and submission_id = ${targetId}`;
+              case 'student_data':
+                return tx`and student_id = ${targetId}`;
+              case 'assignment':
+                return tx`and assignment_id = ${targetId}`;
+              case 'class':
+                return tx`and class_id = ${targetId}`;
+              case 'account':
+                return tx``;
+            }
+          })();
+          const rows = await tx<DeletionOperationRow[]>`
+            insert into deletion_operations (teacher_id, target_type, target_id, status, accepted_at_ms, updated_at_ms)
+            values (${teacherId}, ${targetType}, ${targetId}, 'pending', ${now}, ${now})
+            returning id, target_type, target_id, status, accepted_at_ms
+          `;
+          const operation = rows[0];
+          if (!operation) throw new Error('Unable to create deletion operation');
+          await tx`
+            insert into deletion_objects (operation_id, storage_key, status, attempts, created_at_ms)
+            select ${operation.id}, storage_key, 'pending', 0, ${now}
+            from pages
+            where teacher_id = ${teacherId} ${scopeCondition}
+          `;
+          return operation;
+        });
+      } catch (error) {
+        // Same id-colliding-scope backstop as `createDeletionOperation` (see
+        // its doc comment): surfaced as a typed conflict instead of a raw
+        // 23505 unique-violation.
+        if (error instanceof postgres.PostgresError && error.code === '23505') {
+          const rows = await sql<DeletionOperationRow[]>`
+            select id, target_type, target_id, status, accepted_at_ms
+            from deletion_operations
+            where teacher_id = ${teacherId} and target_id = ${targetId} and status = 'pending'
+            limit 1
+          `;
+          if (rows[0]) throw new DeletionScopeConflictError(rows[0]);
+        }
+        throw error;
+      }
     },
 
     async findSubmission(teacherId, submissionId) {
@@ -2467,6 +2537,7 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
         gradedAt: toIso(row.graded_at_ms),
         createdAt: toIso(row.created_at_ms) as string,
         updatedAt: toIso(row.updated_at_ms) as string,
+        confirmedAt: toIso(row.confirmed_at_ms),
         readOnly: false,
       };
     },
