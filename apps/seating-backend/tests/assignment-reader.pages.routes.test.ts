@@ -493,4 +493,59 @@ describe('Assignment Reader page routes (TASK-010/TASK-011/TASK-012)', () => {
       expect(res.status).toBe(401);
     });
   });
+
+  describe('POST /documents/:documentType/:documentId/analytics-events (TASK-027)', () => {
+    const post = (token: string, body: unknown) =>
+      app.fetch(
+        new Request(`http://localhost/api/v1/documents/submission/${SUBMISSION_1}/analytics-events`, {
+          method: 'POST',
+          headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+          body: JSON.stringify(body),
+        }),
+        createEnv() as never,
+      );
+
+    it('accepts a review_session_start event with a null-data envelope', async () => {
+      const res = await post('token-a', { type: 'review_session_start' });
+      expect(res.status).toBe(202);
+      expect(await res.json()).toEqual({ data: null });
+    });
+
+    it('accepts a review_session_end event carrying a duration', async () => {
+      const res = await post('token-a', { type: 'review_session_end', durationMs: 90_000 });
+      expect(res.status).toBe(202);
+    });
+
+    it('accepts a materials_open event', async () => {
+      const res = await post('token-a', { type: 'materials_open' });
+      expect(res.status).toBe(202);
+    });
+
+    it('rejects an unknown event type with the manifest validation envelope', async () => {
+      const res = await post('token-a', { type: 'bogus_event' });
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects a negative durationMs', async () => {
+      const res = await post('token-a', { type: 'review_session_end', durationMs: -1 });
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 404 (not 403) for another teacher\'s submission', async () => {
+      const res = await post('token-b', { type: 'materials_open' });
+      expect(res.status).toBe(404);
+    });
+
+    it('rejects an unauthenticated request with 401', async () => {
+      const res = await app.fetch(
+        new Request(`http://localhost/api/v1/documents/submission/${SUBMISSION_1}/analytics-events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'materials_open' }),
+        }),
+        createEnv() as never,
+      );
+      expect(res.status).toBe(401);
+    });
+  });
 });

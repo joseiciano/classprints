@@ -421,6 +421,27 @@ export const applyQuestionPointsBodySchema = z
   })
   .strict();
 
+// ——— Analytics instrumentation (TASK-027/REQ-025) ———————————————————————————
+// Review-session start/end and materials-open events. Content-free and
+// identity-free by construction: no page/document/submission id, draft
+// content, or student/teacher name is accepted here — the server derives
+// document type from the route it is posted to and never persists this body
+// beyond an aggregate Analytics Engine write (SEC-003).
+
+export const analyticsEventBodySchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('review_session_start') }).strict(),
+  z
+    .object({
+      type: z.literal('review_session_end'),
+      // Capped at 24h so a stuck tab / clock skew cannot poison aggregates.
+      durationMs: z.number().int().min(0).max(24 * 60 * 60 * 1000),
+    })
+    .strict(),
+  z.object({ type: z.literal('materials_open') }).strict(),
+]);
+
+export type AnalyticsEventBody = z.infer<typeof analyticsEventBodySchema>;
+
 // ——— Response record schemas (outbound validation surface) ——————————————————
 
 export const safeFailureSchema = z

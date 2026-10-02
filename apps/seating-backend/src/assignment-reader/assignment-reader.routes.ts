@@ -36,8 +36,10 @@ import {
   updateGradingDraftBodySchema,
   questionPointsTotalQuerySchema,
   applyQuestionPointsBodySchema,
+  analyticsEventBodySchema,
 } from '@classprints/assignment-reader-shared';
 import { ZodError, z } from 'zod';
+import { AssignmentReaderMetrics } from '../utils/metrics';
 /**
  * Assignment Reader routes (TASK-007/TASK-008/TASK-009). Controllers parse
  * Zod-validated input, call the service, and map domain errors to the
@@ -70,7 +72,8 @@ const createService = (c: Context<SeatingHonoEnv>): AssignmentReaderService => {
       await c.env.DOCUMENT_CLEANUP_JOBS.send(message);
     },
   };
-  return new AssignmentReaderService({ repo, images, queues });
+  const analytics = new AssignmentReaderMetrics(c.env.ANALYTICS);
+  return new AssignmentReaderService({ repo, images, queues, analytics });
 };
 
 /** Extracts the single required `file` field from a multipart upload
@@ -667,6 +670,21 @@ export const registerAssignmentReaderRoutes = (app: Hono<SeatingHonoEnv>): void 
       const documentType = documentTypeParamSchema.parse(c.req.param('documentType'));
       const result = await createService(c).getWorkspace(user.id, documentType, c.req.param('documentId'));
       return c.json({ data: result }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  // Review-session start/end and materials-open instrumentation (TASK-027).
+  // Fire-and-forget from the frontend's perspective: the response carries no
+  // body, and a failure here never blocks review/grading.
+  app.post('/documents/:documentType/:documentId/analytics-events', async (c) => {
+    try {
+      const user = getUser(c);
+      const documentType = documentTypeParamSchema.parse(c.req.param('documentType'));
+      const body = analyticsEventBodySchema.parse(await c.req.json());
+      await createService(c).recordAnalyticsEvent(user.id, documentType, c.req.param('documentId'), body);
+      return c.json({ data: null }, 202);
     } catch (error) {
       return handleRouteError(error, c);
     }
