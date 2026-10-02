@@ -6,6 +6,7 @@
     "dev": "vite --host",
     "build": "vite build",
     "build:check": "wrangler deploy --dry-run --outdir dist-check",
+    "build:production": "wrangler deploy --dry-run --outdir dist-check --env production",
     "preview": "vite preview",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
     "typecheck": "tsc -p tsconfig.json --noEmit",

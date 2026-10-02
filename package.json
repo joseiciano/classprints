@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "pnpm --filter @classprints/web dev",
     "build": "pnpm -r --if-present run build",
+    "build:production": "pnpm -r --if-present run build:production",
     "lint": "pnpm -r --if-present run lint",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "vitest run",
