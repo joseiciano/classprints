@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   ConfirmDocumentBody,
@@ -14,6 +15,7 @@ import {
   fetchDocumentAggregate,
   fetchDocumentWorkspace,
   markDocumentReady,
+  recordAnalyticsEvent,
   retranscribeDocument,
   retryConfirmDocument,
   retryPage,
@@ -192,6 +194,40 @@ export function useReturnToNeedsReview(documentType: DocumentType, documentId: s
       returnToNeedsReview(documentType, documentId, body),
     onSuccess: () => invalidateWorkspace(queryClient, documentType, documentId, []),
   });
+}
+
+/**
+ * Review-session start/end + materials-open instrumentation (TASK-027,
+ * REQ-025). Fires `review_session_start` once per mounted document and
+ * `review_session_end` (carrying the elapsed duration) once when the
+ * workspace unmounts or switches to a different document; `recordOpen`
+ * covers the one on-demand `materials_open` event. `recordAnalyticsEvent`
+ * is itself best-effort, so nothing here needs its own error handling.
+ */
+export function useReviewSessionAnalytics(documentType: DocumentType, documentId: string | undefined) {
+  const startedAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!documentId) return;
+    startedAtRef.current = Date.now();
+    void recordAnalyticsEvent(documentType, documentId, { type: 'review_session_start' });
+    return () => {
+      const startedAt = startedAtRef.current;
+      startedAtRef.current = null;
+      if (startedAt === null) return;
+      void recordAnalyticsEvent(documentType, documentId, {
+        type: 'review_session_end',
+        durationMs: Date.now() - startedAt,
+      });
+    };
+  }, [documentType, documentId]);
+
+  return {
+    recordMaterialsOpen: () => {
+      if (!documentId) return;
+      void recordAnalyticsEvent(documentType, documentId, { type: 'materials_open' });
+    },
+  };
 }
 
 /** PAT-002: idempotent; safe to call every time a submission workspace mounts. */

@@ -1,4 +1,5 @@
 import type {
+  AnalyticsEventBody,
   ApplyQuestionPointsBody,
   AssignmentListItem,
   AssignmentListQuery,
@@ -555,6 +556,24 @@ export const captureReviewContext = async (submissionId: string): Promise<Review
     { method: 'POST', body: {} },
   );
   return response.data;
+};
+
+/** TASK-027: review-session start/end and materials-open instrumentation.
+ * Best-effort by design — a failure here must never surface to the caller
+ * or block review/grading, so it is swallowed rather than thrown. */
+export const recordAnalyticsEvent = async (
+  documentType: DocumentType,
+  documentId: string,
+  body: AnalyticsEventBody,
+): Promise<void> => {
+  try {
+    await request(`/documents/${documentType}/${documentId}/analytics-events`, {
+      method: 'POST',
+      body,
+    });
+  } catch {
+    // Metrics must never break the request.
+  }
 };
 
 export const fetchPageWorkspace = async (pageId: string): Promise<PageWorkspace> => {

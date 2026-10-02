@@ -6,6 +6,7 @@ import {
   useCaptureReviewContext,
   useDocumentWorkspace,
   usePageWorkspace,
+  useReviewSessionAnalytics,
 } from '../../../hooks/use-assignment-reader';
 import { formatDateTime } from '../../../lib/assignment-reader-format';
 import { SeatingApiError } from '../../../lib/http';
@@ -43,6 +44,7 @@ export function WorkspacePanel({
 }) {
   const workspace = useDocumentWorkspace(documentType, documentId);
   const captureReviewContext = useCaptureReviewContext(documentId);
+  const { recordMaterialsOpen } = useReviewSessionAnalytics(documentType, documentId);
   const [materialsOpen, setMaterialsOpen] = useState(false);
 
   const data = workspace.data;
@@ -94,7 +96,13 @@ export function WorkspacePanel({
           {documentType === 'submission' ? (
             <button
               type="button"
-              onClick={() => setMaterialsOpen((open) => !open)}
+              onClick={() =>
+                setMaterialsOpen((open) => {
+                  const next = !open;
+                  if (next) recordMaterialsOpen();
+                  return next;
+                })
+              }
               className="ml-auto inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[13px] font-semibold text-foreground hover:border-primary"
             >
               <FileStack aria-hidden="true" className="h-3.5 w-3.5" />
