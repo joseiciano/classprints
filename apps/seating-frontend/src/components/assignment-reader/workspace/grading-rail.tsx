@@ -172,7 +172,19 @@ function QuestionRow({
     comment?: string | null;
   }) => {
     const nextJudgment = next.judgment ?? judgmentValue;
-    const nextAwardedPoints = 'awardedPoints' in next ? (next.awardedPoints ?? null) : parsedPoints;
+    let nextAwardedPoints: number | null;
+    if ('awardedPoints' in next) {
+      nextAwardedPoints = next.awardedPoints ?? null;
+    } else if (isPointsValid) {
+      nextAwardedPoints = parsedPoints;
+    } else {
+      // The points field currently holds invalid, uncommitted text (e.g.
+      // mid-edit). parsedPoints would be NaN here, and JSON.stringify
+      // silently turns NaN into `null`, which the backend accepts and
+      // persists — silently clearing a previously saved score. Keep the
+      // last known-good value instead until the live input is valid.
+      nextAwardedPoints = awardedPointsBaselineRef.current;
+    }
     const nextComment = 'comment' in next ? (next.comment ?? null) : commentValue.trim() || null;
 
     setJudgmentValue(nextJudgment);
