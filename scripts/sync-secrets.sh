@@ -102,7 +102,7 @@ else
   : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN must be set (env or $ENV_FILE)}"
 fi
 
-APPS="${APP_ARGS:- apps/seating-backend apps/email-worker apps/seating-worker}"
+APPS="${APP_ARGS:- apps/seating-backend apps/email-worker apps/seating-worker apps/assignment-worker}"
 for app in $APPS; do
   case "$app" in
     apps/seating-backend|seating-backend)
@@ -116,9 +116,8 @@ for app in $APPS; do
     apps/seating-worker|seating-worker)
       put_secret "$app" LLM_API_KEY
       ;;
-    *)
-      echo "unknown app: $app" >&2
-      exit 1
+    apps/assignment-worker|assignment-worker)
+      put_secret "$app" LLM_API_KEY
       ;;
   esac
 done

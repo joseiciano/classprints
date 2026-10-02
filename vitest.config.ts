@@ -7,7 +7,20 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['apps/**/tests/**/*.test.ts', 'apps/**/tests/**/*.test.tsx'],
+    include: [
+      'apps/**/tests/**/*.test.ts',
+      'apps/**/tests/**/*.test.tsx',
+      'packages/**/tests/**/*.test.ts',
+    ],
+    // Tests-first contract specs for Tickets 7-8 (upload flow, hierarchy and
+    // processing views). Their implementations ship in the tickets 3-9 PR, so
+    // they cannot resolve on this branch. That PR removes this exclusion.
+    exclude: [
+      '**/node_modules/**',
+      'apps/seating-frontend/tests/upload-flow.test.ts',
+      'apps/seating-frontend/tests/hierarchy-views.test.tsx',
+      'apps/seating-frontend/tests/processing-view.test.tsx',
+    ],
     setupFiles: [resolvePath('tests/vitest.setup.ts')],
   },
   esbuild: {
@@ -37,6 +50,14 @@ export default defineConfig({
       {
         find: '@hono-rate-limiter/cloudflare',
         replacement: resolvePath('tests/mocks/hono-rate-limiter-cloudflare.ts'),
+      },
+      {
+        find: /^@classprints\/assignment-reader-shared\/(.*)$/,
+        replacement: resolvePath('packages/assignment-reader-shared/src/$1'),
+      },
+      {
+        find: '@classprints/assignment-reader-shared',
+        replacement: resolvePath('packages/assignment-reader-shared/src/index.ts'),
       },
     ],
   },

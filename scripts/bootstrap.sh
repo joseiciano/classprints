@@ -1,5 +1,5 @@
 #!/bin/sh
-# scripts/bootstrap.sh — one-time per-account resource creation runbook (TASK-006).
+# scripts/bootstrap.sh — one-time per-account resource creation runbook.
 #
 # Creates every Cloudflare resource that the wrangler.jsonc configs pin by ID
 # (CON-002: no auto-provisioning in CI), and prints the IDs to paste into the
@@ -39,9 +39,13 @@ echo
 
 # ---------------------------------------------------------------------------
 # Queues: seating-jobs (API producer -> optimizer consumer -> DLQ),
-#         email-jobs (optimizer producer -> email consumer)
+#         email-jobs (optimizer producer -> email consumer),
+#         transcription-jobs (API producer -> transcriber consumer -> DLQ),
+#         document-cleanup-jobs (API producer -> transcriber cleanup -> DLQ)
 # ---------------------------------------------------------------------------
-for queue in seating-jobs seating-jobs-dlq email-jobs; do
+for queue in seating-jobs seating-jobs-dlq email-jobs \
+  transcription-jobs transcription-jobs-dlq \
+  document-cleanup-jobs document-cleanup-jobs-dlq; do
   if wrangler queues list 2>/dev/null | grep -q "\"$queue\""; then
     echo "queue       : $queue (exists, skipped)"
   else
@@ -53,13 +57,29 @@ done
 echo
 
 # ---------------------------------------------------------------------------
+# R2: private page-image buckets, one per environment (REQ-020).
+# No public development URL or custom public domain — objects are served only
+# through the authenticated API worker.
+# ---------------------------------------------------------------------------
+for bucket in "assignment-reader-$ENVIRONMENT"; do
+  if wrangler r2 bucket list 2>/dev/null | grep -q "\"$bucket\""; then
+    echo "r2 bucket   : $bucket (exists, skipped)"
+  else
+    wrangler r2 bucket create "$bucket" >/dev/null 2>&1 \
+      && echo "r2 bucket   : $bucket (created)" \
+      || echo "r2 bucket   : $bucket (CREATE FAILED — check token permissions)" >&2
+  fi
+done
+echo
+
+# ---------------------------------------------------------------------------
 # Analytics Engine datasets are implicit (created on first write); no action.
 # Rate limiting bindings need no resource (namespace_id is self-chosen).
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Hyperdrive: requires the environment's Neon DATABASE_URL. Run separately per
-# env with that env's pooled connection string (TASK-007 wires this up).
+# env with that env's pooled connection string (Phase 3 wires this up).
 # ---------------------------------------------------------------------------
 HYPERDRIVE_NAME="classprints-${ENVIRONMENT}"
 if [ -n "${HYPERDRIVE_CONNECTION_STRING:-}" ]; then
@@ -93,19 +113,18 @@ Next steps (manual, secrets never pass through this script — SEC-002):
        - apps/seating-backend/wrangler.jsonc  (hyperdrive[0].id, both envs)
        - apps/email-worker/wrangler.jsonc     (hyperdrive[0].id, both envs)
        - apps/seating-worker/wrangler.jsonc   (hyperdrive[0].id, both envs)
+       - apps/assignment-worker/wrangler.jsonc (hyperdrive[0].id, both envs)
      ($ENVIRONMENT values into the matching section: top-level = staging,
       env.production = production.)
 
   2. Set worker secrets for this account:
-       wrangler secret put BETTER_AUTH_SECRET      --config apps/seating-backend/wrangler.jsonc
-       wrangler secret put STRIPE_SECRET_KEY       --config apps/seating-backend/wrangler.jsonc
-       wrangler secret put STRIPE_WEBHOOK_SECRET   --config apps/seating-backend/wrangler.jsonc
        wrangler secret put RESEND_API_KEY          --config apps/email-worker/wrangler.jsonc
        wrangler secret put LLM_API_KEY             --config apps/seating-worker/wrangler.jsonc
+       wrangler secret put LLM_API_KEY             --config apps/assignment-worker/wrangler.jsonc
      (run from repo root with this account's token; or use scripts/sync-secrets.sh)
 
   3. Record the DATABASE_URL (Neon $ENVIRONMENT) + CLOUDFLARE_API_TOKEN +
-     CLOUDFLARE_ACCOUNT_ID in the matching GitHub Environment (TASK-015).
+     CLOUDFLARE_ACCOUNT_ID in the matching GitHub Environment (deploy.yml).
 EOF
 
 if [ "$ENVIRONMENT" = "production" ]; then

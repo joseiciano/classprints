@@ -116,6 +116,9 @@ export const seatingResultsResponseSchema = z.object({
   statusMetadata: jobStatusMetadataSchema.nullable(),
   results: z.array(
     z.object({
+      // Immutable seating_results bigserial identity (REQ-023): the save
+      // route accepts this numeric resultId.
+      resultId: z.number().int().nonnegative(),
       arrangement: arrangementSchema,
       fitnessScore: z.number().min(0),
       createdAt: z.string(),

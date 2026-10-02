@@ -1,20 +1,14 @@
-import type {
-  AnalyticsEngineDataset,
-  Hyperdrive,
-  Queue,
-  RateLimit,
-  SendEmail,
-} from '@cloudflare/workers-types';
 import type { SeatingJobQueueMessage } from '@classprints/seating-shared';
+import type { TranscriptionPageMessage } from '@classprints/assignment-reader-shared';
+import type { CloudflareEnv, QueueFrom } from './worker-env';
 
-export interface SeatingWorkerBindings {
+export interface SeatingWorkerBindings extends CloudflareEnv {
   [key: string]: unknown;
   ENVIRONMENT: string;
   APPLICATION_NAME: string;
   FRONTEND_URL: string;
   ALLOWED_ORIGINS: string;
   BASE_PATH?: string;
-  HYPERDRIVE: Hyperdrive;
   BETTER_AUTH_SECRET: string;
   STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;
@@ -24,10 +18,8 @@ export interface SeatingWorkerBindings {
   STRIPE_CHECKOUT_SUCCESS_URL: string;
   STRIPE_CHECKOUT_CANCEL_URL: string;
   STRIPE_PORTAL_RETURN_URL: string;
-  API_RATELIMITER?: RateLimit;
-  SEATING_JOBS: Queue<SeatingJobQueueMessage>;
-  ANALYTICS?: AnalyticsEngineDataset;
-  EMAIL: SendEmail;
+  SEATING_JOBS: QueueFrom<SeatingJobQueueMessage>;
+  TRANSCRIPTION_JOBS: QueueFrom<TranscriptionPageMessage>;
   EMAIL_FROM_ADDRESS: string;
   EMAIL_FROM_NAME: string;
 }

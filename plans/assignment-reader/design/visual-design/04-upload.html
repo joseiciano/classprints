@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ClassPrints · Upload pages</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <a class="sidebar__brand" href="index.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5" opacity="0.45"></rect><rect x="4" y="13" width="7" height="7" rx="1.5" opacity="0.45"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg></span><span class="brand-name">ClassPrints</span></a>
+      <nav class="sidebar__nav"><div class="nav-group"><div class="nav-label">Management</div><a class="nav-link" href="01-classes.html" aria-current="page"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v13H4zM8 8h8M8 12h5M8 16h3"/></svg></span>Classes</a></div><div class="nav-group"><div class="nav-label">Account</div><a class="nav-link" href="#"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.7 2.4 2.9-.1.8 2.8 2.5 1.4-1.1 2.7 1.1 2.7-2.5 1.4-.8 2.8-2.9-.1L12 22l-1.7-2.4-2.9.1-.8-2.8-2.5-1.4 1.1-2.7-1.1-2.7 2.5-1.4.8-2.8 2.9.1zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></span>Settings</a><a class="nav-link" href="#"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h16M6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9A2.5 2.5 0 0 1 6.5 5zM8 14h4"/></svg></span>Pricing</a></div></nav>
+      <div class="sidebar__account"><div class="account-card"><span class="avatar">EE</span><span class="account-name"><strong>Elena Ellis</strong><span>Grade 3 teacher</span></span></div></div>
+    </aside>
+    <main class="main">
+      <header class="mobile-topbar"><a class="mobile-topbar__brand" href="index.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5" opacity="0.45"></rect><rect x="4" y="13" width="7" height="7" rx="1.5" opacity="0.45"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg></span><span class="brand-name">ClassPrints</span></a><nav class="mobile-topbar__nav" aria-label="Mobile navigation"><a href="index.html">Overview</a><a href="01-classes.html">Classes</a><a href="02-class-dashboard.html">Dashboard</a><a href="03-assignment.html" aria-current="page">Assignment</a></nav></header>
+      <div class="main__inner">
+        <div class="topline"><div class="topline__context"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5h14v14M8 8h8M8 12h5"/></svg><span>Grade 3 · Room 12 / Upload</span></div><div class="topline__user">Elena Ellis <span class="avatar">EE</span></div></div>
+        <div class="breadcrumbs"><a href="02-class-dashboard.html">Grade 3 · Room 12</a><span class="slash">/</span><a href="03-assignment.html">Fractions worksheet 4</a><span class="slash">/</span><span>Upload pages</span></div>
+        <header class="page-heading"><div class="page-heading__copy"><div class="eyebrow">Ordered document</div><h1>Add photographed pages</h1><p>Choose assignment context or student work, then confirm reading order before transcription starts.</p></div></header>
+        <section class="panel" style="margin-bottom:22px"><div class="panel__body"><div class="stepper"><div class="step complete"><span class="step__number">1</span><span>Choose target</span></div><div class="step current"><span class="step__number">2</span><span>Order pages</span></div><div class="step"><span class="step__number">3</span><span>Transcribe</span></div><div class="step"><span class="step__number">4</span><span>Review</span></div></div></div></section>
+
+        <section class="grid-2" style="margin-bottom:22px" aria-label="Upload target">
+          <article class="card paper-panel"><div class="btn-row" style="justify-content:space-between"><span class="stamp">Context · not graded</span><span class="chip st-ready">Selected</span></div><h2 style="margin-top:15px">Assignment materials</h2><p class="small muted" style="margin-top:7px">Teacher-authored pages for Fractions worksheet 4. Materials are not attached to a student and never graded.</p><button class="btn ghost sm" style="margin-top:16px" type="button">Use materials</button></article>
+          <article class="card"><div class="btn-row" style="justify-content:space-between"><span class="chip plain">Student work</span><span class="chip st-ready">Selected</span></div><h2 style="margin-top:15px">Student submission</h2><div class="field" style="margin-top:13px"><label for="student">Student</label><select id="student" class="input"><option selected>Maya Rodriguez</option><option>Jack Thompson</option><option>Priya Shah</option><option>Sam Okafor</option><option>Noah Kim</option></select></div><p class="small muted">One submission per student per assignment.</p></article>
+        </section>
+
+        <section class="panel" aria-labelledby="upload-heading"><div class="panel__head"><div><h2 id="upload-heading">Add photographed pages</h2><span class="subhead">Supports JPEG, PNG, HEIC</span></div><span class="chip plain push">Up to 20 pages · 10 MB per image</span></div><div class="panel__body">
+          <div class="upload-drop"><span class="upload-drop__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14.5v3A2.5 2.5 0 0 0 7.5 20h9a2.5 2.5 0 0 0 2.5-2.5v-3"/></svg></span><strong>Drop page photographs here</strong><span class="small muted">or choose images from this device</span><button class="btn sm" type="button">Choose images</button></div>
+          <div class="file-list" aria-label="Pages in reading order">
+            <div class="file-row"><span class="file-row__grip" aria-hidden="true">⋮⋮</span><span class="file-row__name">1 · Page 1</span><span class="chip plain">Uploaded</span><button class="btn ghost sm" type="button" aria-label="Remove Page 1">×</button></div>
+            <div class="file-row"><span class="file-row__grip" aria-hidden="true">⋮⋮</span><span class="file-row__name">2 · Page 2</span><span class="chip plain">Uploaded</span><button class="btn ghost sm" type="button" aria-label="Remove Page 2">×</button></div>
+            <div class="file-row"><span class="file-row__grip" aria-hidden="true">⋮⋮</span><span class="file-row__name">3 · Local selection · IMG_2843.jpg</span><span class="file-row__size">12.4 MB</span><span class="chip st-failed">Not uploaded · over limit</span><button class="btn danger sm" type="button" aria-label="Replace local file IMG_2843">Replace</button><button class="btn ghost sm" type="button" aria-label="Remove local file IMG_2843">×</button></div>
+          </div>
+          <p class="small muted" style="margin-top:10px">Accepted pages use server labels such as Page 1. Browser filename and size appear only for local files before upload.</p>
+          <div class="grid-2" style="margin-top:18px"><div class="callout"><strong>Order is part of upload</strong><p>Drag rows into reading order. Each page stays removable before transcription begins.</p></div><div class="callout amber"><strong>File checks happen early</strong><p>Replace oversized local files or remove them before upload. HEIC is accepted; accepted pages use server labels after upload. When the target document is already confirmed, a successful current-material change happens in a new draft material version — not in the shipped current version.</p></div></div>
+        </div></section>
+
+        <section class="card" style="display:flex; align-items:center; justify-content:space-between; gap:18px; margin-top:22px"><div><h3>Ready to send?</h3><p class="small muted" style="margin-top:5px">Transcription starts only after page order is confirmed. You can leave processing open afterward.</p></div><div class="btn-row"><a class="btn ghost" href="03-assignment.html">Back to assignment</a><a class="btn primary" href="03-assignment.html">Confirm &amp; start transcription <span aria-hidden="true">→</span></a></div></section>
+
+        <nav class="screen-nav" aria-label="Screen navigation"><a href="index.html">Overview</a><a href="01-classes.html">01 Classes</a><a href="02-class-dashboard.html">02 Dashboard</a><a href="03-assignment.html">03 Assignment</a><a href="04-upload.html" aria-current="page">04 Upload</a><a href="05-processing.html">05 Processing</a><a href="06-workspace.html">06 Workspace</a></nav>
+        <footer class="site-footer"><span>© 2026 ClassPrints</span><span><a href="#">Terms</a> · <a href="#">Privacy</a> · <a href="#">Support</a></span></footer>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

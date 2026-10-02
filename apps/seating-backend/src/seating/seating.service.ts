@@ -207,6 +207,7 @@ export class SeatingService {
       algorithm: job.algorithm,
       statusMetadata: job.statusMetadata,
       results: results.map((result) => ({
+        resultId: result.id,
         arrangement: result.arrangement,
         fitnessScore: result.fitnessScore,
         createdAt: new Date(result.createdAt).toISOString(),

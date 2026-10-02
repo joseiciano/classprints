@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@hono-rate-limiter/cloudflare": "^0.2.2",
+    "@classprints/assignment-reader-shared": "workspace:*",
     "@classprints/seating-shared": "workspace:*",
     "@classprints/server": "workspace:*",
     "@classprints/shared": "workspace:*",

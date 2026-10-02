@@ -20,7 +20,9 @@
       "@classprints/seating-shared": ["packages/seating-shared/src/index.ts"],
       "@classprints/seating-shared/*": ["packages/seating-shared/src/*"],
       "@classprints/server": ["packages/server/src/index.ts"],
-      "@classprints/server/*": ["packages/server/src/*"]
+      "@classprints/server/*": ["packages/server/src/*"],
+      "@classprints/assignment-reader-shared": ["packages/assignment-reader-shared/src/index.ts"],
+      "@classprints/assignment-reader-shared/*": ["packages/assignment-reader-shared/src/*"]
     }
   }
 }
