@@ -1,5 +1,8 @@
 import type { SeatingJobQueueMessage } from '@classprints/seating-shared';
-import type { TranscriptionPageMessage } from '@classprints/assignment-reader-shared';
+import type {
+  TranscriptionPageMessage,
+  DeletionOperationMessage,
+} from '@classprints/assignment-reader-shared';
 import type { CloudflareEnv, QueueFrom } from './worker-env';
 
 export interface SeatingWorkerBindings extends CloudflareEnv {
@@ -20,6 +23,7 @@ export interface SeatingWorkerBindings extends CloudflareEnv {
   STRIPE_PORTAL_RETURN_URL: string;
   SEATING_JOBS: QueueFrom<SeatingJobQueueMessage>;
   TRANSCRIPTION_JOBS: QueueFrom<TranscriptionPageMessage>;
+  DOCUMENT_CLEANUP_JOBS: QueueFrom<DeletionOperationMessage>;
   EMAIL_FROM_ADDRESS: string;
   EMAIL_FROM_NAME: string;
 }

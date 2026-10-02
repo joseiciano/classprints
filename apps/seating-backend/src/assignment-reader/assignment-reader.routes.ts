@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import type { SeatingHonoEnv } from '../types/env';
 import type { AuthenticatedUser } from '@classprints/server/auth';
 import { createDb } from '../lib/db';
@@ -7,7 +8,9 @@ import { createAssignmentReaderRepository } from './assignment-reader.repository
 import {
   AssignmentReaderService,
   AssignmentReaderError,
+  type AssignmentReaderQueues,
 } from './assignment-reader.service';
+import { createPageImageRepository, MAX_UPLOAD_BYTES } from './page-image.repository';
 import {
   classListQuerySchema,
   createClassBodySchema,
@@ -23,6 +26,8 @@ import {
   submissionListQuerySchema,
   seatingChartListQuerySchema,
   processingListQuerySchema,
+  confirmDocumentBodySchema,
+  pageImageQuerySchema,
 } from '@classprints/assignment-reader-shared';
 import { ZodError, z } from 'zod';
 /**
@@ -42,8 +47,74 @@ const getUser = (c: Context<SeatingHonoEnv>): AuthenticatedUser => {
 
 const documentTypeParamSchema = z.enum(['materials', 'submission']);
 
-const createService = (c: Context<SeatingHonoEnv>): AssignmentReaderService =>
-  AssignmentReaderService.fromRepository(createAssignmentReaderRepository(createDb(c.env)));
+/** Wires the DB repository plus the R2/Images and queue bindings (TASK-010/
+ * TASK-011/TASK-012); every pre-existing hierarchy/list route only ever
+ * touches `repo`, so this stays a drop-in replacement for the old
+ * `AssignmentReaderService.fromRepository(...)` factory. */
+const createService = (c: Context<SeatingHonoEnv>): AssignmentReaderService => {
+  const repo = createAssignmentReaderRepository(createDb(c.env));
+  const images = createPageImageRepository(c.env.ASSIGNMENT_IMAGES, c.env.IMAGES);
+  const queues: AssignmentReaderQueues = {
+    sendTranscriptionPage: async (message) => {
+      await c.env.TRANSCRIPTION_JOBS.send(message);
+    },
+    sendDeletionOperation: async (message) => {
+      await c.env.DOCUMENT_CLEANUP_JOBS.send(message);
+    },
+  };
+  return new AssignmentReaderService({ repo, images, queues });
+};
+
+/** Extracts the single required `file` field from a multipart upload
+ * (api-routes-documents.md §2.1/§2.2/§2.3). `bodyLimit` on the route already
+ * bounds the total request size; this only shapes the field itself. */
+const extractUploadFile = async (c: Context<SeatingHonoEnv>): Promise<ArrayBuffer> => {
+  let body: Record<string, string | File | (string | File)[]>;
+  try {
+    body = await c.req.parseBody({ all: true });
+  } catch {
+    throw new AssignmentReaderError(400, 'INVALID_MULTIPART', 'Expected multipart/form-data');
+  }
+  const field = body['file'];
+  const file = Array.isArray(field) ? (field.length === 1 ? field[0] : undefined) : field;
+  if (!(file instanceof File) || file.size === 0) {
+    throw new AssignmentReaderError(
+      400,
+      'INVALID_MULTIPART',
+      'Exactly one non-empty "file" field is required',
+    );
+  }
+  return file.arrayBuffer();
+};
+
+const uploadBodyLimit = () =>
+  bodyLimit({
+    // Headroom above the 10 MB business rule for multipart framing/headers;
+    // the service re-checks the exact byte budget on the parsed field.
+    maxSize: MAX_UPLOAD_BYTES + 65_536,
+    onError: (c) =>
+      c.json(
+        { error: 'Image exceeds the 10 MB limit', code: 'IMAGE_TOO_LARGE' },
+        413,
+      ),
+  });
+
+/** Parses the image-delivery query: raw query-string values are strings, so
+ * numeric fields are coerced before the strict Zod schema (which expects
+ * real numbers/literals) validates them. */
+const parsePageImageQuery = (c: Context<SeatingHonoEnv>) => {
+  const raw = c.req.query() as Record<string, string | undefined>;
+  const toNumber = (value: string | undefined): number | undefined =>
+    value === undefined ? undefined : Number(value);
+  return pageImageQuerySchema.parse({
+    variant: raw.variant,
+    rotation: toNumber(raw.rotation),
+    x: toNumber(raw.x),
+    y: toNumber(raw.y),
+    width: toNumber(raw.width),
+    height: toNumber(raw.height),
+  });
+};
 
 const validationIssues = (error: ZodError): Array<{ path: string; message: string }> =>
   error.issues.map((issue) => ({
@@ -299,6 +370,136 @@ export const registerAssignmentReaderRoutes = (app: Hono<SeatingHonoEnv>): void 
         c.req.param('materialVersionId'),
       );
       return c.json({ data: record }, 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  // ——— Page upload, ordering, replacement, removal, delivery (TASK-010/011/012) ———
+
+  app.post(
+    '/material-versions/:materialVersionId/pages',
+    uploadBodyLimit(),
+    async (c) => {
+      try {
+        const user = getUser(c);
+        const bytes = await extractUploadFile(c);
+        const page = await createService(c).uploadPage(
+          user.id,
+          'materials',
+          c.req.param('materialVersionId'),
+          bytes,
+        );
+        return c.json({ data: page }, 201);
+      } catch (error) {
+        return handleRouteError(error, c);
+      }
+    },
+  );
+
+  app.post(
+    '/submissions/:submissionId/pages',
+    uploadBodyLimit(),
+    async (c) => {
+      try {
+        const user = getUser(c);
+        const bytes = await extractUploadFile(c);
+        const page = await createService(c).uploadPage(
+          user.id,
+          'submission',
+          c.req.param('submissionId'),
+          bytes,
+        );
+        return c.json({ data: page }, 201);
+      } catch (error) {
+        return handleRouteError(error, c);
+      }
+    },
+  );
+
+  app.post('/pages/:pageId/replace', uploadBodyLimit(), async (c) => {
+    try {
+      const user = getUser(c);
+      const bytes = await extractUploadFile(c);
+      const result = await createService(c).replacePage(user.id, c.req.param('pageId'), bytes);
+      return c.json({ data: result }, 201);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.delete('/pages/:pageId', async (c) => {
+    try {
+      const user = getUser(c);
+      const { operation, created } = await createService(c).removePage(user.id, c.req.param('pageId'));
+      return c.json({ data: operation }, created ? 202 : 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.post('/documents/:documentType/:documentId/confirm', async (c) => {
+    try {
+      const user = getUser(c);
+      const documentType = documentTypeParamSchema.parse(c.req.param('documentType'));
+      const body = confirmDocumentBodySchema.parse(await c.req.json());
+      const result = await createService(c).confirmDocument(
+        user.id,
+        documentType,
+        c.req.param('documentId'),
+        body.pageIds,
+      );
+      return c.json({ data: result }, 202);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.post('/documents/:documentType/:documentId/retry-confirm', async (c) => {
+    try {
+      const user = getUser(c);
+      const documentType = documentTypeParamSchema.parse(c.req.param('documentType'));
+      const result = await createService(c).retryConfirmDocument(
+        user.id,
+        documentType,
+        c.req.param('documentId'),
+      );
+      return c.json({ data: result }, 202);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
+  app.get('/pages/:pageId/image', async (c) => {
+    try {
+      const user = getUser(c);
+      const query = parsePageImageQuery(c);
+      const variant = query.variant ?? 'workspace';
+      const rotation = query.rotation ?? 0;
+      const region =
+        variant === 'region' && query.x !== undefined && query.y !== undefined
+          && query.width !== undefined && query.height !== undefined
+          ? { x: query.x, y: query.y, width: query.width, height: query.height }
+          : null;
+      const { stream, contentType } = await createService(c).getPageImage(
+        user.id,
+        c.req.param('pageId'),
+        variant,
+        rotation,
+        region,
+      );
+      // `stream` is a real Workers ReadableStream; only the ambient dom-lib
+      // vs @cloudflare/workers-types declarations disagree structurally.
+      return new Response(stream as unknown as ReadableStream<Uint8Array>, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType,
+          'X-Content-Type-Options': 'nosniff',
+          // Browser-safe private caching: never a shared/CDN cache (manifest
+          // SEC-001 — image bytes are per-teacher authenticated content).
+          'Cache-Control': 'private, max-age=300, must-revalidate',
+        },
+      });
     } catch (error) {
       return handleRouteError(error, c);
     }

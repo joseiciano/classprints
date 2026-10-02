@@ -33,13 +33,22 @@ import type {
   AssignmentRow,
   ClassListOptions,
   ClassRow,
+  ConfirmDocumentOrderResult,
+  CreateDeletionOperationInput,
+  DeletionOperationRow,
   DocumentStatusRow,
   InsertPageInput,
+  InsertPageResult,
   MaterialVersionListOptions,
   MaterialVersionRow,
+  PageImageDeliveryRow,
   PageRow,
   ProcessingListOptions,
   ProcessingPageRow,
+  RemovePageResultRow,
+  ReplacePageInput,
+  ReplacePageResultRow,
+  RewriteOrderInput,
   StudentListOptions,
   StudentRow,
   SubmissionListOptions,
@@ -385,7 +394,23 @@ export interface AssignmentReaderRepository {
     documentType: 'materials' | 'submission',
     documentId: string,
   ): Promise<number>;
-  insertPageRow(input: InsertPageInput): Promise<PageRow>;
+  insertPageRow(input: InsertPageInput): Promise<InsertPageResult>;
+  // Ordering, confirmation, removal, replacement (TASK-011)
+  confirmDocumentOrder(input: RewriteOrderInput): Promise<ConfirmDocumentOrderResult>;
+  listQueuedUndeliveredPages(
+    teacherId: string,
+    documentType: 'materials' | 'submission',
+    documentId: string,
+  ): Promise<PageRow[]>;
+  replacePageRow(input: ReplacePageInput): Promise<ReplacePageResultRow>;
+  removePageRow(teacherId: string, pageId: string): Promise<RemovePageResultRow | null>;
+  findPageImageSource(teacherId: string, pageId: string): Promise<PageImageDeliveryRow | null>;
+  createDeletionOperation(input: CreateDeletionOperationInput): Promise<DeletionOperationRow>;
+  findPendingDeletionOperation(
+    teacherId: string,
+    targetType: 'page',
+    targetId: string,
+  ): Promise<DeletionOperationRow | null>;
   // Processing (TASK-008): per-page canonical list for one document.
   listProcessing(options: ProcessingListOptions): Promise<ListResponse<ProcessingPageItem>>;
   // Submissions
@@ -451,6 +476,31 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
         )`;
     }
   };
+
+  /** Pages are owned by exactly one parent document (`materials_version_id`
+   * xor `submission_id`); this guards a page-level read/write against that
+   * parent being deletion-pending, matching `notDeletionPending`'s check for
+   * the parent's own route (api-routes-documents.md §1.9/§2.7). Unlike
+   * `notDeletionPending`, the target column is resolved per-row since a page
+   * query has no fixed parent alias to join on. */
+  const notDeletionPendingParent = (teacherId: string) => sql`
+    and not exists (
+      select 1 from deletion_operations d
+      where d.teacher_id = ${teacherId} and d.status = 'pending'
+        and d.target_id = coalesce(p.materials_version_id, p.submission_id)
+    )
+  `;
+
+  /** Full page column list shared by every single/multi-row page read and
+   * write-returning clause (TASK-010/TASK-011). */
+  const pageColumns = (client: Sql) => client`
+    id, document_type, materials_version_id, submission_id, student_id,
+    class_id, assignment_id, teacher_id, position, label, storage_key,
+    processing_state, attempt_count, page_revision, content_revision,
+    reviewed_content_revision, reviewed_at_ms, edited_by_teacher,
+    teacher_edit_count, draft, failure_code, failure_message, queued_at_ms,
+    started_at_ms, completed_at_ms, uploaded_at_ms, created_at_ms, updated_at_ms
+  `;
 
   const materialVersionSelect = () => sql`
     v.id, v.assignment_id, v.teacher_id, v.version, v.lifecycle,
@@ -519,6 +569,7 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
                p.uploaded_at_ms, p.created_at_ms, p.updated_at_ms
         from pages p
         where p.teacher_id = ${teacherId} and p.id = ${pageId}
+          ${notDeletionPendingParent(teacherId)}
         limit 1
       `;
       return rows[0] ?? null;
@@ -557,33 +608,308 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
     },
 
 
+    // Full page column list shared by every single-row page read/write below.
     async insertPageRow(input) {
       const now = Date.now();
-      const rows = await sql<PageRow[]>`
-        insert into pages (
-          document_type, materials_version_id, submission_id, student_id,
-          class_id, assignment_id, teacher_id, position, label, storage_key,
-          processing_state, attempt_count, page_revision, content_revision,
-          created_at_ms, updated_at_ms, uploaded_at_ms
-        ) values (
-          ${input.documentType}, ${input.materialsVersionId}, ${input.submissionId},
-          ${input.studentId}, ${input.classId}, ${input.assignmentId}, ${input.teacherId},
-          ${input.position}, ${input.label}, ${input.storageKey}, 'uploading', 0, 1, 0,
-          ${now}, ${now}, ${now}
-        )
-        returning id, document_type, materials_version_id, submission_id,
-                  student_id, class_id, assignment_id, teacher_id, position,
-                  label, storage_key, processing_state, attempt_count,
-                  page_revision, content_revision, reviewed_content_revision,
-                  reviewed_at_ms, edited_by_teacher, teacher_edit_count, draft,
-                  failure_code, failure_message, queued_at_ms, started_at_ms,
-                  completed_at_ms, uploaded_at_ms, created_at_ms, updated_at_ms
-      `;
-      const row = rows[0];
-      if (!row) throw new Error('Unable to insert page');
-      return row;
+      const isMaterials = input.documentType === 'materials';
+      return sql.begin(async (tx) => {
+        // Lock the parent document row so concurrent one-page uploads to the
+        // same document serialize instead of racing the 20-page boundary.
+        if (isMaterials) {
+          await tx`select id from assignment_material_versions where id = ${input.materialsVersionId} for update`;
+        } else {
+          await tx`select id from submissions where id = ${input.submissionId} for update`;
+        }
+        const parentCondition = isMaterials
+          ? tx`materials_version_id = ${input.materialsVersionId}`
+          : tx`submission_id = ${input.submissionId}`;
+        const countRows = await tx<({ count: number })[]>`
+          select count(*)::int as count from pages
+          where teacher_id = ${input.teacherId} and ${parentCondition}
+        `;
+        const count = Number(countRows[0]?.count ?? 0);
+        if (count >= 20) return null; // caller compensates by deleting the R2 object
+        const position = count + 1;
+        const label = `${input.ownerLabel} · Page ${position}`;
+        const rows = await tx<PageRow[]>`
+          insert into pages (
+            id, document_type, materials_version_id, submission_id, student_id,
+            class_id, assignment_id, teacher_id, position, label, storage_key,
+            processing_state, attempt_count, page_revision, content_revision,
+            created_at_ms, updated_at_ms, uploaded_at_ms
+          ) values (
+            ${input.id}, ${input.documentType}, ${input.materialsVersionId}, ${input.submissionId},
+            ${input.studentId}, ${input.classId}, ${input.assignmentId}, ${input.teacherId},
+            ${position}, ${label}, ${input.storageKey}, 'uploading', 0, 1, 0,
+            ${now}, ${now}, ${now}
+          )
+          returning ${pageColumns(tx)}
+        `;
+        const row = rows[0];
+        if (!row) throw new Error('Unable to insert page');
+        // Uploading a page changes the current ordered page set, so
+        // documentRevision increments exactly once for this mutation
+        // (api-routes-documents.md §2.1/§2.2).
+        if (isMaterials) {
+          await tx`
+            update assignment_material_versions set
+              document_revision = document_revision + 1, updated_at_ms = ${now}
+            where id = ${input.materialsVersionId} and teacher_id = ${input.teacherId}
+          `;
+        } else {
+          // Appending a page after an earlier confirmation invalidates it
+          // (api-routes-documents.md §2.2); materials pages only ever upload
+          // while the version is still an unconfirmed draft, so no analogous
+          // reset is needed there.
+          await tx`
+            update submissions set
+              document_revision = document_revision + 1,
+              draft_confirmed = false, confirmed_at_ms = null, review_state = null,
+              grading_state = 'not_graded', graded_at_ms = null, updated_at_ms = ${now}
+            where id = ${input.submissionId}
+          `;
+        }
+        return row;
+      });
     },
 
+    async confirmDocumentOrder({ teacherId, documentType, documentId, orderedPageIds, orderChanged }) {
+      const now = Date.now();
+      const isMaterials = documentType === 'materials';
+      return sql.begin(async (tx) => {
+        const parentConditionTx = isMaterials
+          ? tx`materials_version_id = ${documentId}`
+          : tx`submission_id = ${documentId}`;
+        // Two-pass position rewrite: a single-statement permutation of a
+        // unique (parent, position) column can collide mid-statement
+        // (Postgres checks non-deferred unique indexes per row, not at
+        // statement end), so every page first moves to a disjoint temporary
+        // range before landing on its final position.
+        await tx`
+          update pages p set position = (v.ordinality::int + 1000), updated_at_ms = ${now}
+          from unnest(${orderedPageIds}::uuid[]) with ordinality as v(id, ordinality)
+          where p.id = v.id and p.teacher_id = ${teacherId} and p.${parentConditionTx}
+        `;
+        await tx`
+          update pages p set position = v.ordinality::int, updated_at_ms = ${now}
+          from unnest(${orderedPageIds}::uuid[]) with ordinality as v(id, ordinality)
+          where p.id = v.id and p.teacher_id = ${teacherId} and p.position = (v.ordinality::int + 1000)
+        `;
+        const queuedRows = await tx<({ id: string; page_revision: number })[]>`
+          update pages set processing_state = 'queued', queued_at_ms = ${now}, updated_at_ms = ${now}
+          where teacher_id = ${teacherId} and id = any(${orderedPageIds}::uuid[]) and processing_state = 'uploading'
+          returning id, page_revision
+        `;
+        const bump = orderChanged ? 1 : 0;
+        if (isMaterials) {
+          await tx`
+            update assignment_material_versions set
+              draft_confirmed = true, confirmed_at_ms = ${now},
+              document_revision = document_revision + ${bump}, updated_at_ms = ${now}
+            where id = ${documentId} and teacher_id = ${teacherId}
+          `;
+        } else {
+          const anyCompleted = await tx<({ n: number })[]>`
+            select count(*)::int as n from pages
+            where teacher_id = ${teacherId} and ${parentConditionTx} and processing_state <> 'completed'
+          `;
+          const allCompleted = Number(anyCompleted[0]?.n ?? 1) === 0;
+          await tx`
+            update submissions set
+              draft_confirmed = true, confirmed_at_ms = ${now},
+              document_revision = document_revision + ${bump},
+              review_state = case when ${allCompleted} then 'needs_review' else null end,
+              updated_at_ms = ${now}
+            where id = ${documentId} and teacher_id = ${teacherId}
+          `;
+        }
+        const pages = await tx<PageRow[]>`
+          select ${pageColumns(tx)} from pages
+          where teacher_id = ${teacherId} and ${parentConditionTx}
+          order by position asc
+        `;
+        const revisionRows = isMaterials
+          ? await tx<({ document_revision: number })[]>`
+              select document_revision from assignment_material_versions
+              where id = ${documentId} and teacher_id = ${teacherId}
+            `
+          : await tx<({ document_revision: number })[]>`
+              select document_revision from submissions
+              where id = ${documentId} and teacher_id = ${teacherId}
+            `;
+        return {
+          documentRevision: Number(revisionRows[0]?.document_revision ?? 0),
+          pages,
+          queuedSeeds: queuedRows.map((row) => ({ pageId: row.id, pageRevision: row.page_revision })),
+        };
+      });
+    },
+
+    async listQueuedUndeliveredPages(teacherId, documentType, documentId) {
+      const parentCondition =
+        documentType === 'materials'
+          ? sql`materials_version_id = ${documentId}`
+          : sql`submission_id = ${documentId}`;
+      const rows = await sql<PageRow[]>`
+        select ${pageColumns(sql)} from pages
+        where teacher_id = ${teacherId} and ${parentCondition}
+          and processing_state = 'queued' and attempt_count = 0
+        order by position asc
+      `;
+      return rows;
+    },
+
+    async replacePageRow(input) {
+      const now = Date.now();
+      const isMaterials = input.documentType === 'materials';
+      return sql.begin(async (tx) => {
+        const oldRows = await tx<({ storage_key: string })[]>`
+          select storage_key from pages where teacher_id = ${input.teacherId} and id = ${input.replacedPageId}
+          for update
+        `;
+        const replacedStorageKey = oldRows[0]?.storage_key;
+        if (!replacedStorageKey) throw new Error('Replaced page not found');
+        // The old row is removed in the same transaction as the new row is
+        // inserted at its position: the (parent, position) unique index
+        // cannot otherwise hold two rows at the same position (the row
+        // itself — not its R2 object — is never left for async cleanup).
+        await tx`delete from pages where teacher_id = ${input.teacherId} and id = ${input.replacedPageId}`;
+        const processingState = input.requeueImmediately ? 'queued' : 'uploading';
+        const queuedAt = input.requeueImmediately ? now : null;
+        const rows = await tx<PageRow[]>`
+          insert into pages (
+            id, document_type, materials_version_id, submission_id, student_id,
+            class_id, assignment_id, teacher_id, position, label, storage_key,
+            processing_state, attempt_count, page_revision, content_revision,
+            queued_at_ms, created_at_ms, updated_at_ms, uploaded_at_ms
+          ) values (
+            ${input.id}, ${input.documentType}, ${input.materialsVersionId}, ${input.submissionId},
+            ${input.studentId}, ${input.classId}, ${input.assignmentId}, ${input.teacherId},
+            ${input.position}, ${input.label}, ${input.storageKey}, ${processingState}, 0,
+            ${input.pageRevision}, 0, ${queuedAt}, ${now}, ${now}, ${now}
+          )
+          returning ${pageColumns(tx)}
+        `;
+        const row = rows[0];
+        if (!row) throw new Error('Unable to insert replacement page');
+        if (isMaterials) {
+          const docRows = await tx<({ document_revision: number })[]>`
+            update assignment_material_versions set
+              document_revision = document_revision + 1, updated_at_ms = ${now}
+            where id = ${input.materialsVersionId} and teacher_id = ${input.teacherId}
+            returning document_revision
+          `;
+          return { page: row, documentRevision: Number(docRows[0]?.document_revision ?? 0), replacedStorageKey };
+        }
+        // requeueImmediately=true means the replaced page was `failed`
+        // (recovery of an already-confirmed submission), so draft_confirmed
+        // is left as-is rather than forced true: a newer sibling page can
+        // have reset it to false (addPageRow) while this page failed, and
+        // forcing it back to true here would strand that sibling in
+        // 'uploading' forever, since confirmDocument() 409s once
+        // draft_confirmed is already true. requeueImmediately=false (the
+        // replaced page was `uploading`) always forces it false, matching
+        // the already-unconfirmed state that implies.
+        const docRows = await tx<({ document_revision: number })[]>`
+          update submissions set
+            document_revision = document_revision + 1,
+            draft_confirmed = draft_confirmed and ${input.requeueImmediately},
+            confirmed_at_ms = case when draft_confirmed and ${input.requeueImmediately} then confirmed_at_ms else null end,
+            review_state = null,
+            grading_state = 'not_graded', graded_at_ms = null, updated_at_ms = ${now}
+          where id = ${input.submissionId} and teacher_id = ${input.teacherId}
+          returning document_revision
+        `;
+        return { page: row, documentRevision: Number(docRows[0]?.document_revision ?? 0), replacedStorageKey };
+      });
+    },
+
+    async removePageRow(teacherId, pageId) {
+      const now = Date.now();
+      return sql.begin(async (tx) => {
+        const pageRows = await tx<PageRow[]>`
+          select ${pageColumns(tx)} from pages where teacher_id = ${teacherId} and id = ${pageId} for update
+        `;
+        const page = pageRows[0];
+        if (!page) return null;
+        const isMaterials = page.document_type === 'materials';
+        const parentConditionTx = isMaterials
+          ? tx`materials_version_id = ${page.materials_version_id}`
+          : tx`submission_id = ${page.submission_id}`;
+        await tx`delete from pages where teacher_id = ${teacherId} and id = ${pageId}`;
+        // Compact trailing positions down by one via a disjoint temporary
+        // range first (same collision hazard as confirmDocumentOrder).
+        await tx`
+          update pages set position = position + 1000, updated_at_ms = ${now}
+          where teacher_id = ${teacherId} and ${parentConditionTx} and position > ${page.position}
+        `;
+        await tx`
+          update pages set position = position - 1001, updated_at_ms = ${now}
+          where teacher_id = ${teacherId} and ${parentConditionTx} and position > 1000
+        `;
+        if (isMaterials) {
+          const docRows = await tx<({ document_revision: number })[]>`
+            update assignment_material_versions set
+              document_revision = document_revision + 1,
+              draft_confirmed = false, confirmed_at_ms = null, updated_at_ms = ${now}
+            where id = ${page.materials_version_id} and teacher_id = ${teacherId}
+            returning document_revision
+          `;
+          return { documentRevision: Number(docRows[0]?.document_revision ?? 0), removedStorageKey: page.storage_key };
+        }
+        const docRows = await tx<({ document_revision: number })[]>`
+          update submissions set
+            document_revision = document_revision + 1,
+            draft_confirmed = false, confirmed_at_ms = null, review_state = null,
+            grading_state = 'not_graded', graded_at_ms = null, updated_at_ms = ${now}
+          where id = ${page.submission_id} and teacher_id = ${teacherId}
+          returning document_revision
+        `;
+        return { documentRevision: Number(docRows[0]?.document_revision ?? 0), removedStorageKey: page.storage_key };
+      });
+    },
+
+    async findPageImageSource(teacherId, pageId) {
+      const rows = await sql<PageImageDeliveryRow[]>`
+        select p.id, p.storage_key, p.teacher_id, p.class_id, p.assignment_id, p.document_type
+        from pages p
+        where p.teacher_id = ${teacherId} and p.id = ${pageId}
+          ${notDeletionPendingParent(teacherId)}
+        limit 1
+      `;
+      return rows[0] ?? null;
+    },
+
+    async findPendingDeletionOperation(teacherId, targetType, targetId) {
+      const rows = await sql<DeletionOperationRow[]>`
+        select id, target_type, target_id, status, accepted_at_ms
+        from deletion_operations
+        where teacher_id = ${teacherId} and target_type = ${targetType}
+          and target_id = ${targetId} and status = 'pending'
+        limit 1
+      `;
+      return rows[0] ?? null;
+    },
+
+    async createDeletionOperation({ teacherId, targetType, targetId, storageKeys }) {
+      const now = Date.now();
+      return sql.begin(async (tx) => {
+        const rows = await tx<DeletionOperationRow[]>`
+          insert into deletion_operations (teacher_id, target_type, target_id, status, accepted_at_ms, updated_at_ms)
+          values (${teacherId}, ${targetType}, ${targetId}, 'pending', ${now}, ${now})
+          returning id, target_type, target_id, status, accepted_at_ms
+        `;
+        const operation = rows[0];
+        if (!operation) throw new Error('Unable to create deletion operation');
+        for (const storageKey of storageKeys) {
+          await tx`
+            insert into deletion_objects (operation_id, storage_key, status, attempts, created_at_ms)
+            values (${operation.id}, ${storageKey}, 'pending', 0, ${now})
+          `;
+        }
+        return operation;
+      });
+    },
 
     async promoteDraftMaterials(teacherId, materialVersionId) {
       const now = Date.now();

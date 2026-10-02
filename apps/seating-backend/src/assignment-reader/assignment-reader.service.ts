@@ -13,9 +13,39 @@ import type {
   SeatingChartListQuery,
   DocumentType,
   PageSummary,
+  ConfirmDocumentResult,
+  ReplacePageResult,
+  RetryPageResult,
+  DeletionOperation,
+  ImageVariant,
+  Rotation,
+  ProcessingState,
+  TranscriptionPageMessage,
+  DeletionOperationMessage,
+} from '@classprints/assignment-reader-shared';
+import {
+  computeDocumentProcessingState,
+  computeProcessingCounts,
 } from '@classprints/assignment-reader-shared';
 import type { AssignmentReaderRepository } from './assignment-reader.repository';
 import type { AssignmentReaderErrorCode, PageRow } from './assignment-reader.types';
+import {
+  MAX_UPLOAD_BYTES,
+  storageKeyFor,
+  UnsupportedImageError,
+  MalformedImageError,
+  type PageImageRepository,
+  type RegionCrop,
+  type ImageByteStream,
+} from './page-image.repository';
+
+/** Queue-send abstraction (TASK-011): the service orchestrates DB commits
+ * and best-effort queue delivery; routes.ts supplies the real Worker queue
+ * bindings so this file never imports Cloudflare binding types directly. */
+export interface AssignmentReaderQueues {
+  sendTranscriptionPage(message: TranscriptionPageMessage): Promise<void>;
+  sendDeletionOperation(message: DeletionOperationMessage): Promise<void>;
+}
 
 /**
  * Assignment Reader service (TASK-007). Owns authorization guards, archived
@@ -51,6 +81,11 @@ export class AssignmentReaderError extends Error implements AssignmentReaderHttp
 }
 export interface AssignmentReaderServiceDeps {
   repo: AssignmentReaderRepository;
+  /** Required for upload/replace/image-delivery (TASK-010/TASK-012); every
+   * other method works without it. */
+  images?: PageImageRepository;
+  /** Required for confirm/retry-confirm/replace (TASK-011). */
+  queues?: AssignmentReaderQueues;
 }
 
 export class AssignmentReaderService {
@@ -62,6 +97,16 @@ export class AssignmentReaderService {
 
   static fromRepository(repo: AssignmentReaderRepository): AssignmentReaderService {
     return new AssignmentReaderService({ repo });
+  }
+
+  private requireImages(): PageImageRepository {
+    if (!this.deps.images) throw new Error('AssignmentReaderService: images dependency is required');
+    return this.deps.images;
+  }
+
+  private requireQueues(): AssignmentReaderQueues {
+    if (!this.deps.queues) throw new Error('AssignmentReaderService: queues dependency is required');
+    return this.deps.queues;
   }
 
   /** Resolves the owned, writable document context for upload/confirm. */
@@ -87,6 +132,32 @@ export class AssignmentReaderService {
   private labelFor(status: DocumentStatus, position: number): string {
     const owner = status.student_name ?? 'Materials';
     return `${owner} · Page ${position}`;
+  }
+
+  private ownerLabelOf(status: DocumentStatus): string {
+    return status.student_name ?? 'Materials';
+  }
+
+  /** Looser guard for retry-confirm (api-routes-documents.md §2.6): any
+   * non-historical, owned, active-ancestry document — unlike
+   * `requireDocumentStatus`, a materials version already promoted to
+   * `current` by its own confirm is still eligible. */
+  private async requireNonHistoricalDocumentStatus(
+    teacherId: string,
+    documentType: DocumentType,
+    documentId: string,
+  ): Promise<DocumentStatus> {
+    const status = await this.deps.repo.findDocumentStatus(teacherId, documentType, documentId);
+    if (!status) throw notFound();
+    this.assertActiveAncestry(status.class_status, 'modify this document');
+    if (status.lifecycle === 'historical') {
+      throw new AssignmentReaderError(409, 'HISTORICAL_VERSION_READ_ONLY', 'This material version is read-only');
+    }
+    return status;
+  }
+
+  private parentIdOf(row: PageRow): string {
+    return row.document_type === 'materials' ? (row.materials_version_id ?? '') : (row.submission_id ?? '');
   }
 
   private mapPageSummary(row: PageRow): PageSummary {
@@ -303,6 +374,422 @@ export class AssignmentReaderService {
     return this.deps.repo.listProcessing({ teacherId, documentType, documentId, query });
   }
 
+  // ——— Pages: upload, ordering, replacement, removal, delivery (TASK-010/011/012) ———
+
+  /** One-file upload for a material-version or submission page
+   * (api-routes-documents.md §2.1/§2.2). The canonical JPEG is written to R2
+   * before the page row exists; a page-limit race or unexpected DB failure
+   * after a successful R2 write compensates by deleting that object so no
+   * blob is ever orphaned (TASK-010 acceptance). */
+  async uploadPage(
+    teacherId: string,
+    documentType: DocumentType,
+    documentId: string,
+    fileBytes: ArrayBuffer,
+  ): Promise<PageSummary> {
+    const status = await this.requireDocumentStatus(teacherId, documentType, documentId);
+    if (fileBytes.byteLength === 0) {
+      throw new AssignmentReaderError(400, 'INVALID_MULTIPART', 'A non-empty file is required');
+    }
+    if (fileBytes.byteLength > MAX_UPLOAD_BYTES) {
+      throw new AssignmentReaderError(413, 'IMAGE_TOO_LARGE', 'Image exceeds the 10 MB limit');
+    }
+    const images = this.requireImages();
+    const pageId = crypto.randomUUID();
+    const storageKey = storageKeyFor({
+      teacherId,
+      classId: status.class_id,
+      assignmentId: status.assignment_id,
+      documentType,
+      pageId,
+    });
+    try {
+      await images.storeNormalizedImage({ bytes: fileBytes, storageKey });
+    } catch (error) {
+      if (error instanceof UnsupportedImageError || error instanceof MalformedImageError) {
+        throw new AssignmentReaderError(415, 'UNSUPPORTED_IMAGE', error.message);
+      }
+      throw error;
+    }
+    let row: PageRow | null;
+    try {
+      row = await this.deps.repo.insertPageRow({
+        id: pageId,
+        teacherId,
+        documentType,
+        materialsVersionId: documentType === 'materials' ? documentId : null,
+        submissionId: documentType === 'submission' ? documentId : null,
+        studentId: status.student_id,
+        classId: status.class_id,
+        assignmentId: status.assignment_id,
+        ownerLabel: this.ownerLabelOf(status),
+        storageKey,
+      });
+    } catch (error) {
+      await images.deleteObject(storageKey);
+      throw error;
+    }
+    if (!row) {
+      await images.deleteObject(storageKey);
+      throw new AssignmentReaderError(409, 'PAGE_LIMIT_EXCEEDED', 'This document already has 20 pages');
+    }
+    return this.mapPageSummary(row);
+  }
+
+  /** Confirms the complete ordered current page set and begins transcription
+   * (api-routes-documents.md §2.5). */
+  async confirmDocument(
+    teacherId: string,
+    documentType: DocumentType,
+    documentId: string,
+    pageIds: string[],
+  ): Promise<ConfirmDocumentResult> {
+    const status = await this.requireDocumentStatus(teacherId, documentType, documentId);
+    if (status.draft_confirmed) {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'This document is already confirmed');
+    }
+    if (new Set(pageIds).size !== pageIds.length) {
+      throw new AssignmentReaderError(400, 'INVALID_REQUEST', 'Page IDs must be unique', [
+        { path: 'pageIds', message: 'Duplicate page ID' },
+      ]);
+    }
+    const currentPages = await this.deps.repo.listDocumentPageRows(teacherId, documentType, documentId);
+    if (currentPages.length === 0) {
+      throw new AssignmentReaderError(409, 'INVALID_STATE', 'This document has no pages to confirm');
+    }
+    const currentIds = new Set(currentPages.map((page) => page.id));
+    const suppliedIds = new Set(pageIds);
+    const sameSet =
+      currentIds.size === suppliedIds.size && [...suppliedIds].every((id) => currentIds.has(id));
+    if (!sameSet) {
+      throw new AssignmentReaderError(
+        409,
+        'INVALID_STATE',
+        'The supplied page IDs must match the current page set exactly',
+      );
+    }
+    const storedOrder = currentPages
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((page) => page.id);
+    const orderChanged = storedOrder.join(',') !== pageIds.join(',');
+
+    const result = await this.deps.repo.confirmDocumentOrder({
+      teacherId,
+      documentType,
+      documentId,
+      orderedPageIds: pageIds,
+      orderChanged,
+    });
+    if (documentType === 'materials') {
+      await this.deps.repo.promoteDraftMaterials(teacherId, documentId);
+    }
+
+    const queues = this.requireQueues();
+    let queueFailed = false;
+    for (const seed of result.queuedSeeds) {
+      try {
+        await queues.sendTranscriptionPage({
+          kind: 'transcription_page',
+          pageId: seed.pageId,
+          transcriptionRevision: seed.pageRevision,
+          documentType,
+          attemptCount: 0,
+          queuedAtMs: Date.now(),
+          isRetry: false,
+        });
+      } catch (error) {
+        queueFailed = true;
+        console.error('confirmDocument: transcription queue send failed', { pageId: seed.pageId, error });
+      }
+    }
+
+    const pages = result.pages.map((row) => this.mapPageSummary(row));
+    const pageStates = pages.map((page) => page.processingState);
+    const processingState = computeDocumentProcessingState(pageStates);
+    if (queueFailed) {
+      throw new AssignmentReaderError(
+        500,
+        'QUEUE_DELIVERY_FAILED',
+        'Confirmed, but transcription delivery failed for one or more pages; use retry-confirm',
+      );
+    }
+    return {
+      documentType,
+      documentId,
+      documentRevision: result.documentRevision,
+      pages,
+      processingState: (processingState ?? 'queued') as ProcessingState,
+      processingCounts: computeProcessingCounts(pageStates),
+      acceptedAt: new Date().toISOString(),
+    };
+  }
+
+  /** Resends transcription queue messages for current queued pages with no
+   * accepted worker execution yet (api-routes-documents.md §2.6) — recovery
+   * for a prior QUEUE_DELIVERY_FAILED, never a second confirmation. */
+  async retryConfirmDocument(
+    teacherId: string,
+    documentType: DocumentType,
+    documentId: string,
+  ): Promise<ConfirmDocumentResult> {
+    await this.requireNonHistoricalDocumentStatus(teacherId, documentType, documentId);
+    const eligible = await this.deps.repo.listQueuedUndeliveredPages(teacherId, documentType, documentId);
+    if (eligible.length === 0) {
+      throw new AssignmentReaderError(
+        409,
+        'INVALID_STATE',
+        'No queued page is awaiting delivery',
+      );
+    }
+    const queues = this.requireQueues();
+    let queueFailed = false;
+    for (const page of eligible) {
+      try {
+        await queues.sendTranscriptionPage({
+          kind: 'transcription_page',
+          pageId: page.id,
+          transcriptionRevision: page.page_revision,
+          documentType,
+          attemptCount: 0,
+          queuedAtMs: Date.now(),
+          isRetry: true,
+        });
+      } catch (error) {
+        queueFailed = true;
+        console.error('retryConfirmDocument: transcription queue send failed', { pageId: page.id, error });
+      }
+    }
+    if (queueFailed) {
+      throw new AssignmentReaderError(500, 'QUEUE_DELIVERY_FAILED', 'Delivery failed for one or more pages');
+    }
+    const allPages = await this.deps.repo.listDocumentPageRows(teacherId, documentType, documentId);
+    const pages = allPages.map((row) => this.mapPageSummary(row));
+    const pageStates = pages.map((page) => page.processingState);
+    const status = await this.deps.repo.findDocumentStatus(teacherId, documentType, documentId);
+    return {
+      documentType,
+      documentId,
+      documentRevision: status?.document_revision ?? 0,
+      pages,
+      processingState: (computeDocumentProcessingState(pageStates) ?? 'queued') as ProcessingState,
+      processingCounts: computeProcessingCounts(pageStates),
+      acceptedAt: new Date().toISOString(),
+    };
+  }
+
+  /** Replaces one page's image (api-routes-documents.md §2.3): an
+   * unconfirmed page in any state, or a confirmed page that is exactly
+   * `failed` (recovery). Any other confirmed state is 409 INVALID_STATE. */
+  async replacePage(teacherId: string, pageId: string, fileBytes: ArrayBuffer): Promise<ReplacePageResult> {
+    const page = await this.deps.repo.findPage(teacherId, pageId);
+    if (!page) throw notFound();
+    const parentId = this.parentIdOf(page);
+    const status = await this.deps.repo.findDocumentStatus(teacherId, page.document_type, parentId);
+    if (!status) throw notFound();
+    if (page.document_type === 'materials' && status.lifecycle === 'historical') {
+      throw new AssignmentReaderError(409, 'HISTORICAL_VERSION_READ_ONLY', 'This material version is read-only');
+    }
+    this.assertActiveAncestry(status.class_status, 'replace a page');
+
+    let requeueImmediately: boolean;
+    if (page.processing_state === 'uploading') {
+      requeueImmediately = false;
+    } else if (page.processing_state === 'failed') {
+      requeueImmediately = true;
+    } else {
+      throw new AssignmentReaderError(
+        409,
+        'INVALID_STATE',
+        'Only an unconfirmed or failed page can be replaced',
+      );
+    }
+    if (fileBytes.byteLength === 0) {
+      throw new AssignmentReaderError(400, 'INVALID_MULTIPART', 'A non-empty file is required');
+    }
+    if (fileBytes.byteLength > MAX_UPLOAD_BYTES) {
+      throw new AssignmentReaderError(413, 'IMAGE_TOO_LARGE', 'Image exceeds the 10 MB limit');
+    }
+
+    const images = this.requireImages();
+    const newPageId = crypto.randomUUID();
+    const storageKey = storageKeyFor({
+      teacherId,
+      classId: page.class_id,
+      assignmentId: page.assignment_id,
+      documentType: page.document_type,
+      pageId: newPageId,
+    });
+    try {
+      await images.storeNormalizedImage({ bytes: fileBytes, storageKey });
+    } catch (error) {
+      if (error instanceof UnsupportedImageError || error instanceof MalformedImageError) {
+        throw new AssignmentReaderError(415, 'UNSUPPORTED_IMAGE', error.message);
+      }
+      throw error;
+    }
+
+    let result;
+    try {
+      result = await this.deps.repo.replacePageRow({
+        id: newPageId,
+        teacherId,
+        documentType: page.document_type,
+        materialsVersionId: page.materials_version_id,
+        submissionId: page.submission_id,
+        studentId: page.student_id,
+        classId: page.class_id,
+        assignmentId: page.assignment_id,
+        replacedPageId: pageId,
+        position: page.position,
+        pageRevision: page.page_revision + 1,
+        label: page.label,
+        storageKey,
+        requeueImmediately,
+      });
+    } catch (error) {
+      await images.deleteObject(storageKey);
+      throw error;
+    }
+
+    const queues = this.requireQueues();
+    const deletionOperation = await this.deps.repo.createDeletionOperation({
+      teacherId,
+      targetType: 'page',
+      targetId: pageId,
+      storageKeys: [result.replacedStorageKey],
+    });
+    try {
+      await queues.sendDeletionOperation({
+        kind: 'deletion_operation',
+        operationId: deletionOperation.id,
+        targetType: 'page',
+      });
+    } catch (error) {
+      // The old blob stays scheduled for cleanup (deletion_operations row
+      // already committed); a later delivery or operator replay finishes it.
+      console.error('replacePage: cleanup queue send failed', { operationId: deletionOperation.id, error });
+    }
+
+    if (requeueImmediately) {
+      try {
+        await queues.sendTranscriptionPage({
+          kind: 'transcription_page',
+          pageId: newPageId,
+          transcriptionRevision: page.page_revision + 1,
+          documentType: page.document_type,
+          attemptCount: 0,
+          queuedAtMs: Date.now(),
+          isRetry: true,
+        });
+      } catch (error) {
+        console.error('replacePage: transcription queue send failed', { pageId: newPageId, error });
+        throw new AssignmentReaderError(500, 'QUEUE_DELIVERY_FAILED', 'Replacement saved but delivery failed');
+      }
+    }
+
+    return {
+      page: this.mapPageSummary(result.page),
+      replacedPageId: pageId,
+      deletionOperationId: deletionOperation.id,
+      documentRevision: result.documentRevision,
+    };
+  }
+
+  /** Removes a page from a draft material version or a submission
+   * (api-routes-documents.md §2.4). A page on current successful materials
+   * requires a new draft version instead.
+   *
+   * A delete route must check for a pending operation on this target before
+   * looking up the now-hidden target (api-routes-documents.md §2.4 general
+   * rule): once the row is physically deleted, `findPage` can no longer
+   * distinguish "already deleted, replay" from "never existed", so the
+   * pending-operation check runs first and short-circuits to the replay
+   * response before any lookup that depends on the row still existing. */
+  async removePage(teacherId: string, pageId: string): Promise<{ operation: DeletionOperation; created: boolean }> {
+    const pending = await this.deps.repo.findPendingDeletionOperation(teacherId, 'page', pageId);
+    if (pending) {
+      return {
+        operation: {
+          id: pending.id,
+          targetType: 'page',
+          targetId: pageId,
+          status: 'pending',
+          acceptedAt: toIso(pending.accepted_at_ms) as string,
+        },
+        created: false,
+      };
+    }
+    const page = await this.deps.repo.findPage(teacherId, pageId);
+    if (!page) throw notFound();
+    const parentId = this.parentIdOf(page);
+    const status = await this.deps.repo.findDocumentStatus(teacherId, page.document_type, parentId);
+    if (!status) throw notFound();
+    if (page.document_type === 'materials') {
+      if (status.lifecycle === 'historical') {
+        throw new AssignmentReaderError(409, 'HISTORICAL_VERSION_READ_ONLY', 'This material version is read-only');
+      }
+      if (status.lifecycle !== 'draft') {
+        throw new AssignmentReaderError(
+          409,
+          'INVALID_STATE',
+          'A page on current materials requires a new draft version',
+        );
+      }
+    }
+    // Deletion is allowed under archived ancestry (api-routes-documents §2.4);
+    // no assertActiveAncestry call here, unlike every other page mutation.
+    const removed = await this.deps.repo.removePageRow(teacherId, pageId);
+    if (!removed) throw notFound();
+
+    const deletionOperation = await this.deps.repo.createDeletionOperation({
+      teacherId,
+      targetType: 'page',
+      targetId: pageId,
+      storageKeys: [removed.removedStorageKey],
+    });
+    try {
+      await this.requireQueues().sendDeletionOperation({
+        kind: 'deletion_operation',
+        operationId: deletionOperation.id,
+        targetType: 'page',
+      });
+    } catch (error) {
+      console.error('removePage: cleanup queue send failed', { operationId: deletionOperation.id, error });
+    }
+    return {
+      operation: {
+        id: deletionOperation.id,
+        targetType: 'page',
+        targetId: pageId,
+        status: 'pending',
+        acceptedAt: toIso(deletionOperation.accepted_at_ms) as string,
+      },
+      created: true,
+    };
+  }
+
+  /** Renders one authenticated page-image variant (api-routes-documents.md
+   * §2.7). Historical pages and pages under archived ancestry remain
+   * readable; ownership is the only gate. */
+  async getPageImage(
+    teacherId: string,
+    pageId: string,
+    variant: ImageVariant,
+    rotation: Rotation,
+    region: RegionCrop | null,
+  ): Promise<{ stream: ImageByteStream; contentType: string }> {
+    const source = await this.deps.repo.findPageImageSource(teacherId, pageId);
+    if (!source) throw notFound();
+    const rendered = await this.requireImages().renderVariant({
+      storageKey: source.storage_key,
+      variant,
+      rotation,
+      region,
+    });
+    if (!rendered) throw notFound();
+    return { stream: rendered.body, contentType: rendered.contentType };
+  }
 
   // ——— Submissions ————————————————————————————————————————————————————————————
 

@@ -142,6 +142,9 @@ export interface DocumentStatusRow {
 }
 
 export interface InsertPageInput {
+  /** Service-generated (crypto.randomUUID()) so the storage key can be
+   * computed before the row exists (TASK-010: R2 write precedes the insert). */
+  id: string;
   teacherId: string;
   documentType: 'materials' | 'submission';
   materialsVersionId: string | null;
@@ -149,19 +152,39 @@ export interface InsertPageInput {
   studentId: string | null;
   classId: string;
   assignmentId: string;
-  position: number;
-  label: string;
+  /** "Materials" or the student's name; the repository appends
+   * " · Page {position}" once the atomically-assigned position is known. */
+  ownerLabel: string;
   storageKey: string;
 }
+
+/** Result of an atomic append-page insert; null means the document already
+ * has 20 current pages (PAGE_LIMIT_EXCEEDED — the caller must compensate by
+ * deleting the R2 object it already wrote). */
+export type InsertPageResult = PageRow | null;
 
 export interface RewriteOrderInput {
   teacherId: string;
   documentType: 'materials' | 'submission';
   documentId: string;
   orderedPageIds: string[];
+  /** Whether the supplied order differs from the stored current order
+   * (api-routes-documents.md §2.5: confirm itself only bumps
+   * documentRevision when the order actually changes). */
+  orderChanged: boolean;
+}
+
+export interface ConfirmDocumentOrderResult {
+  documentRevision: number;
+  pages: PageRow[];
+  /** Pages moved uploading -> queued by this confirm; the caller sends one
+   * TranscriptionPageMessage per seed after commit. */
+  queuedSeeds: Array<{ pageId: string; pageRevision: number }>;
 }
 
 export interface ReplacePageInput {
+  /** New page's service-generated id. */
+  id: string;
   teacherId: string;
   documentType: 'materials' | 'submission';
   materialsVersionId: string | null;
@@ -174,6 +197,16 @@ export interface ReplacePageInput {
   pageRevision: number;
   label: string;
   storageKey: string;
+  /** Whether the replaced page's document was confirmed (failed-page
+   * recovery path): the new page is queued immediately instead of staying
+   * unconfirmed. */
+  requeueImmediately: boolean;
+}
+
+export interface ReplacePageResultRow {
+  page: PageRow;
+  documentRevision: number;
+  replacedStorageKey: string;
 }
 
 export interface MarkQueuedInput {
@@ -182,6 +215,11 @@ export interface MarkQueuedInput {
   documentId: string;
   queuedAtMs: number;
   attemptSeeds: Array<{ pageId: string; pageRevision: number }>;
+}
+
+export interface RemovePageResultRow {
+  documentRevision: number;
+  removedStorageKey: string;
 }
 
 export interface SubmissionListRow extends SubmissionRow {
@@ -264,7 +302,21 @@ export interface PageImageDeliveryRow {
   document_type: 'materials' | 'submission';
 }
 
+/** One pending-or-just-accepted cross-store deletion job (REQ-022). */
+export interface DeletionOperationRow {
+  id: string;
+  target_type: string;
+  target_id: string;
+  status: 'pending' | 'completed' | 'failed';
+  accepted_at_ms: number | string;
+}
 
+export interface CreateDeletionOperationInput {
+  teacherId: string;
+  targetType: 'page';
+  targetId: string;
+  storageKeys: string[];
+}
 
 /** Domain errors mapped to the API error envelope by the controller. */
 export type AssignmentReaderErrorCode =
