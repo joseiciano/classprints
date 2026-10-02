@@ -53,7 +53,10 @@ export function WorkspacePanel({
     !data.readOnly;
 
   useEffect(() => {
-    if (needsReviewContextCapture && !captureReviewContext.isPending) {
+    // Only auto-fire the very first attempt. If it fails, `isIdle` flips to
+    // false and stays false, so this effect won't silently retry in a loop —
+    // the error banner below offers an explicit "Retry" instead.
+    if (needsReviewContextCapture && captureReviewContext.isIdle) {
       captureReviewContext.mutate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,6 +113,24 @@ export function WorkspacePanel({
             {documentType === 'materials' && !data.materialVersion
               ? 'This class is archived. This workspace is read-only.'
               : 'This is a historical version, or its class is archived. This workspace is read-only.'}
+          </p>
+        ) : null}
+
+        {captureReviewContext.isError ? (
+          <p role="alert" className="flex flex-wrap items-center gap-2 rounded-[10px] border border-destructive/40 bg-destructive/10 px-3.5 py-2 text-sm text-destructive">
+            <span>
+              Couldn&apos;t capture the materials version for this review
+              {captureReviewContext.error instanceof SeatingApiError
+                ? `: ${captureReviewContext.error.message}`
+                : '.'}
+            </span>
+            <button
+              type="button"
+              onClick={() => captureReviewContext.mutate()}
+              className="font-semibold underline underline-offset-2 hover:no-underline"
+            >
+              Retry
+            </button>
           </p>
         ) : null}
 

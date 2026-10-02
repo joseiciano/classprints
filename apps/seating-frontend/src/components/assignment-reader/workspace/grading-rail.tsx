@@ -2,7 +2,9 @@ import { useState } from 'react';
 import type {
   DocumentAction,
   PageSummary,
+  QuestionJudgment,
   QuestionJudgmentValue,
+  QuestionSegment,
   SubmissionRecord,
 } from '@classprints/assignment-reader-shared';
 import { isDecimal2 } from '@classprints/assignment-reader-shared';
@@ -109,122 +111,163 @@ function QuestionReviewPanel({
         </p>
       ) : (
         <ul className="space-y-3">
-          {rows.map(({ page, segment }, index) => {
-            const judgment = segment.judgment;
-            const pointsValue = judgment.awardedPoints;
-            return (
-              <li key={segment.id} className="rounded-[10px] border border-border bg-background p-3.5">
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full bg-muted px-1.5 font-mono text-xs font-semibold text-muted-foreground">
-                    Q{index + 1}
-                  </span>
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <p className="text-sm font-medium text-foreground">
-                      {segment.questionText || segment.label || 'Parsed question'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {page.label}
-                      {segment.responseText ? ` · "${segment.responseText}"` : ''}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {(['correct', 'incorrect'] as const).map((value) => (
-                        <button
-                          key={value}
-                          type="button"
-                          disabled={!canEdit}
-                          onClick={() =>
-                            updateJudgment.mutate({
-                              pageId: page.id,
-                              segmentId: segment.id,
-                              body: {
-                                expectedPageRevision: page.pageRevision,
-                                judgment: value,
-                                awardedPoints: pointsValue,
-                                comment: judgment.comment,
-                              },
-                            })
-                          }
-                          className={`inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                            judgment.judgment === value
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border bg-card text-foreground hover:border-primary'
-                          }`}
-                        >
-                          {JUDGMENT_LABEL[value]}
-                        </button>
-                      ))}
-                      <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                        Points
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          step="0.01"
-                          min={0}
-                          disabled={!canEdit}
-                          defaultValue={pointsValue ?? ''}
-                          aria-label={`Awarded points for question ${index + 1}`}
-                          onBlur={(event) => {
-                            const raw = event.target.value.trim();
-                            const next = raw === '' ? null : Number(raw);
-                            if (next !== null && (!Number.isFinite(next) || next < 0 || !isDecimal2(next))) {
-                              return;
-                            }
-                            updateJudgment.mutate({
-                              pageId: page.id,
-                              segmentId: segment.id,
-                              body: {
-                                expectedPageRevision: page.pageRevision,
-                                judgment: judgment.judgment,
-                                awardedPoints: next,
-                                comment: judgment.comment,
-                              },
-                            });
-                          }}
-                          className="h-8 w-16 rounded-full border border-border bg-card px-2 text-center text-xs text-foreground outline-none focus-visible:border-primary"
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        disabled={!canEdit}
-                        onClick={() => setOpenCommentFor(openCommentFor === segment.id ? null : segment.id)}
-                        className="inline-flex min-h-8 items-center rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground hover:border-primary disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {judgment.comment ? 'Edit comment' : 'Add comment'}
-                      </button>
-                    </div>
-                    {openCommentFor === segment.id ? (
-                      <textarea
-                        defaultValue={judgment.comment ?? ''}
-                        disabled={!canEdit}
-                        maxLength={2000}
-                        rows={2}
-                        onBlur={(event) =>
-                          updateJudgment.mutate({
-                            pageId: page.id,
-                            segmentId: segment.id,
-                            body: {
-                              expectedPageRevision: page.pageRevision,
-                              judgment: judgment.judgment,
-                              awardedPoints: pointsValue,
-                              comment: event.target.value.trim() || null,
-                            },
-                          })
-                        }
-                        className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus-visible:border-primary"
-                        placeholder="Optional comment for this question"
-                      />
-                    ) : null}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
+          {rows.map(({ page, segment }, index) => (
+            <QuestionRow
+              key={segment.id}
+              page={page}
+              segment={segment}
+              index={index}
+              canEdit={canEdit}
+              updateJudgment={updateJudgment}
+              openCommentFor={openCommentFor}
+              setOpenCommentFor={setOpenCommentFor}
+            />
+          ))}
         </ul>
       )}
       {updateJudgment.error instanceof SeatingApiError ? (
         <p role="alert" className="text-sm text-destructive">{updateJudgment.error.message}</p>
       ) : null}
     </section>
+  );
+}
+
+function QuestionRow({
+  page,
+  segment,
+  index,
+  canEdit,
+  updateJudgment,
+  openCommentFor,
+  setOpenCommentFor,
+}: {
+  page: Pick<PageSummary, 'id' | 'processingState' | 'position' | 'label' | 'pageRevision'>;
+  segment: QuestionSegment;
+  index: number;
+  canEdit: boolean;
+  updateJudgment: ReturnType<typeof useUpdateQuestionJudgmentOnDocument>;
+  openCommentFor: string | null;
+  setOpenCommentFor: (id: string | null) => void;
+}) {
+  const judgment: QuestionJudgment = segment.judgment;
+  const [pointsInput, setPointsInput] = useState(
+    judgment.awardedPoints !== null ? String(judgment.awardedPoints) : '',
+  );
+
+  const trimmedPoints = pointsInput.trim();
+  const parsedPoints = trimmedPoints === '' ? null : Number(trimmedPoints);
+  const isPointsValid =
+    parsedPoints === null || (Number.isFinite(parsedPoints) && parsedPoints >= 0 && isDecimal2(parsedPoints));
+
+  const savePoints = () => {
+    if (!isPointsValid) return;
+    if (parsedPoints === judgment.awardedPoints) return;
+    updateJudgment.mutate({
+      pageId: page.id,
+      segmentId: segment.id,
+      body: {
+        expectedPageRevision: page.pageRevision,
+        judgment: judgment.judgment,
+        awardedPoints: parsedPoints,
+        comment: judgment.comment,
+      },
+    });
+  };
+
+  return (
+    <li className="rounded-[10px] border border-border bg-background p-3.5">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full bg-muted px-1.5 font-mono text-xs font-semibold text-muted-foreground">
+          Q{index + 1}
+        </span>
+        <div className="min-w-0 flex-1 space-y-2">
+          <p className="text-sm font-medium text-foreground">
+            {segment.questionText || segment.label || 'Parsed question'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {page.label}
+            {segment.responseText ? ` · "${segment.responseText}"` : ''}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {(['correct', 'incorrect'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                disabled={!canEdit}
+                onClick={() =>
+                  updateJudgment.mutate({
+                    pageId: page.id,
+                    segmentId: segment.id,
+                    body: {
+                      expectedPageRevision: page.pageRevision,
+                      judgment: value,
+                      awardedPoints: judgment.awardedPoints,
+                      comment: judgment.comment,
+                    },
+                  })
+                }
+                className={`inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                  judgment.judgment === value
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-card text-foreground hover:border-primary'
+                }`}
+              >
+                {JUDGMENT_LABEL[value]}
+              </button>
+            ))}
+            <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              Points
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min={0}
+                disabled={!canEdit}
+                value={pointsInput}
+                aria-label={`Awarded points for question ${index + 1}`}
+                aria-invalid={!isPointsValid}
+                onChange={(event) => setPointsInput(event.target.value)}
+                onBlur={savePoints}
+                className="h-8 w-16 rounded-full border border-border bg-card px-2 text-center text-xs text-foreground outline-none focus-visible:border-primary"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={!canEdit}
+              onClick={() => setOpenCommentFor(openCommentFor === segment.id ? null : segment.id)}
+              className="inline-flex min-h-8 items-center rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground hover:border-primary disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {judgment.comment ? 'Edit comment' : 'Add comment'}
+            </button>
+          </div>
+          {!isPointsValid ? (
+            <p className="text-xs text-destructive">Points must be 0 or more, with at most two decimals.</p>
+          ) : null}
+          {openCommentFor === segment.id ? (
+            <textarea
+              defaultValue={judgment.comment ?? ''}
+              disabled={!canEdit}
+              maxLength={2000}
+              rows={2}
+              onBlur={(event) =>
+                updateJudgment.mutate({
+                  pageId: page.id,
+                  segmentId: segment.id,
+                  body: {
+                    expectedPageRevision: page.pageRevision,
+                    judgment: judgment.judgment,
+                    awardedPoints: judgment.awardedPoints,
+                    comment: event.target.value.trim() || null,
+                  },
+                })
+              }
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus-visible:border-primary"
+              placeholder="Optional comment for this question"
+            />
+          ) : null}
+        </div>
+      </div>
+    </li>
   );
 }
 
