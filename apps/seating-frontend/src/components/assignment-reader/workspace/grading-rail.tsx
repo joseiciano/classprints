@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type {
   DocumentAction,
   PageSummary,
-  QuestionJudgment,
   QuestionJudgmentValue,
   QuestionSegment,
   SubmissionRecord,
@@ -149,29 +148,53 @@ function QuestionRow({
   openCommentFor: string | null;
   setOpenCommentFor: (id: string | null) => void;
 }) {
-  const judgment: QuestionJudgment = segment.judgment;
+  const [judgmentValue, setJudgmentValue] = useState<QuestionJudgmentValue>(segment.judgment.judgment);
   const [pointsInput, setPointsInput] = useState(
-    judgment.awardedPoints !== null ? String(judgment.awardedPoints) : '',
+    segment.judgment.awardedPoints !== null ? String(segment.judgment.awardedPoints) : '',
   );
+  const [commentValue, setCommentValue] = useState(segment.judgment.comment ?? '');
+  const awardedPointsBaselineRef = useRef(segment.judgment.awardedPoints);
 
   const trimmedPoints = pointsInput.trim();
   const parsedPoints = trimmedPoints === '' ? null : Number(trimmedPoints);
   const isPointsValid =
     parsedPoints === null || (Number.isFinite(parsedPoints) && parsedPoints >= 0 && isDecimal2(parsedPoints));
 
-  const savePoints = () => {
-    if (!isPointsValid) return;
-    if (parsedPoints === judgment.awardedPoints) return;
+  // Every save path replaces the whole judgment record, so each one must send
+  // the most recently known value for every field — the current local state —
+  // rather than a snapshot captured once from props. Otherwise editing two of
+  // these fields in quick succession (e.g. typing points, then clicking
+  // Correct before the points mutation's response lands) sends a stale value
+  // for whichever field wasn't just touched and silently reverts it.
+  const commitJudgment = (next: {
+    judgment?: QuestionJudgmentValue;
+    awardedPoints?: number | null;
+    comment?: string | null;
+  }) => {
+    const nextJudgment = next.judgment ?? judgmentValue;
+    const nextAwardedPoints = 'awardedPoints' in next ? (next.awardedPoints ?? null) : parsedPoints;
+    const nextComment = 'comment' in next ? (next.comment ?? null) : commentValue.trim() || null;
+
+    setJudgmentValue(nextJudgment);
+    setCommentValue(nextComment ?? '');
+    awardedPointsBaselineRef.current = nextAwardedPoints;
+
     updateJudgment.mutate({
       pageId: page.id,
       segmentId: segment.id,
       body: {
         expectedPageRevision: page.pageRevision,
-        judgment: judgment.judgment,
-        awardedPoints: parsedPoints,
-        comment: judgment.comment,
+        judgment: nextJudgment,
+        awardedPoints: nextAwardedPoints,
+        comment: nextComment,
       },
     });
+  };
+
+  const savePoints = () => {
+    if (!isPointsValid) return;
+    if (parsedPoints === awardedPointsBaselineRef.current) return;
+    commitJudgment({ awardedPoints: parsedPoints });
   };
 
   return (
@@ -194,20 +217,9 @@ function QuestionRow({
                 key={value}
                 type="button"
                 disabled={!canEdit}
-                onClick={() =>
-                  updateJudgment.mutate({
-                    pageId: page.id,
-                    segmentId: segment.id,
-                    body: {
-                      expectedPageRevision: page.pageRevision,
-                      judgment: value,
-                      awardedPoints: judgment.awardedPoints,
-                      comment: judgment.comment,
-                    },
-                  })
-                }
+                onClick={() => commitJudgment({ judgment: value })}
                 className={`inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                  judgment.judgment === value
+                  judgmentValue === value
                     ? 'border-primary bg-primary text-primary-foreground'
                     : 'border-border bg-card text-foreground hover:border-primary'
                 }`}
@@ -237,7 +249,7 @@ function QuestionRow({
               onClick={() => setOpenCommentFor(openCommentFor === segment.id ? null : segment.id)}
               className="inline-flex min-h-8 items-center rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground hover:border-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {judgment.comment ? 'Edit comment' : 'Add comment'}
+              {commentValue ? 'Edit comment' : 'Add comment'}
             </button>
           </div>
           {!isPointsValid ? (
@@ -245,22 +257,11 @@ function QuestionRow({
           ) : null}
           {openCommentFor === segment.id ? (
             <textarea
-              defaultValue={judgment.comment ?? ''}
+              defaultValue={commentValue}
               disabled={!canEdit}
               maxLength={2000}
               rows={2}
-              onBlur={(event) =>
-                updateJudgment.mutate({
-                  pageId: page.id,
-                  segmentId: segment.id,
-                  body: {
-                    expectedPageRevision: page.pageRevision,
-                    judgment: judgment.judgment,
-                    awardedPoints: judgment.awardedPoints,
-                    comment: event.target.value.trim() || null,
-                  },
-                })
-              }
+              onBlur={(event) => commitJudgment({ comment: event.target.value.trim() || null })}
               className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus-visible:border-primary"
               placeholder="Optional comment for this question"
             />
