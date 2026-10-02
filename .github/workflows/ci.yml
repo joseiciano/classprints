@@ -63,7 +63,7 @@ jobs:
       - name: Migration boundary verification
         env:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/assignment_reader_ci
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/assignment-reader-migration-verify.sql | tee /dev/stderr | grep -q BOUNDARY_VERIFICATION_PASSED
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/assignment-reader-migration-verify.sql 2>&1 | tee /dev/stderr | grep -q BOUNDARY_VERIFICATION_PASSED
 
       - name: Test
         env:
