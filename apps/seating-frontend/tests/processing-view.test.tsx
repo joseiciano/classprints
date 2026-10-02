@@ -101,6 +101,7 @@ function makeResponse(
     processingState,
     processingCounts,
     reviewState: null,
+    hasQuestionJudgments: false,
   };
 }
 

@@ -546,6 +546,17 @@ export interface AssignmentReaderRepository {
     assignmentId: string,
     studentId: string,
   ): Promise<{ submission: SubmissionRecord; created: boolean }>;
+  /** Idempotent review-context capture (api-routes-documents.md §1.8, PAT-002):
+   * an atomic conditional update stores the assignment's current material
+   * version ID (or null) exactly once, gated on `review_context_captured_at_ms
+   * is null` rather than on the stored ID so a deliberate null capture never
+   * replays as "not yet captured". A lost race (two concurrent first calls)
+   * falls back to reading the row a second writer already committed. */
+  captureReviewContext(input: {
+    teacherId: string;
+    submissionId: string;
+    materialsVersionId: string | null;
+  }): Promise<{ materialsVersionId: string | null; capturedAt: string; created: boolean }>;
   // Seating charts (TASK-009)
   listSavedSeatingCharts(
     teacherId: string,
@@ -2572,6 +2583,39 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
       const submission = await this.findSubmission(teacherId, submissionId);
       if (!submission) throw new Error('Unable to create submission');
       return { submission, created: insertedId !== undefined };
+    },
+
+    async captureReviewContext({ teacherId, submissionId, materialsVersionId }) {
+      const now = Date.now();
+      const inserted = await sql<{ materials_version_id: string | null; review_context_captured_at_ms: number }[]>`
+        update submissions
+        set materials_version_id = ${materialsVersionId},
+            review_context_captured_at_ms = ${now}
+        where teacher_id = ${teacherId} and id = ${submissionId}
+          and review_context_captured_at_ms is null
+        returning materials_version_id, review_context_captured_at_ms
+      `;
+      if (inserted[0]) {
+        return {
+          materialsVersionId: inserted[0].materials_version_id,
+          capturedAt: toIso(inserted[0].review_context_captured_at_ms) as string,
+          created: true,
+        };
+      }
+      // Already captured (replay, or a concurrent first call won the race):
+      // return the immutable stored value (PAT-002).
+      const existing = await sql<{ materials_version_id: string | null; review_context_captured_at_ms: number | null }[]>`
+        select materials_version_id, review_context_captured_at_ms
+        from submissions
+        where teacher_id = ${teacherId} and id = ${submissionId}
+        limit 1
+      `;
+      const row = existing[0];
+      return {
+        materialsVersionId: row?.materials_version_id ?? null,
+        capturedAt: toIso(row?.review_context_captured_at_ms ?? now) as string,
+        created: false,
+      };
     },
 
     // ——— Seating charts (TASK-009) ——————————————————————————————————————————

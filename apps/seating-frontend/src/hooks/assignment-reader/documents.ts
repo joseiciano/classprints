@@ -1,11 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ConfirmDocumentBody, DocumentType } from '@classprints/assignment-reader-shared';
+import type {
+  ConfirmDocumentBody,
+  DocumentRevisionCommandBody,
+  DocumentType,
+  RetranscribeDocumentBody,
+} from '@classprints/assignment-reader-shared';
 import {
+  captureReviewContext,
   confirmDocument,
   deletePage,
   fetchAllDocumentPages,
+  fetchAllDocumentProcessing,
   fetchDocumentAggregate,
+  fetchDocumentWorkspace,
+  markDocumentReady,
+  retranscribeDocument,
+  retryConfirmDocument,
+  retryPage,
+  returnToNeedsReview,
 } from '../../lib/assignment-reader-api';
+import { processingRefetchInterval } from '../use-processing-poll';
 import { assignmentReaderKeys } from '../../lib/assignment-reader-query-keys';
 
 export function useDocumentAggregate(documentType: DocumentType, documentId: string | undefined) {
@@ -25,6 +39,28 @@ export function useDocumentPages(documentType: DocumentType, documentId: string 
     queryKey: [...assignmentReaderKeys.documents.aggregate(documentType, documentId ?? ''), 'pages'],
     queryFn: () => fetchAllDocumentPages(documentType, documentId as string),
     enabled: Boolean(documentId),
+  });
+}
+
+/**
+ * The complete current processing set (TASK-023's per-document page
+ * detail): every current page, not one canonical-list page of it. Polls
+ * every 3000 ms through `processingRefetchInterval`'s own rule — evaluated
+ * as a function so it reacts to the response already on hand (visible and
+ * not yet `completed`) without the caller needing that data first.
+ */
+export function useAllDocumentProcessing(
+  documentType: DocumentType,
+  documentId: string | undefined,
+  visible: boolean,
+) {
+  return useQuery({
+    queryKey: [...assignmentReaderKeys.documents.aggregate(documentType, documentId ?? ''), 'processing-all'],
+    queryFn: () => fetchAllDocumentProcessing(documentType, documentId as string),
+    enabled: Boolean(documentId),
+    placeholderData: (previous) => previous,
+    refetchInterval: (query) =>
+      processingRefetchInterval(query.state.data, visible ? 'visible' : 'hidden'),
   });
 }
 
@@ -69,5 +105,103 @@ export function useConfirmDocument(
   return useMutation({
     mutationFn: (body: ConfirmDocumentBody) => confirmDocument(documentType, documentId, body),
     onSuccess: () => invalidateDocument(queryClient, documentType, documentId, relatedKeys),
+  });
+}
+
+/**
+ * The full workspace read (TASK-025): document identity, pages, and the
+ * current review/grading rollup, driving every smart component on the
+ * unified workspace route. Backed by a slower poll than the processing list
+ * since background transcription state is read from `useDocumentPages`
+ * instead; this still needs to notice another tab's review/grading commands.
+ */
+export function useDocumentWorkspace(documentType: DocumentType, documentId: string | undefined) {
+  return useQuery({
+    queryKey: assignmentReaderKeys.documents.workspace(documentType, documentId ?? ''),
+    queryFn: () => fetchDocumentWorkspace(documentType, documentId as string),
+    enabled: Boolean(documentId),
+    refetchInterval: 10_000,
+  });
+}
+
+function invalidateWorkspace(
+  queryClient: ReturnType<typeof useQueryClient>,
+  documentType: DocumentType,
+  documentId: string,
+  relatedKeys: readonly (readonly unknown[])[],
+) {
+  invalidateDocument(queryClient, documentType, documentId, relatedKeys);
+  void queryClient.invalidateQueries({
+    queryKey: assignmentReaderKeys.documents.workspace(documentType, documentId),
+  });
+}
+
+/** Retries exactly the one failed page (REQ-013); never a document-wide action. */
+export function useRetryPage(
+  documentType: DocumentType,
+  documentId: string,
+  relatedKeys: readonly (readonly unknown[])[] = [],
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (pageId: string) => retryPage(pageId),
+    onSuccess: () => invalidateWorkspace(queryClient, documentType, documentId, relatedKeys),
+  });
+}
+
+/** Re-enqueues undelivered revisions only (api-routes-documents.md §2.6). */
+export function useRetryConfirmDocument(
+  documentType: DocumentType,
+  documentId: string,
+  relatedKeys: readonly (readonly unknown[])[] = [],
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => retryConfirmDocument(documentType, documentId),
+    onSuccess: () => invalidateWorkspace(queryClient, documentType, documentId, relatedKeys),
+  });
+}
+
+/** Whole-document retranscription (ALT-006); gated by explicit, separate consent. */
+export function useRetranscribeDocument(
+  documentType: DocumentType,
+  documentId: string,
+  relatedKeys: readonly (readonly unknown[])[] = [],
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RetranscribeDocumentBody) =>
+      retranscribeDocument(documentType, documentId, body),
+    onSuccess: () => invalidateWorkspace(queryClient, documentType, documentId, relatedKeys),
+  });
+}
+
+export function useMarkDocumentReady(documentType: DocumentType, documentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: DocumentRevisionCommandBody) =>
+      markDocumentReady(documentType, documentId, body),
+    onSuccess: () => invalidateWorkspace(queryClient, documentType, documentId, []),
+  });
+}
+
+export function useReturnToNeedsReview(documentType: DocumentType, documentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: DocumentRevisionCommandBody) =>
+      returnToNeedsReview(documentType, documentId, body),
+    onSuccess: () => invalidateWorkspace(queryClient, documentType, documentId, []),
+  });
+}
+
+/** PAT-002: idempotent; safe to call every time a submission workspace mounts. */
+export function useCaptureReviewContext(documentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => captureReviewContext(documentId),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({
+        queryKey: assignmentReaderKeys.documents.workspace('submission', documentId),
+      }),
   });
 }

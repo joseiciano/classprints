@@ -584,6 +584,19 @@ export const registerAssignmentReaderRoutes = (app: Hono<SeatingHonoEnv>): void 
     }
   });
 
+  app.post('/submissions/:submissionId/review-context', async (c) => {
+    try {
+      const user = getUser(c);
+      const { result, created } = await createService(c).captureReviewContext(
+        user.id,
+        c.req.param('submissionId'),
+      );
+      return c.json({ data: result }, created ? 201 : 200);
+    } catch (error) {
+      return handleRouteError(error, c);
+    }
+  });
+
   // ——— Document aggregate rollup ——————————————————————————————————————————————
 
   app.get('/documents/:documentType/:documentId', async (c) => {

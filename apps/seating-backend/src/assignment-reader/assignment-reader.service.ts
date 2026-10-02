@@ -43,6 +43,7 @@ import type {
   QuestionPointsTotalQuery,
   QuestionPointsTotal,
   ApplyQuestionPointsBody,
+  ReviewContextResult,
 } from '@classprints/assignment-reader-shared';
 import {
   computeDocumentProcessingState,
@@ -414,6 +415,10 @@ export class AssignmentReaderService {
         : await this.deps.repo.findSubmission(teacherId, documentId);
     if (!aggregate) throw notFound();
     const list = await this.deps.repo.listProcessing({ teacherId, documentType, documentId, query });
+    const hasQuestionJudgments =
+      documentType === 'submission'
+        ? await this.deps.repo.hasCurrentQuestionJudgments(teacherId, documentId)
+        : false;
     return {
       ...list,
       documentType,
@@ -422,6 +427,7 @@ export class AssignmentReaderService {
       processingState: aggregate.processingState,
       processingCounts: aggregate.processingCounts,
       reviewState: aggregate.reviewState,
+      hasQuestionJudgments,
     };
   }
 
@@ -1102,6 +1108,41 @@ export class AssignmentReaderService {
       );
     }
     return this.deps.repo.createSubmission(teacherId, assignmentId, studentId);
+  }
+
+  /** POST /submissions/:submissionId/review-context (api-routes-documents.md
+   * §1.8, PAT-002). The workspace smart component for a submission calls this
+   * before loading its materials rail so the reviewed materials version
+   * cannot change out from under the session; the capture itself never
+   * follows a later materials replacement. */
+  async captureReviewContext(
+    teacherId: string,
+    submissionId: string,
+  ): Promise<{ result: ReviewContextResult; created: boolean }> {
+    const submission = await this.getSubmission(teacherId, submissionId);
+    const assignment = await this.getAssignment(teacherId, submission.assignmentId);
+    this.assertActiveAncestry(assignment.classStatus, 'capture review context');
+
+    const currentMaterialVersion = submission.reviewContextCapturedAt === null
+      ? await this.deps.repo.findCurrentMaterialVersion(teacherId, assignment.id)
+      : null;
+    const captured = await this.deps.repo.captureReviewContext({
+      teacherId,
+      submissionId,
+      materialsVersionId: currentMaterialVersion?.id ?? null,
+    });
+    const materialsVersion = captured.materialsVersionId
+      ? await this.getMaterialVersion(teacherId, captured.materialsVersionId)
+      : null;
+    return {
+      result: {
+        submissionId,
+        materialsVersion,
+        capturedAt: captured.capturedAt,
+        created: captured.created,
+      },
+      created: captured.created,
+    };
   }
 
   // ——— Workspace, review, and grading (TASK-016/TASK-017) ———————————————————
