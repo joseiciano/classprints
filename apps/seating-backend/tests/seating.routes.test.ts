@@ -244,7 +244,7 @@ describe('Seating Routes', () => {
       new Request('http://localhost/api/v1/seating', {
         method: 'POST',
         body: JSON.stringify(createPayload()),
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...CSRF_HEADERS },
       }),
       createEnv() as never,
     );
@@ -282,7 +282,7 @@ describe('Seating Routes', () => {
         new Request('http://localhost/api/v1/seating', {
           method: 'POST',
           body: JSON.stringify(createPayload()),
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...CSRF_HEADERS },
         }),
         createEnv() as never,
       );
@@ -319,7 +319,7 @@ describe('Seating Routes', () => {
       new Request('http://localhost/api/v1/seating', {
         method: 'POST',
         body: JSON.stringify(createPayload()),
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...CSRF_HEADERS },
       }),
       createEnv() as never,
     );
