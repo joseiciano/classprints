@@ -19,3 +19,5 @@ wrangler.toml
 terraform.tfstate*
 *.log
 .DS_Store
+code-reviews/*
+code_reviews/*

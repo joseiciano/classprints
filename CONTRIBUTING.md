@@ -145,7 +145,7 @@ fails rather than silently falling back when a model can't be verified:
    never assume support `openrouter.repository.ts` can't itself detect.
 3. Record the verified model, fallback list, structured-output capability,
    verifier, and source link in
-   `plans/assignment-reader/provider-privacy-evidence.md` §3 for that
+   `docs/plans/assignment-reader/provider-privacy-evidence.md` §3 for that
    environment before deploying it — this is the same evidence TASK-028's
    production launch gate (REQ-026) reads.
 
