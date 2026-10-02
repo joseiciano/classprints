@@ -12,6 +12,15 @@ export default defineConfig({
       'apps/**/tests/**/*.test.tsx',
       'packages/**/tests/**/*.test.ts',
     ],
+    // Tests-first contract specs for Tickets 7-8 (upload flow, hierarchy and
+    // processing views). Their implementations ship in the tickets 3-9 PR, so
+    // they cannot resolve on this branch. That PR removes this exclusion.
+    exclude: [
+      '**/node_modules/**',
+      'apps/seating-frontend/tests/upload-flow.test.ts',
+      'apps/seating-frontend/tests/hierarchy-views.test.tsx',
+      'apps/seating-frontend/tests/processing-view.test.tsx',
+    ],
     setupFiles: [resolvePath('tests/vitest.setup.ts')],
   },
   esbuild: {

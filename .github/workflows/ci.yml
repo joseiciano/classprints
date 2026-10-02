@@ -16,6 +16,7 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # Assignment-worker integration tests (TEST-006) run the real cleanup
     # consumer against live Postgres seeded from database/migrations. Skipped
     # gracefully when the service is unavailable, so tests stay green locally.
