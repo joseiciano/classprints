@@ -75,6 +75,10 @@ export interface MaterialVersionRow {
   draft_confirmed: boolean;
   confirmed_at_ms: number | null;
   replaced_at_ms: number | null;
+  /** REQ-011/REQ-016: 'needs_review' | 'ready_to_grade' | null, maintained by
+   * confirm, draft-edit, retry/retranscribe, review/mark-ready/
+   * return-to-needs-review, and the worker's completion write. */
+  review_state: 'needs_review' | 'ready_to_grade' | null;
   created_at_ms: number | string;
   updated_at_ms: number | string;
 }
@@ -142,6 +146,9 @@ export interface DocumentStatusRow {
 }
 
 export interface InsertPageInput {
+  /** Service-generated (crypto.randomUUID()) so the storage key can be
+   * computed before the row exists (TASK-010: R2 write precedes the insert). */
+  id: string;
   teacherId: string;
   documentType: 'materials' | 'submission';
   materialsVersionId: string | null;
@@ -149,19 +156,39 @@ export interface InsertPageInput {
   studentId: string | null;
   classId: string;
   assignmentId: string;
-  position: number;
-  label: string;
+  /** "Materials" or the student's name; the repository appends
+   * " · Page {position}" once the atomically-assigned position is known. */
+  ownerLabel: string;
   storageKey: string;
 }
+
+/** Result of an atomic append-page insert; null means the document already
+ * has 20 current pages (PAGE_LIMIT_EXCEEDED — the caller must compensate by
+ * deleting the R2 object it already wrote). */
+export type InsertPageResult = PageRow | null;
 
 export interface RewriteOrderInput {
   teacherId: string;
   documentType: 'materials' | 'submission';
   documentId: string;
   orderedPageIds: string[];
+  /** Whether the supplied order differs from the stored current order
+   * (api-routes-documents.md §2.5: confirm itself only bumps
+   * documentRevision when the order actually changes). */
+  orderChanged: boolean;
+}
+
+export interface ConfirmDocumentOrderResult {
+  documentRevision: number;
+  pages: PageRow[];
+  /** Pages moved uploading -> queued by this confirm; the caller sends one
+   * TranscriptionPageMessage per seed after commit. */
+  queuedSeeds: Array<{ pageId: string; pageRevision: number }>;
 }
 
 export interface ReplacePageInput {
+  /** New page's service-generated id. */
+  id: string;
   teacherId: string;
   documentType: 'materials' | 'submission';
   materialsVersionId: string | null;
@@ -174,6 +201,16 @@ export interface ReplacePageInput {
   pageRevision: number;
   label: string;
   storageKey: string;
+  /** Whether the replaced page's document was confirmed (failed-page
+   * recovery path): the new page is queued immediately instead of staying
+   * unconfirmed. */
+  requeueImmediately: boolean;
+}
+
+export interface ReplacePageResultRow {
+  page: PageRow;
+  documentRevision: number;
+  replacedStorageKey: string;
 }
 
 export interface MarkQueuedInput {
@@ -182,6 +219,36 @@ export interface MarkQueuedInput {
   documentId: string;
   queuedAtMs: number;
   attemptSeeds: Array<{ pageId: string; pageRevision: number }>;
+}
+
+export interface RemovePageResultRow {
+  documentRevision: number;
+  removedStorageKey: string;
+}
+
+/** Result of an atomic single-page retry (TASK-015 §3.3). Null from the
+ * repository means the page was no longer exactly `failed` when the
+ * conditional update ran (pre-commit race): the caller returns 409 rather
+ * than replaying the retry. */
+export interface RetryPageRowResult {
+  page: PageRow;
+  documentRevision: number;
+}
+
+export interface RetranscribeDocumentRowsInput {
+  teacherId: string;
+  documentType: 'materials' | 'submission';
+  documentId: string;
+  /** Compare-and-swap guard matching `RetranscribeDocumentBody.expectedDocumentRevision`. */
+  expectedDocumentRevision: number;
+}
+
+/** Null means the document's revision no longer matched
+ * `expectedDocumentRevision` when the conditional update ran (409
+ * REVISION_CONFLICT); nothing was committed. */
+export interface RetranscribeDocumentRowsResult {
+  documentRevision: number;
+  pages: PageRow[];
 }
 
 export interface SubmissionListRow extends SubmissionRow {
@@ -264,7 +331,140 @@ export interface PageImageDeliveryRow {
   document_type: 'materials' | 'submission';
 }
 
+/** One pending-or-just-accepted cross-store deletion job (REQ-022). */
+export interface DeletionOperationRow {
+  id: string;
+  target_type: string;
+  target_id: string;
+  status: 'pending' | 'completed' | 'failed';
+  accepted_at_ms: number | string;
+}
 
+export interface CreateDeletionOperationInput {
+  teacherId: string;
+  targetType: import('@classprints/assignment-reader-shared').DeletionTargetType;
+  targetId: string;
+  storageKeys: string[];
+}
+
+/**
+ * Thrown by `createDeletionOperation` when `idx_deletion_operations_pending_target`
+ * rejects the insert because a pending deletion already owns this `target_id`
+ * under a *different* `target_type` — e.g. an `assignment`-scope delete is
+ * already pending for the same id a `materials`-scope delete just targeted
+ * (both scopes use the assignment's own id; see `notDeletionPending`'s doc
+ * comment in assignment-reader.repository.ts). The service layer catches
+ * this and surfaces a 409 instead of letting the raw unique-violation
+ * escape as an unhandled 500.
+ */
+export class DeletionScopeConflictError extends Error {
+  public readonly existing: DeletionOperationRow;
+
+  constructor(existing: DeletionOperationRow) {
+    super(
+      `A deletion is already pending for this target (target_type=${existing.target_type}, target_id=${existing.target_id})`,
+    );
+    this.name = 'DeletionScopeConflictError';
+    this.existing = existing;
+  }
+}
+
+// ——— Workspace, review, and grading (TASK-016/TASK-017) ————————————————————
+
+/** One current page's question segment, left-joined to its teacher judgment
+ * (null fields mean no judgment row exists yet: the API default is
+ * `unmarked`/null/null/null, never a missing segment). */
+export interface QuestionSegmentWithJudgmentRow {
+  id: string;
+  page_id: string;
+  page_revision: number;
+  ordinal: number;
+  label: string | null;
+  question_text: string | null;
+  response_text: string | null;
+  judgment: 'unmarked' | 'correct' | 'incorrect' | null;
+  awarded_points: string | number | null;
+  comment: string | null;
+  judgment_updated_at_ms: number | string | null;
+}
+
+export type UpdatePageDraftOutcome =
+  | { outcome: 'not_found' }
+  | { outcome: 'invalid_state' }
+  | { outcome: 'conflict'; currentContentRevision: number }
+  | { outcome: 'ok'; page: PageRow; documentReviewState: 'needs_review' | null };
+
+export interface UpdatePageDraftRowInput {
+  teacherId: string;
+  pageId: string;
+  draft: unknown;
+}
+
+export type ReviewPageOutcome =
+  | { outcome: 'not_found' }
+  | { outcome: 'invalid_state' }
+  | { outcome: 'conflict'; currentContentRevision: number }
+  | {
+      outcome: 'ok';
+      page: PageRow;
+      documentReviewState: 'needs_review' | null;
+      allCurrentPagesReviewed: boolean;
+    };
+
+export type DocumentRevisionCommandOutcome =
+  | { outcome: 'not_found' }
+  | { outcome: 'invalid_state' }
+  | { outcome: 'conflict'; currentDocumentRevision: number }
+  | {
+      outcome: 'ok';
+      reviewState: 'needs_review' | 'ready_to_grade';
+      gradingState: 'not_graded' | 'graded' | null;
+      documentRevision: number;
+      updatedAtMs: number;
+    };
+
+export type UpdateQuestionJudgmentOutcome =
+  | { outcome: 'not_found' }
+  | { outcome: 'invalid_state' }
+  | { outcome: 'conflict'; currentPageRevision: number }
+  | {
+      outcome: 'ok';
+      segmentId: string;
+      judgment: 'unmarked' | 'correct' | 'incorrect';
+      awardedPoints: string | number | null;
+      comment: string | null;
+      updatedAtMs: number;
+    };
+
+export interface GradingDraftRow {
+  submission_id: string;
+  document_revision: number;
+  score: string | number | null;
+  comments: string | null;
+  grading_state: 'not_graded' | 'graded';
+  graded_at_ms: number | null;
+  updated_at_ms: number | string;
+}
+
+export type UpdateGradingDraftOutcome =
+  | { outcome: 'not_found' }
+  | { outcome: 'invalid_state' }
+  | { outcome: 'conflict'; currentDocumentRevision: number }
+  | { outcome: 'ok'; row: GradingDraftRow };
+
+export type MarkGradedOutcome =
+  | { outcome: 'not_found' }
+  | { outcome: 'invalid_state' }
+  | { outcome: 'conflict'; currentDocumentRevision: number }
+  | { outcome: 'ok'; row: GradingDraftRow };
+
+export type ApplyQuestionPointsOutcome =
+  | { outcome: 'not_found' }
+  | { outcome: 'invalid_state' }
+  | { outcome: 'conflict'; currentDocumentRevision: number }
+  | { outcome: 'total_conflict'; currentTotal: number }
+  | { outcome: 'score_exceeds_maximum' }
+  | { outcome: 'ok'; row: GradingDraftRow };
 
 /** Domain errors mapped to the API error envelope by the controller. */
 export type AssignmentReaderErrorCode =
@@ -281,7 +481,8 @@ export type AssignmentReaderErrorCode =
   | 'REVISION_CONFLICT'
   | 'CONSENT_REQUIRED'
   | 'SCORE_EXCEEDS_MAXIMUM'
-  | 'QUEUE_DELIVERY_FAILED';
+  | 'QUEUE_DELIVERY_FAILED'
+  | 'DELETION_ALREADY_PENDING';
 
 export interface AssignmentReaderHttpError extends Error {
   readonly status: number;

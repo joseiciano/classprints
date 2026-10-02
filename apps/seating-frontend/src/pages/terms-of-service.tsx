@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { SUPPORT_EMAIL } from '../lib/constants';
 
-const lastUpdated = 'September 20, 2026';
+const lastUpdated = 'October 1, 2026';
 
 const contents = [
   ['terms-eligibility', 'Who can use ClassPrints'],
@@ -134,6 +134,20 @@ export function TermsOfServicePage() {
               for details.
             </p>
           </div>
+          <div className="mt-3 rounded-r-[9px] border-l-4 border-accent-foreground bg-accent px-4 py-3">
+            <h3 className="text-sm font-semibold text-foreground">Assignment Reader</h3>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Assignment Reader sends page images you upload — and, when needed for that same
+              transcription, the assignment materials, answer keys, or rubrics for that assignment
+              — through OpenRouter to a selected AI model provider, so they can be transcribed into
+              editable text for you to review. We are still verifying that provider&apos;s
+              retention and deletion facts; see the{' '}
+              <Link to="/privacy-policy" className={linkClass}>
+                Privacy Policy
+              </Link>{' '}
+              for the current status.
+            </p>
+          </div>
         </section>
 
         <section id="terms-use" className={sectionClass}>
@@ -194,9 +208,11 @@ export function TermsOfServicePage() {
             issue.
           </p>
           <p className={copyClass}>
-            Deleting an account disables access and cancels an active subscription, but it does not
-            automatically purge every classroom job or saved profile. Contact support to request
-            deletion of associated classroom data; retention is described in the Privacy Policy.
+            Deleting an account disables access and cancels an active subscription. For most
+            classroom data this does not automatically purge every seating job or saved profile —
+            contact support to request that deletion. Assignment Reader data (classes, students,
+            assignments, materials, submissions, pages, and associated images) is scheduled for
+            deletion automatically instead; retention is described in the Privacy Policy.
           </p>
         </section>
 

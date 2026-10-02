@@ -142,10 +142,16 @@ export const callWorkerEndpoint = async <T>(
 
   let requestBody: BodyInit | undefined;
   if (body !== undefined) {
-    if (!headers['Content-Type']) {
-      headers['Content-Type'] = 'application/json';
+    if (body instanceof FormData) {
+      // Let the browser set `Content-Type` (including the multipart boundary)
+      // itself; stringifying or overriding it here would corrupt the upload.
+      requestBody = body;
+    } else {
+      if (!headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+      requestBody = JSON.stringify(body);
     }
-    requestBody = JSON.stringify(body);
   }
 
   const init: WorkerClientRequestInit = {

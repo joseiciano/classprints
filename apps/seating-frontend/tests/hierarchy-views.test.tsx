@@ -228,23 +228,34 @@ const rosterStudents: StudentRecord[] = [
 ];
 
 describe('RosterPanelView archived/read-only contract', () => {
-  it('exposes no enabled Add, Rename, Remove, or Delete-data controls when read-only', () => {
+  // REQ-021 blocks non-destructive roster mutations (Add/Rename/Remove)
+  // under an archived class, but REQ-022 explicitly exempts the destructive
+  // deletion routes (class/student-data/assignment/materials) from that
+  // rule — Delete-data must stay enabled here the same way Delete
+  // assignment and Delete materials do elsewhere (see RosterPanelView's own
+  // doc comment). A read-only roster should disable the former and leave
+  // the latter alone.
+  it('disables Add, Rename, and Remove but keeps Delete-data enabled', () => {
     const container = render(
       <RosterPanelView students={rosterStudents} readOnly />,
     );
 
-    const mutationControlPattern = /\b(add|rename|remove|delete)\b/i;
-    const enabledMutationControls = Array.from(
+    const controls = Array.from(
       container.querySelectorAll<HTMLButtonElement>('button, [role="button"]'),
-    ).filter((control) => {
-      const label = `${control.textContent ?? ''} ${control.getAttribute('aria-label') ?? ''}`;
-      return (
-        !control.hasAttribute('disabled') &&
-        control.getAttribute('aria-disabled') !== 'true' &&
-        mutationControlPattern.test(label)
-      );
-    });
+    );
+    const labelOf = (control: Element) =>
+      `${control.textContent ?? ''} ${control.getAttribute('aria-label') ?? ''}`;
+    const isEnabled = (control: HTMLButtonElement) =>
+      !control.hasAttribute('disabled') && control.getAttribute('aria-disabled') !== 'true';
 
-    expect(enabledMutationControls).toEqual([]);
+    const nonDestructiveMutationPattern = /\b(add|rename|remove)\b/i;
+    const enabledNonDestructiveControls = controls.filter(
+      (control) => isEnabled(control) && nonDestructiveMutationPattern.test(labelOf(control)),
+    );
+    expect(enabledNonDestructiveControls).toEqual([]);
+
+    const deleteDataControl = controls.find((control) => /delete\b.*'s data/i.test(labelOf(control)));
+    expect(deleteDataControl).toBeDefined();
+    expect(isEnabled(deleteDataControl as HTMLButtonElement)).toBe(true);
   });
 });

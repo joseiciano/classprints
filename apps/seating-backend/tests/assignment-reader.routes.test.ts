@@ -409,6 +409,7 @@ const fakeRepo = () => ({
       pagination: { page: 1, pageSize: 10 as const, totalItems: 0, totalPages: 0 },
     });
   },
+  hasCurrentQuestionJudgments: () => Promise.resolve(false),
 });
 
 vi.mock('../src/assignment-reader/assignment-reader.repository', async (importOriginal) => {
