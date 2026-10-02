@@ -15,6 +15,43 @@ export interface NormalizedRect {
 }
 
 /**
+ * A region is always selected on whatever rotation is currently displayed,
+ * but PAT-001's `imageRegion` attrs (and the region-crop image route) are
+ * normalized against the original, unrotated image — so a rect drawn at a
+ * non-zero rotation must be rotated back before it is handed to the editor.
+ * Pure and exported for testing.
+ */
+export function rotateNormalizedRect(rect: NormalizedRect, rotation: Rotation): NormalizedRect {
+  switch (rotation) {
+    case 0:
+      return rect;
+    case 90:
+      return {
+        x: rect.y,
+        y: 1 - rect.x - rect.width,
+        width: rect.height,
+        height: rect.width,
+      };
+    case 180:
+      return {
+        x: 1 - rect.x - rect.width,
+        y: 1 - rect.y - rect.height,
+        width: rect.width,
+        height: rect.height,
+      };
+    case 270:
+      return {
+        x: 1 - rect.y - rect.height,
+        y: rect.x,
+        width: rect.height,
+        height: rect.width,
+      };
+    default:
+      return rect;
+  }
+}
+
+/**
  * The original-page viewer (TASK-025): zoom/rotation and image-region
  * selection, delivered exclusively through the authenticated page-image
  * route (TASK-012) — never a public URL or base64 payload. Dragging on the
@@ -76,7 +113,8 @@ export function OriginalViewer({
 
   const confirmRegion = () => {
     if (!draftRect) return;
-    onInsertRegion({ ...draftRect, reason, label: regionLabel.trim() || undefined });
+    const originalRect = rotateNormalizedRect(draftRect, rotation);
+    onInsertRegion({ ...originalRect, reason, label: regionLabel.trim() || undefined });
     setDraftRect(null);
     setRegionLabel('');
   };
