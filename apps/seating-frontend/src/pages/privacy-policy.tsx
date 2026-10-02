@@ -1,12 +1,13 @@
 import { Link } from '@tanstack/react-router';
 import { SUPPORT_EMAIL } from '../lib/constants';
 
-const lastUpdated = 'September 20, 2026';
+const lastUpdated = 'October 1, 2026';
 
 const contents = [
   ['privacy-collect', 'What we collect'],
   ['privacy-use', 'How we use it'],
   ['privacy-ai', 'AI-assisted mode'],
+  ['privacy-assignment-reader', 'Assignment Reader'],
   ['privacy-share', 'When we share'],
   ['privacy-students', 'Student information'],
   ['privacy-retention', 'Retention and security'],
@@ -74,8 +75,13 @@ export function PrivacyPolicyPage() {
               AI-assisted mode sends relevant classroom inputs to external AI providers.
             </li>
             <li className="before:mr-2 before:text-primary before:content-['—']">
-              Account deletion disables access, but associated classroom records may require a
-              separate support request.
+              Assignment Reader sends page images and assignment materials through OpenRouter to a
+              selected AI provider for transcription.
+            </li>
+            <li className="before:mr-2 before:text-primary before:content-['—']">
+              Account deletion disables access; Assignment Reader data is then automatically
+              scheduled for deletion, while other classroom records may require a separate support
+              request.
             </li>
           </ul>
         </section>
@@ -153,8 +159,28 @@ export function PrivacyPolicyPage() {
           </div>
         </section>
 
+        <section id="privacy-assignment-reader" className={sectionClass}>
+          <h2 className={headingClass}>4. Assignment Reader</h2>
+          <p className={copyClass}>
+            Assignment Reader turns photos of assignment materials and student work into editable
+            text using AI-assisted transcription. When a teacher uploads a page, ClassPrints sends
+            that image — and, when needed for the same transcription, the assignment materials,
+            answer keys, or rubrics for that assignment — through OpenRouter to a selected AI model
+            provider. A teacher reviews and can correct every transcription before it is used for
+            grading; ClassPrints does not grade automatically.
+          </p>
+          <p className={copyClass}>
+            We are verifying the selected provider&apos;s data retention, deletion, and
+            zero-retention routing options. This Policy will state the confirmed facts — including
+            whether zero-retention routing is used — before Assignment Reader moves beyond a
+            limited staging evaluation. We do not make data-handling claims we have not
+            independently verified, and we do not claim any specific school-policy or
+            legal-compliance certification for this processing.
+          </p>
+        </section>
+
         <section id="privacy-share" className={sectionClass}>
-          <h2 className={headingClass}>4. When we share information</h2>
+          <h2 className={headingClass}>5. When we share information</h2>
           <p className={copyClass}>
             We disclose what is needed to providers that help operate ClassPrints, including cloud
             hosting and databases, authentication, email delivery, payment processing, and—only when
@@ -169,7 +195,7 @@ export function PrivacyPolicyPage() {
         </section>
 
         <section id="privacy-students" className={sectionClass}>
-          <h2 className={headingClass}>5. Student information</h2>
+          <h2 className={headingClass}>6. Student information</h2>
           <p className={copyClass}>
             ClassPrints is intended for educators and authorized school staff, not for students to
             create accounts. Educators and schools are responsible for confirming that they may
@@ -185,15 +211,18 @@ export function PrivacyPolicyPage() {
         </section>
 
         <section id="privacy-retention" className={sectionClass}>
-          <h2 className={headingClass}>6. Retention and security</h2>
+          <h2 className={headingClass}>7. Retention and security</h2>
           <p className={copyClass}>
             We keep account and classroom information while your account is active and as needed to
             provide the service. A plan may limit how long results remain visible; that visibility
             period is not necessarily a deletion period. Account deletion soft-deletes the user
-            profile and cancels an active subscription, but does not automatically purge every
-            classroom job or saved profile. Contact support to request deletion of associated
-            classroom data. We may retain records needed for billing, security, legal obligations,
-            or limited backups.
+            profile and cancels an active subscription. For most classroom data, this does not
+            automatically purge every seating job or saved profile — contact support to request
+            that deletion. For Assignment Reader specifically, requesting account deletion
+            automatically schedules deletion of your classes, students, assignments, materials,
+            submissions, pages, and associated images from our database and storage; you do not
+            need a separate request for that category. We may retain records needed for billing,
+            security, legal obligations, or limited backups.
           </p>
           <p className={copyClass}>
             We use reasonable administrative and technical safeguards designed to protect
@@ -203,7 +232,7 @@ export function PrivacyPolicyPage() {
         </section>
 
         <section id="privacy-rights" className={sectionClass}>
-          <h2 className={headingClass}>7. Your choices and rights</h2>
+          <h2 className={headingClass}>8. Your choices and rights</h2>
           <p className={copyClass}>
             You can update account settings, change email-notification preferences, delete your
             account, and export eligible arrangement results through available product controls. You
@@ -218,7 +247,7 @@ export function PrivacyPolicyPage() {
         </section>
 
         <section id="privacy-changes" className={sectionClass}>
-          <h2 className={headingClass}>8. Changes and contact</h2>
+          <h2 className={headingClass}>9. Changes and contact</h2>
           <p className={copyClass}>
             We may update this Policy as the service, providers, or applicable law changes. We will
             update the date above and provide reasonable notice if a change materially affects your

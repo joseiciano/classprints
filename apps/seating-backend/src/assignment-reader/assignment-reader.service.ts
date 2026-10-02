@@ -44,6 +44,7 @@ import type {
   QuestionPointsTotal,
   ApplyQuestionPointsBody,
   ReviewContextResult,
+  AnalyticsEventBody,
 } from '@classprints/assignment-reader-shared';
 import {
   computeDocumentProcessingState,
@@ -77,6 +78,17 @@ import {
 export interface AssignmentReaderQueues {
   sendTranscriptionPage(message: TranscriptionPageMessage): Promise<void>;
   sendDeletionOperation(message: DeletionOperationMessage): Promise<void>;
+}
+
+/** Analytics abstraction for review-session/materials-open instrumentation
+ * (TASK-027). Mirrors the `AnalyticsClient` pattern already used by
+ * `SeatingService` — routes.ts supplies the real Analytics Engine-backed
+ * implementation, so this file never imports Cloudflare binding types
+ * directly. Every method is best-effort and must never throw. */
+export interface AssignmentAnalyticsClient {
+  trackReviewSessionStart?: (documentType: DocumentType) => void;
+  trackReviewSessionEnd?: (documentType: DocumentType, durationMs: number) => void;
+  trackMaterialsOpen?: () => void;
 }
 
 /**
@@ -125,6 +137,9 @@ export interface AssignmentReaderServiceDeps {
   images?: PageImageRepository;
   /** Required for confirm/retry-confirm/replace (TASK-011). */
   queues?: AssignmentReaderQueues;
+  /** Optional review-session/materials-open instrumentation (TASK-027);
+   * every other method works without it. */
+  analytics?: AssignmentAnalyticsClient;
 }
 
 export class AssignmentReaderService {
@@ -1293,6 +1308,34 @@ export class AssignmentReaderService {
         gradingState: submission.gradingState,
       }),
     };
+  }
+
+  /** POST /documents/:documentType/:documentId/analytics-events (TASK-027):
+   * review-session start/end and materials-open events for REQ-025's review
+   * duration and materials adoption/open-rate baselines. Confirms the
+   * document is owned by this teacher (the same 404-not-403 rule as every
+   * other document route, SEC-001) and then hands the event to the
+   * injected analytics client — nothing from this call is persisted in
+   * Postgres, and the client never receives a document/page/student id. */
+  async recordAnalyticsEvent(
+    teacherId: string,
+    documentType: DocumentType,
+    documentId: string,
+    event: AnalyticsEventBody,
+  ): Promise<void> {
+    const status = await this.deps.repo.findDocumentStatus(teacherId, documentType, documentId);
+    if (!status) throw notFound();
+    switch (event.type) {
+      case 'review_session_start':
+        this.deps.analytics?.trackReviewSessionStart?.(documentType);
+        break;
+      case 'review_session_end':
+        this.deps.analytics?.trackReviewSessionEnd?.(documentType, event.durationMs);
+        break;
+      case 'materials_open':
+        this.deps.analytics?.trackMaterialsOpen?.();
+        break;
+    }
   }
 
   /** GET /pages/:pageId (api-routes-review.md §1.2): the canonical editable
