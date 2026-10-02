@@ -15,6 +15,7 @@
     "@tailwindcss/vite": "^4.1.17",
     "@tanstack/react-query": "5.90.11",
     "@tanstack/react-router": "^1.139.6",
+    "@classprints/assignment-reader-shared": "workspace:*",
     "@classprints/seating-shared": "workspace:*",
     "@classprints/shared": "workspace:*",
     "lucide-react": "^0.562.0",
