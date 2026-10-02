@@ -2,13 +2,13 @@
 ticket: 8
 phase: "Implementation Phase 8"
 goal: GOAL-008
-status: Not Started
+status: Completed
 date_created: 2026-10-01
 ---
 
 # Ticket 8: Build processing and unified workspace surfaces
 
-![Status: Not Started](https://img.shields.io/badge/status-Not%20Started-lightgrey)
+![Status: Completed](https://img.shields.io/badge/status-Completed-brightgreen)
 
 Part of [Assignment Reader MVP plan](../feature-assignment-reader-1.md). Builds on [Ticket 1](1-freeze-contracts-and-launch-gates.md), [Ticket 5](5-transcription-retry-and-progress-services.md), [Ticket 6](6-review-grading-and-deletion-apis.md), and [Ticket 7](7-hierarchy-and-upload-frontend-surfaces.md).
 
@@ -16,27 +16,27 @@ Part of [Assignment Reader MVP plan](../feature-assignment-reader-1.md). Builds 
 
 ## Tasks
 
-- [ ] **TASK-023**: Build processing status and recovery UI.
+- [x] **TASK-023**: Build processing status and recovery UI.
   - Add smart/view pairs for the canonical Processing table and per-document page detail. Poll with TanStack Query every 3000 ms only while visible and any page is non-terminal; compute elapsed display from queued timestamps without writing timer state to the server.
   - Show completed-page **Review now** actions without a document review chip until all pages complete. Render safe failure taxonomy, page retry, page replacement, and whole-document retranscription confirmation with separate teacher-edit and question-judgment reset consent.
   - Dependencies: TASK-015 ([Ticket 5](5-transcription-retry-and-progress-services.md)) and TASK-019 ([Ticket 7](7-hierarchy-and-upload-frontend-surfaces.md)).
   - Acceptance: mixed states and counts match API rollup; hidden/unmounted/completed views stop polling; page retry never presents successful pages as requeued; consent copy names re-billing and overwritten teacher work.
 
-- [ ] **TASK-024**: Add the Tiptap editor and stable Assignment Reader document extensions.
+- [x] **TASK-024**: Add the Tiptap editor and stable Assignment Reader document extensions.
   - Add exact dependencies `@tiptap/react@3.31.3`, `@tiptap/pm@3.31.3`, `@tiptap/starter-kit@3.31.3`, `@tiptap/extension-mathematics@3.31.3`, `@tiptap/extension-underline@3.31.3`, and `katex@0.18.9` to `apps/seating-frontend/package.json`; all Tiptap packages stay on the same exact version and the lockfile is committed.
   - Create `src/components/assignment-reader/editor/assignment-editor.tsx`, `math-extension.ts`, `image-region-extension.tsx`, and `document-adapter.ts`. Limit commands/rendering to PAT-001 nodes and marks; implement `imageRegion` as a selectable block atom with no editable child content; never persist or render arbitrary HTML.
   - Debounce autosave, pass `expectedContentRevision`, surface conflict/reload resolution, and mark a page reviewed only by explicit teacher action after the latest save succeeds.
   - Dependencies: TASK-001 ([Ticket 1](1-freeze-contracts-and-launch-gates.md)) and TASK-016 ([Ticket 6](6-review-grading-and-deletion-apis.md)).
   - Acceptance: paragraphs, lists, hard breaks, underline, inline/block math, and authenticated image regions round-trip without schema drift; KaTeX cannot trust embedded commands; invalid JSON cannot enter editor state; a 409 never silently discards local edits.
 
-- [ ] **TASK-025**: Build the unified materials/submission workspace.
+- [x] **TASK-025**: Build the unified materials/submission workspace.
   - Add smart/view pairs for document identity, original viewer, editor, page navigation, processing placeholders, review controls, materials side rail, and historical read-only mode.
   - Capture submission review context before loading its materials rail. Allow early completed-page editing, but keep document readiness unavailable until all pages complete and every current revision is reviewed.
   - Add zoom/rotation and image-region rendering through TASK-012 ([Ticket 4](4-upload-and-authenticated-image-delivery.md)) only; no public URLs or base64 image data in frontend state.
   - Dependencies: TASK-023, TASK-024 (this ticket), and TASK-017 ([Ticket 6](6-review-grading-and-deletion-apis.md)).
   - Acceptance: original and draft remain together across page navigation/reload, materials open without leaving the submission workspace, archived/history mode is read-only, and teacher edits remain authoritative.
 
-- [ ] **TASK-026**: Add manual question grading and submission grading rail.
+- [x] **TASK-026**: Add manual question grading and submission grading rail.
   - Render one row per current parsed segment with explicit Correct/Incorrect/Unmarked, optional points, and optional comment; show a clear submission-level fallback when there are no segments.
   - Render score/comments and **Mark graded** only for submissions and only when ready; allow the assignment maximum to be set or changed in this rail through the same assignment mutation used by settings. Add separate **Return to Needs review**. Offer explicit **Use question-points sum** confirmation rather than automatic calculation.
   - Retain draft values after reopening but remove the submission from Graded filters/counts immediately.
