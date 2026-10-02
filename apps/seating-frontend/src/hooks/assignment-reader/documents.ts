@@ -3,7 +3,6 @@ import type {
   ConfirmDocumentBody,
   DocumentRevisionCommandBody,
   DocumentType,
-  ProcessingListQuery,
   RetranscribeDocumentBody,
 } from '@classprints/assignment-reader-shared';
 import {
@@ -11,14 +10,16 @@ import {
   confirmDocument,
   deletePage,
   fetchAllDocumentPages,
+  fetchAllDocumentProcessing,
   fetchDocumentAggregate,
-  fetchDocumentProcessing,
   fetchDocumentWorkspace,
   markDocumentReady,
   retranscribeDocument,
+  retryConfirmDocument,
   retryPage,
   returnToNeedsReview,
 } from '../../lib/assignment-reader-api';
+import { processingRefetchInterval } from '../use-processing-poll';
 import { assignmentReaderKeys } from '../../lib/assignment-reader-query-keys';
 
 export function useDocumentAggregate(documentType: DocumentType, documentId: string | undefined) {
@@ -42,24 +43,24 @@ export function useDocumentPages(documentType: DocumentType, documentId: string 
 }
 
 /**
- * The canonical, sortable/searchable/paginated per-page processing list
- * (TASK-023). Polling is the caller's responsibility (`refetchIntervalMs`,
- * `false` to pause) so the "every 3000 ms, only while visible and any page
- * is non-terminal" rule lives with the component that knows both the page's
- * visibility and the document's current rollup, not buried in this hook.
+ * The complete current processing set (TASK-023's per-document page
+ * detail): every current page, not one canonical-list page of it. Polls
+ * every 3000 ms through `processingRefetchInterval`'s own rule — evaluated
+ * as a function so it reacts to the response already on hand (visible and
+ * not yet `completed`) without the caller needing that data first.
  */
-export function useDocumentProcessingList(
+export function useAllDocumentProcessing(
   documentType: DocumentType,
   documentId: string | undefined,
-  query: ProcessingListQuery,
-  refetchIntervalMs: number | false,
+  visible: boolean,
 ) {
   return useQuery({
-    queryKey: assignmentReaderKeys.documents.processing(documentType, documentId ?? '', query),
-    queryFn: () => fetchDocumentProcessing(documentType, documentId as string, query),
+    queryKey: [...assignmentReaderKeys.documents.aggregate(documentType, documentId ?? ''), 'processing-all'],
+    queryFn: () => fetchAllDocumentProcessing(documentType, documentId as string),
     enabled: Boolean(documentId),
     placeholderData: (previous) => previous,
-    refetchInterval: refetchIntervalMs,
+    refetchInterval: (query) =>
+      processingRefetchInterval(query.state.data, visible ? 'visible' : 'hidden'),
   });
 }
 
@@ -144,6 +145,19 @@ export function useRetryPage(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (pageId: string) => retryPage(pageId),
+    onSuccess: () => invalidateWorkspace(queryClient, documentType, documentId, relatedKeys),
+  });
+}
+
+/** Re-enqueues undelivered revisions only (api-routes-documents.md §2.6). */
+export function useRetryConfirmDocument(
+  documentType: DocumentType,
+  documentId: string,
+  relatedKeys: readonly (readonly unknown[])[] = [],
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => retryConfirmDocument(documentType, documentId),
     onSuccess: () => invalidateWorkspace(queryClient, documentType, documentId, relatedKeys),
   });
 }

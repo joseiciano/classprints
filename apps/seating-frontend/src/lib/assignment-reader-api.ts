@@ -390,6 +390,45 @@ export const fetchAllDocumentPages = async (
   return pages.sort((a, b) => a.position - b.position);
 };
 
+/**
+ * Walks every page of the canonical processing list (fixed `pageSize: 10`,
+ * up to 20 current pages) and returns one combined `DocumentProcessingResponse`
+ * whose `data` holds every current page, ordered by `position` — the
+ * per-document page detail (TASK-023/`ProcessingDetailView`) and its
+ * whole-document retranscription consent need the complete current set, not
+ * one page of it.
+ */
+export const fetchAllDocumentProcessing = async (
+  documentType: DocumentType,
+  documentId: string,
+): Promise<DocumentProcessingResponse> => {
+  const first = await fetchDocumentProcessing(documentType, documentId, {
+    sort: 'uploadedAt',
+    direction: 'asc',
+    page: 1,
+  });
+  const items = [...first.data];
+  for (let page = 2; page <= first.pagination.totalPages; page += 1) {
+    const next = await fetchDocumentProcessing(documentType, documentId, {
+      sort: 'uploadedAt',
+      direction: 'asc',
+      page,
+    });
+    items.push(...next.data);
+  }
+  items.sort((a, b) => a.position - b.position);
+  return {
+    ...first,
+    data: items,
+    pagination: {
+      page: 1,
+      pageSize: 10,
+      totalItems: items.length,
+      totalPages: items.length === 0 ? 0 : 1,
+    },
+  };
+};
+
 const uploadDocumentPageEndpoint = (documentType: DocumentType, documentId: string): string =>
   documentType === 'materials'
     ? `/material-versions/${documentId}/pages`
@@ -466,6 +505,23 @@ export const retryPage = async (pageId: string): Promise<RetryPageResult> => {
   const response = await request<DataResponse<RetryPageResult>>(`/pages/${pageId}/retry`, {
     method: 'POST',
   });
+  return response.data;
+};
+
+/**
+ * Re-enqueues only undelivered transcription revisions after a committed
+ * confirm/retry/retranscribe's queue send failed (`QUEUE_DELIVERY_FAILED`;
+ * api-routes-documents.md §2.6) — never a second confirm/retry/retranscribe
+ * of already-committed work.
+ */
+export const retryConfirmDocument = async (
+  documentType: DocumentType,
+  documentId: string,
+): Promise<ConfirmDocumentResult> => {
+  const response = await request<DataResponse<ConfirmDocumentResult>>(
+    `/documents/${documentType}/${documentId}/retry-confirm`,
+    { method: 'POST' },
+  );
   return response.data;
 };
 
