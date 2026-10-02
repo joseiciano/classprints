@@ -142,6 +142,11 @@ export function WorkspacePanel({
             />
           ) : (
             <PageEditorGrid
+              // Remounts the editor pane (and its autosave/conflict state)
+              // on every page switch, rather than trying to reset internal
+              // state in place for what React otherwise treats as the same
+              // component instance.
+              key={selectedPage.id}
               documentType={documentType}
               documentId={documentId}
               pageId={selectedPage.id}

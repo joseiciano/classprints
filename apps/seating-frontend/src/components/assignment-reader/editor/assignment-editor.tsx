@@ -83,6 +83,10 @@ export function AssignmentEditor({
   const [mathEditor, setMathEditor] = useState<(MathClickDetail & { isNew: boolean }) | null>(null);
   const [mathLatexInput, setMathLatexInput] = useState('');
   const timeoutRef = useRef<number | null>(null);
+  // Tracks the content as of the last successful save (or load/reload), so
+  // autosave can skip a true no-op without comparing against the stale
+  // original prop forever.
+  const lastSavedContentRef = useRef<JSONContent>(draftToEditorContent(initialDraft) as JSONContent);
 
   const updateDraft = useUpdatePageDraft(page.id, documentType, documentId);
   const reviewPage = useReviewPage(page.id, documentType, documentId);
@@ -159,7 +163,7 @@ export function AssignmentEditor({
       console.error('assignment-editor: refused to save invalid draft', validated.issues);
       return;
     }
-    if (draftContentEquals(validated.draft.doc as JSONContent, draftToEditorContent(initialDraft) as JSONContent) && baselineRevision === page.contentRevision) {
+    if (draftContentEquals(validated.draft.doc as JSONContent, lastSavedContentRef.current)) {
       setIsDirty(false);
       return;
     }
@@ -168,6 +172,7 @@ export function AssignmentEditor({
         draft: validated.draft,
         expectedContentRevision: baselineRevision,
       });
+      lastSavedContentRef.current = validated.draft.doc as JSONContent;
       setBaselineRevision(result.page.contentRevision);
       setIsDirty(false);
     } catch (error) {
@@ -180,7 +185,9 @@ export function AssignmentEditor({
   const handleReloadLatest = async () => {
     const fresh = await onReloadLatest();
     if (!fresh || !editor) return;
-    editor.commands.setContent(draftToEditorContent(fresh.draft) as JSONContent, { emitUpdate: false });
+    const freshContent = draftToEditorContent(fresh.draft) as JSONContent;
+    editor.commands.setContent(freshContent, { emitUpdate: false });
+    lastSavedContentRef.current = freshContent;
     setBaselineRevision(fresh.contentRevision);
     setConflict(false);
     setIsDirty(false);
