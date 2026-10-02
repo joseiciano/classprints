@@ -158,6 +158,7 @@ export const apiErrorCodeSchema = z.enum([
   'SCORE_EXCEEDS_MAXIMUM',
   'CONSENT_REQUIRED',
   'QUEUE_DELIVERY_FAILED',
+  'DELETION_ALREADY_PENDING',
   'INTERNAL_ERROR',
 ]);
 

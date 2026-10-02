@@ -5,6 +5,8 @@ import {
 } from '../src/assignment-reader/assignment-reader.service';
 import type { AssignmentReaderRepository } from '../src/assignment-reader/assignment-reader.repository';
 import type { SaveSeatingChartInput } from '../src/assignment-reader/assignment-reader.repository';
+import { DeletionScopeConflictError } from '../src/assignment-reader/assignment-reader.types';
+import type { DeletionOperationRow } from '../src/assignment-reader/assignment-reader.types';
 import type {
   ClassRecord,
   ClassListQuery,
@@ -66,6 +68,7 @@ const submissionRecord = (teacherId: string, id: string, assignmentId: string, s
   gradedAt: null,
   createdAt: '2026-09-23T10:00:00.000Z',
   updatedAt: '2026-09-23T10:00:00.000Z',
+  confirmedAt: null,
   readOnly: false,
 });
 
@@ -606,6 +609,106 @@ describe('AssignmentReaderService — processing list ownership (TASK-008)', () 
       service.listProcessing(TEACHER_A, 'materials', 'no-such-version', processingQuery),
       404,
       'RESOURCE_NOT_FOUND',
+    );
+  });
+});
+
+describe('AssignmentReaderService — deletion scopes (TASK-018 review fix)', () => {
+  /**
+   * A minimal fake standing in for the deletion-operations table: pending
+   * rows are keyed by `target_id` alone (mirroring
+   * `idx_deletion_operations_pending_target`, which is unique on
+   * `target_id` regardless of `target_type`), so creating a second scope
+   * for an id a different scope already holds throws
+   * `DeletionScopeConflictError` exactly as the real repository now does.
+   */
+  const buildDeletionFakeRepository = (): {
+    repo: AssignmentReaderRepository;
+    pendingByTargetId: Map<string, DeletionOperationRow>;
+  } => {
+    const pendingByTargetId = new Map<string, DeletionOperationRow>();
+    let nextId = 1;
+    const assignment: AssignmentRecord = {
+      id: 'assignment-1',
+      classId: 'class-1',
+      name: 'Quiz 1',
+      status: 'need_review',
+      maxScore: 10,
+      createdAt: '2026-09-23T10:00:00.000Z',
+      updatedAt: '2026-09-23T10:00:00.000Z',
+      className: 'Class A',
+      classStatus: 'active',
+      currentMaterialVersion: null,
+      submissionCounts: {
+        total: 0,
+        notStarted: 0,
+        processing: 0,
+        needsReview: 0,
+        readyToGrade: 0,
+        graded: 0,
+        failed: 0,
+      },
+    };
+    const repo = {
+      findAssignment: (teacherId: string, assignmentId: string) =>
+        Promise.resolve(teacherId === TEACHER_A && assignmentId === assignment.id ? assignment : null),
+      findPendingDeletionOperation: (_teacherId: string, targetType: string, targetId: string) => {
+        const existing = pendingByTargetId.get(targetId);
+        return Promise.resolve(existing && existing.target_type === targetType ? existing : null);
+      },
+      createScopeDeletionOperation: ({ targetType, targetId }: { targetType: string; targetId: string }) => {
+        const existing = pendingByTargetId.get(targetId);
+        if (existing) {
+          return Promise.reject(new DeletionScopeConflictError(existing));
+        }
+        const row: DeletionOperationRow = {
+          id: `op-${nextId++}`,
+          target_type: targetType,
+          target_id: targetId,
+          status: 'pending',
+          accepted_at_ms: Date.now(),
+        };
+        pendingByTargetId.set(targetId, row);
+        return Promise.resolve(row);
+      },
+    } as unknown as AssignmentReaderRepository;
+    return { repo, pendingByTargetId };
+  };
+
+  it('deleteMaterials: first call creates a pending operation; the same-scope replay returns it unchanged', async () => {
+    const { repo } = buildDeletionFakeRepository();
+    const service = AssignmentReaderService.fromRepository(repo);
+    const first = await service.deleteMaterials(TEACHER_A, 'assignment-1');
+    expect(first.created).toBe(true);
+    expect(first.operation.targetType).toBe('materials');
+    const second = await service.deleteMaterials(TEACHER_A, 'assignment-1');
+    expect(second.created).toBe(false);
+    expect(second.operation.id).toBe(first.operation.id);
+  });
+
+  it('deleteMaterials then deleteAssignment (both target the assignment\'s own id): the second, id-colliding scope surfaces 409 DELETION_ALREADY_PENDING instead of an unhandled error', async () => {
+    const { repo } = buildDeletionFakeRepository();
+    const service = AssignmentReaderService.fromRepository(repo);
+    const materials = await service.deleteMaterials(TEACHER_A, 'assignment-1');
+    expect(materials.created).toBe(true);
+
+    await expectError(
+      service.deleteAssignment(TEACHER_A, 'assignment-1'),
+      409,
+      'DELETION_ALREADY_PENDING',
+    );
+  });
+
+  it('deleteAssignment then deleteMaterials (reverse order): still surfaces 409 DELETION_ALREADY_PENDING rather than a raw unique-violation', async () => {
+    const { repo } = buildDeletionFakeRepository();
+    const service = AssignmentReaderService.fromRepository(repo);
+    const assignment = await service.deleteAssignment(TEACHER_A, 'assignment-1');
+    expect(assignment.created).toBe(true);
+
+    await expectError(
+      service.deleteMaterials(TEACHER_A, 'assignment-1'),
+      409,
+      'DELETION_ALREADY_PENDING',
     );
   });
 });

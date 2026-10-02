@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import postgres from 'postgres';
 import type { Sql } from '../src/lib/db';
 import { createAssignmentReaderRepository } from '../src/assignment-reader/assignment-reader.repository';
+import { DeletionScopeConflictError } from '../src/assignment-reader/assignment-reader.types';
 
 /**
  * Integration proof for the replacePageRow review fix: runs the real
@@ -594,6 +595,320 @@ d('integration: assignment-reader repository against live Postgres', () => {
       // now-superseded revision — PAT-004: it is audit history, not current.
       await sql`update public.pages set page_revision = 2 where id = ${pageId}`;
       expect(await repo.hasCurrentQuestionJudgments(scope.teacherId, scope.submissionId)).toBe(false);
+
+      await cleanup(scope.teacherId);
+    },
+  );
+
+  const readSubmissionGrading = async (submissionId: string) => {
+    const rows = await sql<
+      ({
+        document_revision: number;
+        review_state: string | null;
+        grading_state: string;
+        graded_at_ms: string | null;
+        score: string | null;
+        comments: string | null;
+      })[]
+    >`
+      select document_revision, review_state, grading_state, graded_at_ms, score, comments
+      from public.submissions where id = ${submissionId}
+    `;
+    return rows[0]!;
+  };
+
+  it(
+    'updatePageDraftRow (TASK-016, TEST-003): compare-and-swap rejects a stale expectedContentRevision and a successful edit invalidates the page\'s stale review evidence',
+    { timeout: 30000 },
+    async () => {
+      sql = postgres(connectionString, { prepare: false, max: 2 });
+      const repo = createAssignmentReaderRepository(sql as unknown as Sql);
+      const scope: Scope = {
+        teacherId: '11010101-0101-4101-8101-010101010101',
+        classId: '12020202-0202-4202-8202-020202020202',
+        studentId: '13030303-0303-4303-8303-030303030303',
+        assignmentId: '14040404-0404-4404-8404-040404040404',
+        submissionId: '15050505-0505-4505-8505-050505050505',
+      };
+      const pageId = '16060606-0606-4606-8606-060606060606';
+      const now = Date.now();
+
+      await cleanup(scope.teacherId);
+      await seedSubmissionScope(scope, now);
+      await insertCompletedPage(pageId, scope, 1, now);
+      // The page was already reviewed at its current (0th) content revision,
+      // and the document is fully completed-and-reviewed per that stale
+      // state (REQ-016 invalidation is the thing under test here).
+      await sql`update public.pages set reviewed_content_revision = 0, reviewed_at_ms = ${now} where id = ${pageId}`;
+      await sql`update public.submissions set review_state = 'needs_review' where id = ${scope.submissionId}`;
+
+      // Conflicting edit: the caller's expectedContentRevision is stale.
+      const stale = await repo.updatePageDraftRow({
+        teacherId: scope.teacherId,
+        pageId,
+        draft: { schemaVersion: 1, doc: { type: 'doc', content: [] } },
+        expectedContentRevision: 5,
+      });
+      expect(stale).toEqual({ outcome: 'conflict', currentContentRevision: 0 });
+      // Nothing committed by the rejected attempt.
+      const afterStale = await readPage(pageId);
+      expect(afterStale.content_revision).toBe(0);
+      expect(afterStale.reviewed_content_revision).toBe(0);
+
+      // Correct revision: the edit commits and REQ-016 invalidates the now-
+      // stale review evidence (a teacher's prior review of the old content
+      // must not silently carry over to the new content).
+      const ok = await repo.updatePageDraftRow({
+        teacherId: scope.teacherId,
+        pageId,
+        draft: { schemaVersion: 1, doc: { type: 'doc', content: [] } },
+        expectedContentRevision: 0,
+      });
+      expect(ok.outcome).toBe('ok');
+      const afterOk = await readPage(pageId);
+      expect(afterOk.content_revision).toBe(1);
+      expect(afterOk.teacher_edit_count).toBe(1);
+      expect(afterOk.edited_by_teacher).toBe(true);
+      expect(afterOk.reviewed_content_revision).toBeNull();
+      expect(afterOk.reviewed_at_ms).toBeNull();
+      // The document stays gated at needs_review (every current page is
+      // still completed, just no longer reviewed) rather than silently
+      // staying ready — "stale review evidence cannot unlock readiness".
+      const submission = await readSubmissionGrading(scope.submissionId);
+      expect(submission.review_state).toBe('needs_review');
+
+      await cleanup(scope.teacherId);
+    },
+  );
+
+  it(
+    'markDocumentReadyRow + markSubmissionGradedRow (TASK-016/TASK-017, TEST-003): the readiness gate blocks mark-ready until every current page is reviewed at its current revision, and the grading gate blocks grading until the document is ready_to_grade',
+    { timeout: 30000 },
+    async () => {
+      sql = postgres(connectionString, { prepare: false, max: 2 });
+      const repo = createAssignmentReaderRepository(sql as unknown as Sql);
+      const scope: Scope = {
+        teacherId: '21010101-0101-4101-8101-010101010101',
+        classId: '22020202-0202-4202-8202-020202020202',
+        studentId: '23030303-0303-4303-8303-030303030303',
+        assignmentId: '24040404-0404-4404-8404-040404040404',
+        submissionId: '25050505-0505-4505-8505-050505050505',
+      };
+      const pageId = '26060606-0606-4606-8606-060606060606';
+      const now = Date.now();
+
+      await cleanup(scope.teacherId);
+      await seedSubmissionScope(scope, now);
+      await insertCompletedPage(pageId, scope, 1, now);
+      await sql`update public.submissions set review_state = 'needs_review' where id = ${scope.submissionId}`;
+
+      // Grading gate: blocked before the document is even ready_to_grade.
+      const gradedTooEarly = await repo.markSubmissionGradedRow({
+        teacherId: scope.teacherId,
+        submissionId: scope.submissionId,
+        expectedDocumentRevision: 1,
+      });
+      expect(gradedTooEarly).toEqual({ outcome: 'invalid_state' });
+
+      // Readiness gate: the one current page is completed but not yet
+      // reviewed at its current (0th) content revision.
+      const readyTooEarly = await repo.markDocumentReadyRow({
+        teacherId: scope.teacherId,
+        documentType: 'submission',
+        documentId: scope.submissionId,
+        expectedDocumentRevision: 1,
+      });
+      expect(readyTooEarly).toEqual({ outcome: 'invalid_state' });
+      expect((await readSubmissionGrading(scope.submissionId)).review_state).toBe('needs_review');
+
+      // Review the page at its current revision, then the gate opens.
+      await sql`update public.pages set reviewed_content_revision = 0, reviewed_at_ms = ${now} where id = ${pageId}`;
+      const ready = await repo.markDocumentReadyRow({
+        teacherId: scope.teacherId,
+        documentType: 'submission',
+        documentId: scope.submissionId,
+        expectedDocumentRevision: 1,
+      });
+      expect(ready.outcome).toBe('ok');
+      if (ready.outcome === 'ok') expect(ready.reviewState).toBe('ready_to_grade');
+      expect((await readSubmissionGrading(scope.submissionId)).review_state).toBe('ready_to_grade');
+
+      // The grading gate now opens too.
+      const graded = await repo.markSubmissionGradedRow({
+        teacherId: scope.teacherId,
+        submissionId: scope.submissionId,
+        expectedDocumentRevision: 1,
+      });
+      expect(graded.outcome).toBe('ok');
+      if (graded.outcome === 'ok') expect(graded.row.grading_state).toBe('graded');
+      expect((await readSubmissionGrading(scope.submissionId)).grading_state).toBe('graded');
+
+      await cleanup(scope.teacherId);
+    },
+  );
+
+  it(
+    'returnToNeedsReviewRow (TASK-017, TEST-003): reopening a graded submission clears graded visibility but retains the draft score and comments',
+    { timeout: 30000 },
+    async () => {
+      sql = postgres(connectionString, { prepare: false, max: 2 });
+      const repo = createAssignmentReaderRepository(sql as unknown as Sql);
+      const scope: Scope = {
+        teacherId: '31010101-0101-4101-8101-010101010101',
+        classId: '32020202-0202-4202-8202-020202020202',
+        studentId: '33030303-0303-4303-8303-030303030303',
+        assignmentId: '34040404-0404-4404-8404-040404040404',
+        submissionId: '35050505-0505-4505-8505-050505050505',
+      };
+      const pageId = '36060606-0606-4606-8606-060606060606';
+      const now = Date.now();
+
+      await cleanup(scope.teacherId);
+      await seedSubmissionScope(scope, now);
+      await insertCompletedPage(pageId, scope, 1, now);
+      await sql`update public.pages set reviewed_content_revision = 0, reviewed_at_ms = ${now} where id = ${pageId}`;
+      await sql`
+        update public.submissions set
+          review_state = 'ready_to_grade', grading_state = 'graded', graded_at_ms = ${now},
+          score = 8, comments = 'Nice work — watch your units.'
+        where id = ${scope.submissionId}
+      `;
+
+      const result = await repo.returnToNeedsReviewRow({
+        teacherId: scope.teacherId,
+        documentType: 'submission',
+        documentId: scope.submissionId,
+        expectedDocumentRevision: 1,
+      });
+      expect(result.outcome).toBe('ok');
+      if (result.outcome === 'ok') expect(result.gradingState).toBe('not_graded');
+
+      const submission = await readSubmissionGrading(scope.submissionId);
+      expect(submission.review_state).toBe('needs_review');
+      expect(submission.grading_state).toBe('not_graded');
+      expect(submission.graded_at_ms).toBeNull();
+      // REQ-013 §3.3 / TASK-017: draft grading fields are retained for later
+      // revision, not deleted, when a graded document is reopened.
+      expect(Number(submission.score)).toBe(8);
+      expect(submission.comments).toBe('Nice work — watch your units.');
+
+      // The now-stale per-page review evidence is cleared too, re-arming
+      // the readiness gate (markDocumentReadyRow would reject it again).
+      const page = await readPage(pageId);
+      expect(page.reviewed_content_revision).toBeNull();
+      expect(page.reviewed_at_ms).toBeNull();
+
+      await cleanup(scope.teacherId);
+    },
+  );
+
+  it(
+    'notDeletionPending (TASK-018 review fix): a pending materials-only deletion hides the materials version and its pages but not the assignment or its submission',
+    { timeout: 30000 },
+    async () => {
+      sql = postgres(connectionString, { prepare: false, max: 2 });
+      const repo = createAssignmentReaderRepository(sql as unknown as Sql);
+      const scope: Scope = {
+        teacherId: 'f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1',
+        classId: 'f2f2f2f2-f2f2-4f2f-8f2f-f2f2f2f2f2f2',
+        studentId: 'f3f3f3f3-f3f3-4f3f-8f3f-f3f3f3f3f3f3',
+        assignmentId: 'f4f4f4f4-f4f4-4f4f-8f4f-f4f4f4f4f4f4',
+        submissionId: 'f5f5f5f5-f5f5-4f5f-8f5f-f5f5f5f5f5f5',
+      };
+      const materialsVersionId = 'f6f6f6f6-f6f6-4f6f-8f6f-f6f6f6f6f6f6';
+      const materialsPageId = 'f7f7f7f7-f7f7-4f7f-8f7f-f7f7f7f7f7f7';
+      const submissionPageId = 'f8f8f8f8-f8f8-4f8f-8f8f-f8f8f8f8f8f8';
+      const operationId = 'f9f9f9f9-f9f9-4f9f-8f9f-f9f9f9f9f9f9';
+      const now = Date.now();
+
+      await cleanup(scope.teacherId);
+      await seedSubmissionScope(scope, now);
+      await sql`insert into public.assignment_material_versions (
+          id, assignment_id, teacher_id, version, lifecycle, draft_confirmed, confirmed_at_ms, created_at_ms, updated_at_ms
+        ) values (${materialsVersionId}, ${scope.assignmentId}, ${scope.teacherId}, 1, 'current', true, ${now}, ${now}, ${now})`;
+      await sql`insert into public.pages (
+          id, document_type, materials_version_id, class_id, assignment_id, teacher_id,
+          position, label, storage_key, processing_state, uploaded_at_ms, created_at_ms, updated_at_ms
+        ) values (
+          ${materialsPageId}, 'materials', ${materialsVersionId}, ${scope.classId}, ${scope.assignmentId}, ${scope.teacherId},
+          1, 'Page', 'it/' || ${materialsPageId} || '.jpg', 'uploading', ${now}, ${now}, ${now}
+        )`;
+      await insertPage(submissionPageId, scope, 1, 'uploading', now);
+
+      // A "delete all materials" command (TASK-018) creates exactly one
+      // `deletion_operations` row whose `target_id` is the ASSIGNMENT's own
+      // id (assignment-reader.service.ts `deleteMaterials`) — the same id
+      // space `target_type = 'assignment'` uses. Before the fix, every
+      // `notDeletionPending`/`notDeletionPendingParent` guard matched this
+      // row by `target_id` alone, so this pending `materials` op also hid
+      // the assignment itself, its submission, and the submission's pages.
+      await sql`insert into public.deletion_operations (
+          id, teacher_id, target_type, target_id, status, accepted_at_ms, updated_at_ms
+        ) values (${operationId}, ${scope.teacherId}, 'materials', ${scope.assignmentId}, 'pending', ${now}, ${now})`;
+
+      expect(await repo.findMaterialVersion(scope.teacherId, materialsVersionId)).toBeNull();
+      expect(await repo.findPage(scope.teacherId, materialsPageId)).toBeNull();
+
+      const assignment = await repo.findAssignment(scope.teacherId, scope.assignmentId);
+      expect(assignment).not.toBeNull();
+      expect(assignment?.id).toBe(scope.assignmentId);
+
+      const submission = await repo.findSubmission(scope.teacherId, scope.submissionId);
+      expect(submission).not.toBeNull();
+      expect(submission?.id).toBe(scope.submissionId);
+
+      const submissionPage = await repo.findPage(scope.teacherId, submissionPageId);
+      expect(submissionPage).not.toBeNull();
+      expect(submissionPage?.id).toBe(submissionPageId);
+
+      await cleanup(scope.teacherId);
+    },
+  );
+
+  it(
+    'createDeletionOperation (TASK-018 review fix): a concurrent delete under a different, id-colliding scope throws DeletionScopeConflictError instead of an unhandled unique-violation',
+    { timeout: 30000 },
+    async () => {
+      sql = postgres(connectionString, { prepare: false, max: 2 });
+      const repo = createAssignmentReaderRepository(sql as unknown as Sql);
+      const scope: Scope = {
+        teacherId: 'a9a9a9a9-a9a9-4a9a-8a9a-a9a9a9a9a9a9',
+        classId: 'b9b9b9b9-b9b9-4b9b-8b9b-b9b9b9b9b9b9',
+        studentId: 'c9c9c9c9-c9c9-4c9c-8c9c-c9c9c9c9c9c9',
+        assignmentId: 'd9d9d9d9-d9d9-4d9d-8d9d-d9d9d9d9d9d9',
+        submissionId: 'e9e9e9e9-e9e9-4e9e-8e9e-e9e9e9e9e9e9',
+      };
+      const now = Date.now();
+
+      await cleanup(scope.teacherId);
+      await seedSubmissionScope(scope, now);
+
+      // First accepted request: "delete all materials" (target_type =
+      // 'materials', target_id = the assignment's own id).
+      const first = await repo.createDeletionOperation({
+        teacherId: scope.teacherId,
+        targetType: 'materials',
+        targetId: scope.assignmentId,
+        storageKeys: [],
+      });
+      expect(first.target_type).toBe('materials');
+
+      // A concurrent "delete the whole assignment" request races in before
+      // cleanup finishes; it shares the same target_id and collides on
+      // `idx_deletion_operations_pending_target` (unique on target_id alone).
+      try {
+        await repo.createDeletionOperation({
+          teacherId: scope.teacherId,
+          targetType: 'assignment',
+          targetId: scope.assignmentId,
+          storageKeys: [],
+        });
+        throw new Error('expected DeletionScopeConflictError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(DeletionScopeConflictError);
+        expect((error as InstanceType<typeof DeletionScopeConflictError>).existing.target_type).toBe('materials');
+        expect((error as InstanceType<typeof DeletionScopeConflictError>).existing.id).toBe(first.id);
+      }
 
       await cleanup(scope.teacherId);
     },

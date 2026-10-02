@@ -51,6 +51,7 @@ export type ApiErrorCode =
   | 'SCORE_EXCEEDS_MAXIMUM'
   | 'CONSENT_REQUIRED'
   | 'QUEUE_DELIVERY_FAILED'
+  | 'DELETION_ALREADY_PENDING'
   | 'INTERNAL_ERROR';
 
 export interface ValidationIssue {
@@ -308,6 +309,7 @@ export interface SubmissionRecord {
   gradedAt: ISODateTime | null;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
+  confirmedAt: ISODateTime | null;
   readOnly: boolean;
 }
 
