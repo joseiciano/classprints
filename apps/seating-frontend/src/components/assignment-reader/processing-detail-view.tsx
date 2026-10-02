@@ -77,9 +77,9 @@ export function ProcessingDetailView({
 
       <div className="rounded-[10px] border border-border bg-muted/30 p-3.5 text-xs text-muted-foreground">
         <p>
-          Default retry reprocesses only the failed page; succeeded pages are never reprocessed. If
-          a committed action's queue delivery failed, use retry queue delivery to re-enqueue only the
-          undelivered revisions.
+          Default retry reprocesses only the failed page; succeeded pages are never reprocessed. If a
+          committed action&apos;s queue delivery failed, use retry queue delivery to re-enqueue only
+          the undelivered revisions.
         </p>
         <button
           type="button"

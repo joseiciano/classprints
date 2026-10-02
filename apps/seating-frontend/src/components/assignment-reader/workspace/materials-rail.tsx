@@ -20,7 +20,7 @@ export function MaterialsRail({
   if (!materialsVersion) {
     return (
       <p className="text-sm text-muted-foreground">
-        No materials version was available when this submission's review began.
+        No materials version was available when this submission&apos;s review began.
       </p>
     );
   }

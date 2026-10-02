@@ -27,7 +27,7 @@ import { ReviewControls } from './review-controls';
  * anything under archived ancestry render read-only throughout.
  */
 export function WorkspacePanel({
-  classId: _classId,
+  classId,
   assignmentId,
   documentType,
   documentId,
@@ -122,7 +122,7 @@ export function WorkspacePanel({
       </section>
 
       {pages.length === 0 ? (
-        <EmptyDocumentNotice assignmentId={assignmentId} classId={_classId} documentType={documentType} documentId={documentId} />
+        <EmptyDocumentNotice assignmentId={assignmentId} classId={classId} documentType={documentType} documentId={documentId} />
       ) : (
         <section aria-labelledby="page-content-heading" className="space-y-4 rounded-[12px] border border-border bg-card p-5 shadow-card">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -134,7 +134,7 @@ export function WorkspacePanel({
 
           {!isCompleted ? (
             <PageProcessingPlaceholder
-              classId={_classId}
+              classId={classId}
               assignmentId={assignmentId}
               documentType={documentType}
               documentId={documentId}
@@ -164,7 +164,7 @@ export function WorkspacePanel({
             </h2>
             <Link
               to="/classes/$classId/assignments/$assignmentId"
-              params={{ classId: _classId, assignmentId }}
+              params={{ classId, assignmentId }}
               search={{ q: '', sort: 'studentName', direction: 'asc', page: 1 }}
               className="text-xs font-semibold text-primary hover:underline"
             >
@@ -177,7 +177,7 @@ export function WorkspacePanel({
 
       {documentType === 'submission' && data.submission ? (
         <GradingRail
-          classId={_classId}
+          classId={classId}
           assignmentId={assignmentId}
           assignmentName={data.assignment.name}
           assignmentMaxScore={data.assignment.maxScore}
