@@ -561,6 +561,10 @@ export interface DocumentProcessingResponse extends ListResponse<ProcessingPageI
   processingState: ProcessingState | null;
   processingCounts: ProcessingCounts;
   reviewState: ReviewState | null;
+  /** Whether the submission currently has any current (live page-revision)
+   * question judgment; always false for materials, which never carry
+   * judgments. Gates the retranscription judgment-reset consent checkbox. */
+  hasQuestionJudgments: boolean;
 }
 
 export interface DocumentAggregate {

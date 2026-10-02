@@ -415,6 +415,10 @@ export class AssignmentReaderService {
         : await this.deps.repo.findSubmission(teacherId, documentId);
     if (!aggregate) throw notFound();
     const list = await this.deps.repo.listProcessing({ teacherId, documentType, documentId, query });
+    const hasQuestionJudgments =
+      documentType === 'submission'
+        ? await this.deps.repo.hasCurrentQuestionJudgments(teacherId, documentId)
+        : false;
     return {
       ...list,
       documentType,
@@ -423,6 +427,7 @@ export class AssignmentReaderService {
       processingState: aggregate.processingState,
       processingCounts: aggregate.processingCounts,
       reviewState: aggregate.reviewState,
+      hasQuestionJudgments,
     };
   }
 

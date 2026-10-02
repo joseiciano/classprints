@@ -47,7 +47,10 @@ export function WorkspacePanel({
 
   const data = workspace.data;
   const needsReviewContextCapture =
-    documentType === 'submission' && data !== undefined && !data.reviewContextCaptured;
+    documentType === 'submission' &&
+    data !== undefined &&
+    !data.reviewContextCaptured &&
+    !data.readOnly;
 
   useEffect(() => {
     if (needsReviewContextCapture && !captureReviewContext.isPending) {

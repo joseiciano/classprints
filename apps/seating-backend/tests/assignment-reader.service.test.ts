@@ -351,6 +351,7 @@ const buildFakeRepository = (state: FakeState): AssignmentReaderRepository => {
       }
       return Promise.resolve(listResponse([]));
     },
+    hasCurrentQuestionJudgments: () => Promise.resolve(false),
   };
 };
 

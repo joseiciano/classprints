@@ -101,7 +101,7 @@ export function ProcessingPanel({
           replacePendingPageId={replacePage.isPending ? (replacePage.variables?.pageId ?? null) : null}
           retranscribeControls={{
             hasTeacherEdits: anyPageEditedByTeacher,
-            hasQuestionJudgments: documentType === 'submission',
+            hasQuestionJudgments: processing.data.hasQuestionJudgments,
             documentRevision: workspace.data.documentRevision,
           }}
         />
