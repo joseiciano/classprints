@@ -46,7 +46,7 @@ echo
 for queue in seating-jobs seating-jobs-dlq email-jobs \
   transcription-jobs transcription-jobs-dlq \
   document-cleanup-jobs document-cleanup-jobs-dlq; do
-  if wrangler queues list 2>/dev/null | grep -q "\"$queue\""; then
+  if wrangler queues info "$queue" >/dev/null 2>&1; then
     echo "queue       : $queue (exists, skipped)"
   else
     wrangler queues create "$queue" >/dev/null 2>&1 \
@@ -62,7 +62,7 @@ echo
 # through the authenticated API worker.
 # ---------------------------------------------------------------------------
 for bucket in "assignment-reader-$ENVIRONMENT"; do
-  if wrangler r2 bucket list 2>/dev/null | grep -q "\"$bucket\""; then
+  if wrangler r2 bucket list 2>/dev/null | grep -q "^name: *$bucket\$"; then
     echo "r2 bucket   : $bucket (exists, skipped)"
   else
     wrangler r2 bucket create "$bucket" >/dev/null 2>&1 \
