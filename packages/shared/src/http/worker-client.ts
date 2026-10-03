@@ -1,6 +1,9 @@
+import { getCsrfHeaderName, readCsrfToken } from '../auth/session';
 import { ApiError, type FetcherErrorPayload } from '../errors';
 import { readEnv } from '../runtime-env';
 import { getWorkerClientConfig } from './config';
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 const trimTrailingSlash = (value: string) => value.replace(/\/$/, '');
 
@@ -139,6 +142,15 @@ export const callWorkerEndpoint = async <T>(
   const { baseUrl, method = 'POST', body, signal, headers: extraHeaders, credentials } = options;
   const url = `${resolveWorkerBaseUrl(baseUrl)}${path.startsWith('/') ? path : `/${path}`}`;
   const headers: Record<string, string> = { ...(extraHeaders ?? {}) };
+
+  // The API requires a double-submit CSRF header on every state-changing request.
+  if (!SAFE_METHODS.has(method.toUpperCase())) {
+    const csrfToken = readCsrfToken();
+    const csrfHeader = getCsrfHeaderName();
+    if (csrfToken && !(csrfHeader in headers)) {
+      headers[csrfHeader] = csrfToken;
+    }
+  }
 
   let requestBody: BodyInit | undefined;
   if (body !== undefined) {

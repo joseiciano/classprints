@@ -1,4 +1,5 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
+import { csrfHeaders } from '@classprints/shared';
 import { useAuth } from '../providers/auth-provider';
 import { useSubscription } from '../hooks/use-subscription';
 import { useEmailNotifications } from '../hooks/use-email-notifications';
@@ -101,6 +102,7 @@ export function SettingsPage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...csrfHeaders(),
         },
         credentials: 'include',
         body: JSON.stringify({ newEmail }),

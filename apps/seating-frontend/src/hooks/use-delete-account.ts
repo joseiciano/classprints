@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { csrfHeaders } from '@classprints/shared';
 import type { DataResponse, DeletionOperation } from '@classprints/assignment-reader-shared';
 import { useAuth } from '../providers/auth-provider';
 
@@ -13,6 +14,7 @@ export async function deleteAccount(): Promise<DeletionOperation> {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',
+      ...csrfHeaders(),
     },
     credentials: 'include',
   });
