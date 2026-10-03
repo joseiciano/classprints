@@ -2,22 +2,9 @@ import { useState } from 'react';
 import type { SavedSeatingChart, SeatingChartListQuery } from '@classprints/assignment-reader-shared';
 import { useSeatingChartsList } from '../../hooks/use-assignment-reader';
 import { formatDate } from '../../lib/assignment-reader-format';
+import type { SeatingChartsTabSearch } from '../../lib/assignment-reader-search';
 import { CanonicalList, type CanonicalListColumn } from './canonical-list';
 import { SavedChartPanelView } from './saved-chart-panel-view';
-
-export interface SeatingChartsTabSearch {
-  q: string;
-  sort: NonNullable<SeatingChartListQuery['sort']>;
-  direction: NonNullable<SeatingChartListQuery['direction']>;
-  page: number;
-}
-
-export const defaultSeatingChartsSearch: SeatingChartsTabSearch = {
-  q: '',
-  sort: 'createdAt',
-  direction: 'desc',
-  page: 1,
-};
 
 export function SeatingChartsTab({
   classId,
