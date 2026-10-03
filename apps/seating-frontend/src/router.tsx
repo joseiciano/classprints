@@ -97,14 +97,6 @@ const indexRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: '/',
   component: OverviewPage,
-  beforeLoad: ({ context }) => {
-    if (context.auth.initializing) {
-      return;
-    }
-    if (context.auth.user) {
-      throw redirect({ to: '/charts' });
-    }
-  },
 });
 
 const pricingRoute = createRoute({
@@ -345,7 +337,8 @@ function PublicLayout() {
 }
 
 function PublicHeader() {
-  const { user } = useAuth();
+  // Use the remembered hint while the session loads so the header doesn't flip.
+  const { likelySignedIn: user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -368,30 +361,27 @@ function PublicHeader() {
           <Link to="/pricing" className="transition-colors hover:text-foreground">
             Pricing
           </Link>
-          {user ? (
-            <Link to="/charts" className="transition-colors hover:text-foreground">
-              Charts
-            </Link>
-          ) : (
-            <Link to="/sign-in" className="transition-colors hover:text-foreground">
-              Sign in
-            </Link>
-          )}
+          <Link
+            to={user ? '/sign-out' : '/sign-in'}
+            className="transition-colors hover:text-foreground"
+          >
+            {user ? 'Sign out' : 'Sign in'}
+          </Link>
           <ThemeToggle />
           <Link
-            to={user ? '/create-arrangement' : '/sign-up'}
+            to={user ? '/charts' : '/sign-up'}
             className="inline-flex min-h-9 items-center rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-pine-ink dark:hover:bg-primary/80"
           >
-            {user ? 'New chart' : 'Get started'}
+            {user ? 'Dashboard' : 'Get started'}
           </Link>
         </nav>
         <div className="flex items-center gap-2 md:hidden">
           <ThemeToggle />
           <Link
-            to={user ? '/create-arrangement' : '/sign-up'}
+            to={user ? '/charts' : '/sign-up'}
             className="hidden min-h-9 items-center rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground sm:inline-flex"
           >
-            {user ? 'New chart' : 'Get started'}
+            {user ? 'Dashboard' : 'Get started'}
           </Link>
           <button
             ref={triggerRef}
@@ -424,16 +414,16 @@ function PublicHeader() {
               Pricing
             </Link>
             <Link
-              to={user ? '/charts' : '/sign-in'}
+              to={user ? '/sign-out' : '/sign-in'}
               className="flex min-h-11 items-center rounded-lg px-3 font-medium hover:bg-muted"
             >
-              {user ? 'Charts' : 'Sign in'}
+              {user ? 'Sign out' : 'Sign in'}
             </Link>
             <Link
-              to={user ? '/create-arrangement' : '/sign-up'}
+              to={user ? '/charts' : '/sign-up'}
               className="mt-2 flex min-h-11 items-center justify-center rounded-full bg-primary px-4 font-semibold text-primary-foreground sm:hidden"
             >
-              {user ? 'New chart' : 'Get started'}
+              {user ? 'Dashboard' : 'Get started'}
             </Link>
           </nav>
         </div>

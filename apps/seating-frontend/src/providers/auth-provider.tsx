@@ -13,10 +13,34 @@ import { getAuthSessionClient } from '../lib/auth-client';
 interface AuthContextValue {
   user: AuthUser | null;
   initializing: boolean;
+  /** Best guess at signed-in state; uses a remembered hint until the session resolves. */
+  likelySignedIn: boolean;
   signIn: UseMutationResult<AuthUser, AuthError, SignInValues>;
   signUp: UseMutationResult<AuthUser, AuthError, SignUpValues>;
   signOut: UseMutationResult<void, AuthError, void>;
 }
+
+const SIGNED_IN_HINT_KEY = 'classprints:signed-in';
+
+const readSignedInHint = (): boolean => {
+  try {
+    return window.localStorage.getItem(SIGNED_IN_HINT_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const writeSignedInHint = (signedIn: boolean) => {
+  try {
+    if (signedIn) {
+      window.localStorage.setItem(SIGNED_IN_HINT_KEY, '1');
+    } else {
+      window.localStorage.removeItem(SIGNED_IN_HINT_KEY);
+    }
+  } catch {
+    // Storage unavailable; the hint is only a UI nicety.
+  }
+};
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -25,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sessionClient = getAuthSessionClient();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [initializing, setInitializing] = useState(true);
+  const [signedInHint] = useState(readSignedInHint);
 
   const signIn = useSignIn({ sessionClient });
   const signUp = useSignUp({ sessionClient });
@@ -43,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       onUserChanged: (nextUser) => {
         setUser(nextUser);
+        writeSignedInHint(nextUser !== null);
         if (!resolved) {
           resolved = true;
           setInitializing(false);
@@ -60,11 +86,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       initializing,
+      likelySignedIn: initializing ? signedInHint : user !== null,
       signIn,
       signUp,
       signOut,
     }),
-    [user, initializing, signIn, signUp, signOut],
+    [user, initializing, signedInHint, signIn, signUp, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
