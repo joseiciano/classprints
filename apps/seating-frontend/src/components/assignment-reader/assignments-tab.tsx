@@ -8,23 +8,8 @@ import { SeatingApiError } from '../../lib/http';
 import { Button } from '../ui/button';
 import { AssignmentFormDialog } from './assignment-form-dialog';
 import { CanonicalList, type CanonicalListColumn } from './canonical-list';
-import { defaultSubmissionsSearch } from './submissions-panel';
+import { defaultSubmissionsSearch, type AssignmentsTabSearch } from '../../lib/assignment-reader-search';
 import { AssignmentStatusChip } from './status-chips';
-
-export interface AssignmentsTabSearch {
-  q: string;
-  sort: NonNullable<AssignmentListQuery['sort']>;
-  direction: NonNullable<AssignmentListQuery['direction']>;
-  page: number;
-  status?: AssignmentListQuery['status'];
-}
-
-export const defaultAssignmentsSearch: AssignmentsTabSearch = {
-  q: '',
-  sort: 'createdAt',
-  direction: 'desc',
-  page: 1,
-};
 
 export function AssignmentsTab({
   classId,

@@ -50,6 +50,23 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        // Only the document workspace route uses the editor, so these stay off
+        // the entry path. Splitting KaTeX from Tiptap/ProseMirror keeps each
+        // chunk under the size warning and lets the browser fetch them in
+        // parallel. Don't add libraries the eager routes also use here, or
+        // they get pulled into the entry chunk.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (/[\\/]node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/.test(id)) return 'vendor-react';
+          if (/[\\/]node_modules[\\/](\.pnpm[\\/])?katex[@\\/]/.test(id)) return 'vendor-katex';
+          if (/[\\/](@tiptap|prosemirror-[^\\/]+|linkifyjs|orderedmap|rope-sequence|w3c-keyname)[@\\/]/.test(id)) {
+            return 'vendor-editor';
+          }
+        },
+      },
+    },
   },
   server: {
     host: '0.0.0.0',

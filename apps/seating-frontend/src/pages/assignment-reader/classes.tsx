@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import type { ClassListQuery, ClassRecord } from '@classprints/assignment-reader-shared';
 import { CanonicalList, type CanonicalListColumn } from '../../components/assignment-reader/canonical-list';
@@ -9,22 +9,7 @@ import { Button } from '../../components/ui/button';
 import { useClassesList, useCreateClass } from '../../hooks/use-assignment-reader';
 import { SeatingApiError } from '../../lib/http';
 import { formatDate } from '../../lib/assignment-reader-format';
-import { defaultClassDashboardSearch } from './class-dashboard';
-
-export interface ClassesSearch {
-  q: string;
-  sort: NonNullable<ClassListQuery['sort']>;
-  direction: NonNullable<ClassListQuery['direction']>;
-  page: number;
-  status?: ClassListQuery['status'];
-}
-
-export const defaultClassesSearch: ClassesSearch = {
-  q: '',
-  sort: 'createdAt',
-  direction: 'desc',
-  page: 1,
-};
+import { defaultClassDashboardSearch, type ClassesSearch } from '../../lib/assignment-reader-search';
 
 export function ClassesPage({
   search,
@@ -175,5 +160,18 @@ function StatusFilter({
         </button>
       ))}
     </div>
+  );
+}
+
+const classesRouteApi = getRouteApi('/_app/classes');
+
+export function ClassesRoute() {
+  const search = classesRouteApi.useSearch();
+  const navigate = classesRouteApi.useNavigate();
+  return (
+    <ClassesPage
+      search={search}
+      onSearchChange={(next) => void navigate({ search: (prev) => ({ ...prev, ...next }) })}
+    />
   );
 }
