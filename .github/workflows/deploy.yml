@@ -51,6 +51,12 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Check queues exist
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: sh scripts/check-queues.sh
+
       - name: Apply schema migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

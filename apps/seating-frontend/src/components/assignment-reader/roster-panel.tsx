@@ -8,25 +8,10 @@ import {
   useStudentsList,
 } from '../../hooks/use-assignment-reader';
 import { SeatingApiError } from '../../lib/http';
+import type { RosterPanelSearch } from '../../lib/assignment-reader-search';
 import { ConfirmActionDialog } from './confirm-action-dialog';
 import { NameFormDialog } from './name-form-dialog';
 import { RosterPanelView } from './roster-panel-view';
-
-export interface RosterPanelSearch {
-  q: string;
-  sort: NonNullable<StudentListQuery['sort']>;
-  direction: NonNullable<StudentListQuery['direction']>;
-  page: number;
-  status?: StudentListQuery['status'];
-}
-
-export const defaultRosterSearch: RosterPanelSearch = {
-  q: '',
-  sort: 'name',
-  direction: 'asc',
-  page: 1,
-  status: 'active',
-};
 
 /**
  * Roster management: add, rename, remove, and destructively delete

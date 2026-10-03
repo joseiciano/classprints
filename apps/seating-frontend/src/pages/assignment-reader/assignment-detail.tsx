@@ -1,14 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, getRouteApi, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { AssignmentFormDialog } from '../../components/assignment-reader/assignment-form-dialog';
 import { ConfirmActionDialog } from '../../components/assignment-reader/confirm-action-dialog';
 import { MaterialsPanel } from '../../components/assignment-reader/materials-panel';
 import { AssignmentStatusChip } from '../../components/assignment-reader/status-chips';
-import {
-  SubmissionsPanel,
-  type SubmissionsSearch,
-} from '../../components/assignment-reader/submissions-panel';
+import { SubmissionsPanel } from '../../components/assignment-reader/submissions-panel';
 import { LoadingScreen } from '../../components/ui/loading-screen';
 import {
   useAssignment,
@@ -16,7 +13,7 @@ import {
   useUpdateAssignment,
 } from '../../hooks/use-assignment-reader';
 import { SeatingApiError } from '../../lib/http';
-import { defaultClassDashboardSearch } from './class-dashboard';
+import { defaultClassDashboardSearch, type SubmissionsSearch } from '../../lib/assignment-reader-search';
 
 export function AssignmentDetailPage({
   classId,
@@ -190,5 +187,23 @@ function HeaderButton({
       <Icon aria-hidden="true" className="h-3.5 w-3.5" />
       {label}
     </button>
+  );
+}
+
+const assignmentDetailRouteApi = getRouteApi('/_app/classes/$classId/assignments/$assignmentId');
+
+export function AssignmentDetailRoute() {
+  const { classId, assignmentId } = assignmentDetailRouteApi.useParams();
+  const search = assignmentDetailRouteApi.useSearch();
+  const navigate = assignmentDetailRouteApi.useNavigate();
+  return (
+    <AssignmentDetailPage
+      classId={classId}
+      assignmentId={assignmentId}
+      submissionsSearch={search}
+      onSubmissionsSearchChange={(next) =>
+        void navigate({ search: (prev) => ({ ...prev, ...next }) })
+      }
+    />
   );
 }
