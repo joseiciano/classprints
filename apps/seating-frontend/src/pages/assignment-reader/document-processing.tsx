@@ -1,8 +1,8 @@
 import type { DocumentType } from '@classprints/assignment-reader-shared';
-import { Link } from '@tanstack/react-router';
+import { Link, getRouteApi } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { ProcessingPanel } from '../../components/assignment-reader/processing-panel';
-import { defaultSubmissionsSearch } from '../../components/assignment-reader/submissions-panel';
+import { asDocumentType, defaultSubmissionsSearch } from '../../lib/assignment-reader-search';
 import { LoadingScreen } from '../../components/ui/loading-screen';
 import { useDocumentWorkspace } from '../../hooks/use-assignment-reader';
 
@@ -71,5 +71,19 @@ function BackLink({ classId, assignmentId }: { classId: string; assignmentId: st
       <ArrowLeft aria-hidden="true" className="h-4 w-4" />
       Back to assignment
     </Link>
+  );
+}
+
+const documentProcessingRouteApi = getRouteApi('/_app/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/processing');
+
+export function DocumentProcessingRoute() {
+  const { classId, assignmentId, documentType, documentId } = documentProcessingRouteApi.useParams();
+  return (
+    <DocumentProcessingPage
+      classId={classId}
+      assignmentId={assignmentId}
+      documentType={asDocumentType(documentType)}
+      documentId={documentId}
+    />
   );
 }

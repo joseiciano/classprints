@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import { Link, getRouteApi } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import type { SeatingResultsResponse } from '../lib/seating-api';
 import { DownloadCsvButton } from '../components/download-csv-button';
@@ -195,4 +195,11 @@ function DetailLoadingState() {
       </div>
     </section>
   );
+}
+
+const jobDetailRouteApi = getRouteApi('/_app/charts/$jobId');
+
+export function JobDetailRoute() {
+  const { jobId } = jobDetailRouteApi.useParams();
+  return <JobDetailPage jobId={jobId} />;
 }

@@ -1,28 +1,24 @@
 import { useState } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, getRouteApi, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Archive, Pencil, Trash2 } from 'lucide-react';
-import {
-  defaultAssignmentsSearch,
-  AssignmentsTab,
-  type AssignmentsTabSearch,
-} from '../../components/assignment-reader/assignments-tab';
+import { AssignmentsTab } from '../../components/assignment-reader/assignments-tab';
 import { ConfirmActionDialog } from '../../components/assignment-reader/confirm-action-dialog';
 import { ClassFormDialog } from '../../components/assignment-reader/class-form-dialog';
-import {
-  defaultRosterSearch,
-  RosterPanel,
-  type RosterPanelSearch,
-} from '../../components/assignment-reader/roster-panel';
-import {
-  defaultSeatingChartsSearch,
-  SeatingChartsTab,
-  type SeatingChartsTabSearch,
-} from '../../components/assignment-reader/seating-charts-tab';
+import { RosterPanel } from '../../components/assignment-reader/roster-panel';
+import { SeatingChartsTab } from '../../components/assignment-reader/seating-charts-tab';
 import { ClassStatusChip } from '../../components/assignment-reader/status-chips';
 import { useClass, useDeleteClass, useUpdateClass } from '../../hooks/use-assignment-reader';
 import { SeatingApiError } from '../../lib/http';
 import { LoadingScreen } from '../../components/ui/loading-screen';
-import type { ClassesSearch } from './classes';
+import {
+  classDashboardTabDefaults,
+  type AssignmentsTabSearch,
+  type ClassDashboardSearch,
+  type ClassDashboardTab,
+  type ClassesSearch,
+  type RosterPanelSearch,
+  type SeatingChartsTabSearch,
+} from '../../lib/assignment-reader-search';
 
 // A literal default (not imported from `./classes`) so this module and
 // `./classes` — which needs this page's own default tab search to link back
@@ -34,33 +30,11 @@ const classesListDefaultSearch: ClassesSearch = {
   page: 1,
 };
 
-export type ClassDashboardTab = 'assignments' | 'roster' | 'seating-charts';
-
-export interface ClassDashboardSearch {
-  tab: ClassDashboardTab;
-  q: string;
-  sort: string;
-  direction: 'asc' | 'desc';
-  page: number;
-  status?: string;
-}
-
-export const defaultClassDashboardSearch: ClassDashboardSearch = {
-  tab: 'assignments',
-  ...defaultAssignmentsSearch,
-};
-
 const TABS: { id: ClassDashboardTab; label: string }[] = [
   { id: 'assignments', label: 'Assignments' },
   { id: 'roster', label: 'Roster' },
   { id: 'seating-charts', label: 'Seating Charts' },
 ];
-
-export const classDashboardTabDefaults: Record<ClassDashboardTab, Omit<ClassDashboardSearch, 'tab'>> = {
-  assignments: defaultAssignmentsSearch,
-  roster: defaultRosterSearch,
-  'seating-charts': defaultSeatingChartsSearch,
-};
 
 export function ClassDashboardPage({
   classId,
@@ -297,5 +271,20 @@ function HeaderButton({
       <Icon aria-hidden="true" className="h-3.5 w-3.5" />
       {label}
     </button>
+  );
+}
+
+const classDashboardRouteApi = getRouteApi('/_app/classes/$classId');
+
+export function ClassDashboardRoute() {
+  const { classId } = classDashboardRouteApi.useParams();
+  const search = classDashboardRouteApi.useSearch();
+  const navigate = classDashboardRouteApi.useNavigate();
+  return (
+    <ClassDashboardPage
+      classId={classId}
+      search={search}
+      onSearchChange={(next) => void navigate({ search: next })}
+    />
   );
 }
