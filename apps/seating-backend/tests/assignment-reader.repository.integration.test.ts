@@ -913,4 +913,37 @@ d('integration: assignment-reader repository against live Postgres', () => {
       await cleanup(scope.teacherId);
     },
   );
+
+  it(
+    'findStudent resolves a student through the deletion-pending guard (missing FROM-clause entry regression)',
+    { timeout: 30000 },
+    async () => {
+      sql = postgres(connectionString, { prepare: false, max: 2 });
+      const repo = createAssignmentReaderRepository(sql as unknown as Sql);
+      const scope: Scope = {
+        teacherId: 'a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1',
+        classId: 'a2a2a2a2-a2a2-4a2a-8a2a-a2a2a2a2a2a2',
+        studentId: 'a3a3a3a3-a3a3-4a3a-8a3a-a3a3a3a3a3a3',
+        assignmentId: 'a4a4a4a4-a4a4-4a4a-8a4a-a4a4a4a4a4a4',
+        submissionId: 'a5a5a5a5-a5a5-4a5a-8a5a-a5a5a5a5a5a5',
+      };
+      const otherTeacherId = 'a6a6a6a6-a6a6-4a6a-8a6a-a6a6a6a6a6a6';
+
+      await cleanup(scope.teacherId);
+      await seedSubmissionScope(scope, Date.now());
+
+      const student = await repo.findStudent(scope.teacherId, scope.studentId);
+      expect(student?.id).toBe(scope.studentId);
+      expect(student?.classId).toBe(scope.classId);
+      expect(await repo.findStudent(otherTeacherId, scope.studentId)).toBeNull();
+
+      // createSubmission is the route that surfaced the bug: it must return
+      // the existing submission instead of throwing.
+      const result = await repo.createSubmission(scope.teacherId, scope.assignmentId, scope.studentId);
+      expect(result.created).toBe(false);
+      expect(result.submission?.id).toBe(scope.submissionId);
+
+      await cleanup(scope.teacherId);
+    },
+  );
 });
