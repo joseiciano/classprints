@@ -9,17 +9,7 @@ import {
   redirect,
   useLocation,
 } from '@tanstack/react-router';
-import {
-  BookOpen,
-  CreditCard,
-  LayoutGrid,
-  LogOut,
-  Menu,
-  Plus,
-  Settings,
-  SlidersHorizontal,
-  X,
-} from 'lucide-react';
+import { BookOpen, LayoutGrid, LogOut, Menu, Settings, SlidersHorizontal, X } from 'lucide-react';
 import { FooterBar } from './components/ui/footer-bar';
 import { LoadingScreen } from './components/ui/loading-screen';
 import { Logo } from './components/ui/logo';
@@ -41,12 +31,16 @@ import { useAuth } from './providers/auth-provider';
 import type { AuthUser } from '@classprints/shared';
 
 const APP_LINKS = [
-  { label: 'Classes', to: '/classes', icon: BookOpen, exact: false, section: undefined },
-  { label: 'Charts', to: '/charts', icon: LayoutGrid, exact: false, section: undefined },
-  { label: 'Configs', to: '/configs', icon: SlidersHorizontal, exact: true, section: undefined },
-  { label: 'New chart', to: '/create-arrangement', icon: Plus, exact: true, section: 'Create' },
+  {
+    label: 'Assignments',
+    to: '/classes',
+    icon: BookOpen,
+    exact: false,
+    section: 'Assignment Reader',
+  },
+  { label: 'Charts', to: '/charts', icon: LayoutGrid, exact: false, section: 'Seating Charts' },
+  { label: 'Classes', to: '/configs', icon: SlidersHorizontal, exact: true, section: undefined },
   { label: 'Settings', to: '/settings', icon: Settings, exact: true, section: 'Account' },
-  { label: 'Pricing', to: '/pricing', icon: CreditCard, exact: true, section: undefined },
 ] as const;
 
 type AuthSnapshot = { user: AuthUser | null; initializing: boolean };
@@ -158,7 +152,10 @@ const authCallbackRoute = createRoute({
 const createArrangementRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/create-arrangement',
-  component: lazyRouteComponent(() => import('./pages/create-arrangement'), 'CreateArrangementPage'),
+  component: lazyRouteComponent(
+    () => import('./pages/create-arrangement'),
+    'CreateArrangementPage',
+  ),
 });
 
 const configsRoute = createRoute({
@@ -170,7 +167,10 @@ const configsRoute = createRoute({
 const configsArrangementRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configs/arrangement',
-  component: lazyRouteComponent(() => import('./pages/configs-arrangement'), 'ConfigsArrangementPage'),
+  component: lazyRouteComponent(
+    () => import('./pages/configs-arrangement'),
+    'ConfigsArrangementPage',
+  ),
 });
 
 const jobsRoute = createRoute({
@@ -197,33 +197,48 @@ const classesRoute = createRoute({
 const classDashboardRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId',
-  component: lazyRouteComponent(() => import('./pages/assignment-reader/class-dashboard'), 'ClassDashboardRoute'),
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/class-dashboard'),
+    'ClassDashboardRoute',
+  ),
   validateSearch: validateClassDashboardSearch,
 });
 
 const assignmentDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId',
-  component: lazyRouteComponent(() => import('./pages/assignment-reader/assignment-detail'), 'AssignmentDetailRoute'),
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/assignment-detail'),
+    'AssignmentDetailRoute',
+  ),
   validateSearch: validateSubmissionsSearch,
 });
 
 const documentUploadRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/upload',
-  component: lazyRouteComponent(() => import('./pages/assignment-reader/document-upload'), 'DocumentUploadRoute'),
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/document-upload'),
+    'DocumentUploadRoute',
+  ),
 });
 
 const documentProcessingRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/processing',
-  component: lazyRouteComponent(() => import('./pages/assignment-reader/document-processing'), 'DocumentProcessingRoute'),
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/document-processing'),
+    'DocumentProcessingRoute',
+  ),
 });
 
 const documentWorkspaceRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/workspace',
-  component: lazyRouteComponent(() => import('./pages/assignment-reader/document-workspace'), 'DocumentWorkspaceRoute'),
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/document-workspace'),
+    'DocumentWorkspaceRoute',
+  ),
   validateSearch: validateDocumentWorkspaceSearch,
 });
 
