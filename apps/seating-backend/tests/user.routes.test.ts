@@ -102,6 +102,34 @@ describe('User Routes', () => {
     vi.clearAllMocks();
   });
 
+  describe('PUT /api/v1/user/email validation', () => {
+    const put = (body: string) =>
+      app.fetch(
+        new Request('http://localhost/api/v1/user/email', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer mock-token',
+            ...CSRF_HEADERS,
+          },
+          body,
+        }),
+        createEnv() as any,
+      );
+
+    it('keeps the { error } shape for an invalid email', async () => {
+      const res = await put(JSON.stringify({ newEmail: 'nope' }));
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: 'Invalid email address' });
+    });
+
+    it('keeps the { error } shape for malformed JSON', async () => {
+      const res = await put('{not json');
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: 'Invalid JSON body' });
+    });
+  });
+
   describe('DELETE /api/v1/user/account', () => {
     it('should soft-delete user account successfully', async () => {
       mockAuthService.getProfile.mockResolvedValue({

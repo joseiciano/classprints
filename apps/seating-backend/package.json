@@ -11,11 +11,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@hono-rate-limiter/cloudflare": "^0.2.2",
     "@classprints/assignment-reader-shared": "workspace:*",
     "@classprints/seating-shared": "workspace:*",
     "@classprints/server": "workspace:*",
     "@classprints/shared": "workspace:*",
+    "@hono-rate-limiter/cloudflare": "^0.2.2",
+    "@hono/swagger-ui": "^0.6.1",
+    "@hono/zod-openapi": "0.19.10",
     "hono": "^4.6.12",
     "postgres": "3.4.7",
     "zod": "^3.23.8"
