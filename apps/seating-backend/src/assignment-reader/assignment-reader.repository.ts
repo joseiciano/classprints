@@ -1286,9 +1286,9 @@ export const createAssignmentReaderRepository = (sql: Sql): AssignmentReaderRepo
 
     async findStudent(teacherId, studentId) {
       const rows = await sql<StudentRow[]>`
-        select id, class_id, teacher_id, name, status, created_at_ms, updated_at_ms, removed_at_ms
-        from students
-        where teacher_id = ${teacherId} and id = ${studentId}
+        select s.id, s.class_id, s.teacher_id, s.name, s.status, s.created_at_ms, s.updated_at_ms, s.removed_at_ms
+        from students s
+        where s.teacher_id = ${teacherId} and s.id = ${studentId}
           ${notDeletionPending('s', teacherId)}
         limit 1
       `;

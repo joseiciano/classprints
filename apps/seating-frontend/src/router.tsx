@@ -5,9 +5,9 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   redirect,
   useLocation,
-  useNavigate,
 } from '@tanstack/react-router';
 import {
   BookOpen,
@@ -25,40 +25,20 @@ import { LoadingScreen } from './components/ui/loading-screen';
 import { Logo } from './components/ui/logo';
 import { ThemeToggle } from './components/ui/theme-toggle';
 import { AuthCallbackPage } from './pages/auth-callback';
-import {
-  AssignmentDetailPage,
-} from './pages/assignment-reader/assignment-detail';
-import {
-  ClassDashboardPage,
-  classDashboardTabDefaults,
-  type ClassDashboardSearch,
-  type ClassDashboardTab,
-} from './pages/assignment-reader/class-dashboard';
-import { ClassesPage, defaultClassesSearch, type ClassesSearch } from './pages/assignment-reader/classes';
-import { DocumentProcessingPage } from './pages/assignment-reader/document-processing';
-import { DocumentUploadPage } from './pages/assignment-reader/document-upload';
-import { DocumentWorkspacePage } from './pages/assignment-reader/document-workspace';
-import { defaultSubmissionsSearch, type SubmissionsSearch } from './components/assignment-reader/submissions-panel';
-import { ConfigsArrangementPage } from './pages/configs-arrangement';
-import { ConfigsPage } from './pages/configs';
-import { CreateArrangementPage } from './pages/create-arrangement';
-import { CustomerServicePage } from './pages/customer-service';
-import { JobDetailPage } from './pages/job-detail';
-import { JobsPage } from './pages/jobs-list';
 import { OverviewPage } from './pages/overview';
-import { PricingPage } from './pages/pricing';
-import { PrivacyPolicyPage } from './pages/privacy-policy';
-import { SettingsPage } from './pages/settings';
 import { SignInPage } from './pages/sign-in';
 import { SignOutPage } from './pages/sign-out';
-import { SignUpPage } from './pages/sign-up';
-import { TermsOfServicePage } from './pages/terms-of-service';
-import { VerifyEmailPage } from './pages/verify-email';
+import { RouteErrorFallback } from './components/ui/route-error';
+import {
+  validateClassDashboardSearch,
+  validateClassesSearch,
+  validateDocumentWorkspaceSearch,
+  validateSubmissionsSearch,
+} from './lib/assignment-reader-search';
 import { useSubscription } from './hooks/use-subscription';
 import { APPLICATION_NAME } from './lib/constants';
 import { useAuth } from './providers/auth-provider';
 import type { AuthUser } from '@classprints/shared';
-import type { DocumentType } from '@classprints/assignment-reader-shared';
 
 const APP_LINKS = [
   { label: 'Classes', to: '/classes', icon: BookOpen, exact: false, section: undefined },
@@ -117,38 +97,30 @@ const indexRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: '/',
   component: OverviewPage,
-  beforeLoad: ({ context }) => {
-    if (context.auth.initializing) {
-      return;
-    }
-    if (context.auth.user) {
-      throw redirect({ to: '/charts' });
-    }
-  },
 });
 
 const pricingRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: '/pricing',
-  component: PricingPage,
+  component: lazyRouteComponent(() => import('./pages/pricing'), 'PricingPage'),
 });
 
 const termsOfServiceRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: '/terms-of-service',
-  component: TermsOfServicePage,
+  component: lazyRouteComponent(() => import('./pages/terms-of-service'), 'TermsOfServicePage'),
 });
 
 const privacyPolicyRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: '/privacy-policy',
-  component: PrivacyPolicyPage,
+  component: lazyRouteComponent(() => import('./pages/privacy-policy'), 'PrivacyPolicyPage'),
 });
 
 const customerServiceRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: '/customer-service',
-  component: CustomerServicePage,
+  component: lazyRouteComponent(() => import('./pages/customer-service'), 'CustomerServicePage'),
 });
 
 const signInRoute = createRoute({
@@ -164,13 +136,13 @@ const signInRoute = createRoute({
 const signUpRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: '/sign-up',
-  component: SignUpPage,
+  component: lazyRouteComponent(() => import('./pages/sign-up'), 'SignUpPage'),
 });
 
 const verifyEmailRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: '/verify-email',
-  component: VerifyEmailPage,
+  component: lazyRouteComponent(() => import('./pages/verify-email'), 'VerifyEmailPage'),
   validateSearch: (search: Record<string, unknown>): { email?: string; redirect?: string } => ({
     email: typeof search.email === 'string' ? search.email : undefined,
     redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
@@ -186,148 +158,79 @@ const authCallbackRoute = createRoute({
 const createArrangementRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/create-arrangement',
-  component: CreateArrangementPage,
+  component: lazyRouteComponent(() => import('./pages/create-arrangement'), 'CreateArrangementPage'),
 });
 
 const configsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configs',
-  component: ConfigsPage,
+  component: lazyRouteComponent(() => import('./pages/configs'), 'ConfigsPage'),
 });
 
 const configsArrangementRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configs/arrangement',
-  component: ConfigsArrangementPage,
+  component: lazyRouteComponent(() => import('./pages/configs-arrangement'), 'ConfigsArrangementPage'),
 });
 
 const jobsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/charts',
-  component: JobsPage,
+  component: lazyRouteComponent(() => import('./pages/jobs-list'), 'JobsPage'),
 });
 
 const jobDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/charts/$jobId',
-  component: JobDetailRouteComponent,
+  component: lazyRouteComponent(() => import('./pages/job-detail'), 'JobDetailRoute'),
 });
 
 // ——— Assignment Reader: classes, assignments, and documents (TASK-019) ———————
 
-function readString(value: unknown, fallback: string): string {
-  return typeof value === 'string' ? value : fallback;
-}
-
-function readDirection(value: unknown, fallback: 'asc' | 'desc'): 'asc' | 'desc' {
-  return value === 'asc' || value === 'desc' ? value : fallback;
-}
-
-function readPage(value: unknown, fallback: number): number {
-  const page = typeof value === 'string' ? Number(value) : value;
-  return typeof page === 'number' && Number.isInteger(page) && page >= 1 ? page : fallback;
-}
-
-function readOptionalString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-const CLASS_SORT_VALUES = ['createdAt', 'name', 'studentCount', 'assignmentCount', 'status'] as const;
-
-function validateClassesSearch(search: Record<string, unknown>): ClassesSearch {
-  const sort = CLASS_SORT_VALUES.includes(search.sort as (typeof CLASS_SORT_VALUES)[number])
-    ? (search.sort as ClassesSearch['sort'])
-    : defaultClassesSearch.sort;
-  return {
-    q: readString(search.q, ''),
-    sort,
-    direction: readDirection(search.direction, defaultClassesSearch.direction),
-    page: readPage(search.page, defaultClassesSearch.page),
-    status: search.status === 'active' || search.status === 'archived' ? search.status : undefined,
-  };
-}
-
-function validateClassDashboardSearch(search: Record<string, unknown>): ClassDashboardSearch {
-  const tab: ClassDashboardTab =
-    search.tab === 'roster' || search.tab === 'seating-charts' ? search.tab : 'assignments';
-  const defaults = classDashboardTabDefaults[tab];
-  return {
-    tab,
-    q: readString(search.q, defaults.q),
-    sort: readString(search.sort, defaults.sort),
-    direction: readDirection(search.direction, defaults.direction),
-    page: readPage(search.page, defaults.page),
-    status: readOptionalString(search.status) ?? defaults.status,
-  };
-}
-
-function validateSubmissionsSearch(search: Record<string, unknown>): SubmissionsSearch {
-  return {
-    q: readString(search.q, ''),
-    sort: (readOptionalString(search.sort) as SubmissionsSearch['sort']) ?? defaultSubmissionsSearch.sort,
-    direction: readDirection(search.direction, defaultSubmissionsSearch.direction),
-    page: readPage(search.page, defaultSubmissionsSearch.page),
-    status: readOptionalString(search.status) as SubmissionsSearch['status'],
-  };
-}
-
-function asDocumentType(value: string): DocumentType {
-  return value === 'submission' ? 'submission' : 'materials';
-}
-
 const classesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes',
-  component: ClassesRouteComponent,
+  component: lazyRouteComponent(() => import('./pages/assignment-reader/classes'), 'ClassesRoute'),
   validateSearch: validateClassesSearch,
 });
 
 const classDashboardRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId',
-  component: ClassDashboardRouteComponent,
+  component: lazyRouteComponent(() => import('./pages/assignment-reader/class-dashboard'), 'ClassDashboardRoute'),
   validateSearch: validateClassDashboardSearch,
 });
 
 const assignmentDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId',
-  component: AssignmentDetailRouteComponent,
+  component: lazyRouteComponent(() => import('./pages/assignment-reader/assignment-detail'), 'AssignmentDetailRoute'),
   validateSearch: validateSubmissionsSearch,
 });
 
 const documentUploadRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/upload',
-  component: DocumentUploadRouteComponent,
+  component: lazyRouteComponent(() => import('./pages/assignment-reader/document-upload'), 'DocumentUploadRoute'),
 });
 
 const documentProcessingRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/processing',
-  component: DocumentProcessingRouteComponent,
+  component: lazyRouteComponent(() => import('./pages/assignment-reader/document-processing'), 'DocumentProcessingRoute'),
 });
-
-interface DocumentWorkspaceSearch {
-  /** Deep-links the workspace to one page, e.g. from the processing list's
-   * per-page "Review now" action (TASK-023/025). Omitted, it defaults to the
-   * first current page. */
-  pageId?: string;
-}
 
 const documentWorkspaceRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/workspace',
-  component: DocumentWorkspaceRouteComponent,
-  validateSearch: (search: Record<string, unknown>): DocumentWorkspaceSearch => ({
-    pageId: typeof search.pageId === 'string' ? search.pageId : undefined,
-  }),
+  component: lazyRouteComponent(() => import('./pages/assignment-reader/document-workspace'), 'DocumentWorkspaceRoute'),
+  validateSearch: validateDocumentWorkspaceSearch,
 });
 
 const settingsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/settings',
-  component: SettingsPage,
+  component: lazyRouteComponent(() => import('./pages/settings'), 'SettingsPage'),
   validateSearch: (search: Record<string, unknown>): { success?: boolean } => ({
     success: search.success === true ? true : undefined,
   }),
@@ -377,6 +280,8 @@ export const router = createRouter({
   routeTree,
   context: { auth: { user: null, initializing: true } },
   defaultPendingComponent: () => <LoadingScreen fullScreen={false} />,
+  defaultErrorComponent: RouteErrorFallback,
+  defaultPreload: 'intent',
 });
 
 export type SeatingRouter = typeof router;
@@ -432,7 +337,8 @@ function PublicLayout() {
 }
 
 function PublicHeader() {
-  const { user } = useAuth();
+  // Use the remembered hint while the session loads so the header doesn't flip.
+  const { likelySignedIn: user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -455,30 +361,27 @@ function PublicHeader() {
           <Link to="/pricing" className="transition-colors hover:text-foreground">
             Pricing
           </Link>
-          {user ? (
-            <Link to="/charts" className="transition-colors hover:text-foreground">
-              Charts
-            </Link>
-          ) : (
-            <Link to="/sign-in" className="transition-colors hover:text-foreground">
-              Sign in
-            </Link>
-          )}
+          <Link
+            to={user ? '/sign-out' : '/sign-in'}
+            className="transition-colors hover:text-foreground"
+          >
+            {user ? 'Sign out' : 'Sign in'}
+          </Link>
           <ThemeToggle />
           <Link
-            to={user ? '/create-arrangement' : '/sign-up'}
+            to={user ? '/charts' : '/sign-up'}
             className="inline-flex min-h-9 items-center rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-pine-ink dark:hover:bg-primary/80"
           >
-            {user ? 'New chart' : 'Get started'}
+            {user ? 'Dashboard' : 'Get started'}
           </Link>
         </nav>
         <div className="flex items-center gap-2 md:hidden">
           <ThemeToggle />
           <Link
-            to={user ? '/create-arrangement' : '/sign-up'}
+            to={user ? '/charts' : '/sign-up'}
             className="hidden min-h-9 items-center rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground sm:inline-flex"
           >
-            {user ? 'New chart' : 'Get started'}
+            {user ? 'Dashboard' : 'Get started'}
           </Link>
           <button
             ref={triggerRef}
@@ -511,16 +414,16 @@ function PublicHeader() {
               Pricing
             </Link>
             <Link
-              to={user ? '/charts' : '/sign-in'}
+              to={user ? '/sign-out' : '/sign-in'}
               className="flex min-h-11 items-center rounded-lg px-3 font-medium hover:bg-muted"
             >
-              {user ? 'Charts' : 'Sign in'}
+              {user ? 'Sign out' : 'Sign in'}
             </Link>
             <Link
-              to={user ? '/create-arrangement' : '/sign-up'}
+              to={user ? '/charts' : '/sign-up'}
               className="mt-2 flex min-h-11 items-center justify-center rounded-full bg-primary px-4 font-semibold text-primary-foreground sm:hidden"
             >
-              {user ? 'New chart' : 'Get started'}
+              {user ? 'Dashboard' : 'Get started'}
             </Link>
           </nav>
         </div>
@@ -732,91 +635,4 @@ function useFocusTrap(
       previousTrigger?.focus();
     };
   }, [containerRef, isOpen, setIsOpen, triggerRef]);
-}
-
-function JobDetailRouteComponent() {
-  const { jobId } = jobDetailRoute.useParams();
-  return <JobDetailPage jobId={jobId} />;
-}
-
-function ClassesRouteComponent() {
-  const search = classesRoute.useSearch();
-  const navigate = classesRoute.useNavigate();
-  return (
-    <ClassesPage
-      search={search}
-      onSearchChange={(next) => void navigate({ search: (prev) => ({ ...prev, ...next }) })}
-    />
-  );
-}
-
-function ClassDashboardRouteComponent() {
-  const { classId } = classDashboardRoute.useParams();
-  const search = classDashboardRoute.useSearch();
-  const navigate = classDashboardRoute.useNavigate();
-  return (
-    <ClassDashboardPage
-      classId={classId}
-      search={search}
-      onSearchChange={(next) => void navigate({ search: next })}
-    />
-  );
-}
-
-function AssignmentDetailRouteComponent() {
-  const { classId, assignmentId } = assignmentDetailRoute.useParams();
-  const search = assignmentDetailRoute.useSearch();
-  const navigate = assignmentDetailRoute.useNavigate();
-  return (
-    <AssignmentDetailPage
-      classId={classId}
-      assignmentId={assignmentId}
-      submissionsSearch={search}
-      onSubmissionsSearchChange={(next) =>
-        void navigate({ search: (prev) => ({ ...prev, ...next }) })
-      }
-    />
-  );
-}
-
-function DocumentUploadRouteComponent() {
-  const { classId, assignmentId, documentType, documentId } = documentUploadRoute.useParams();
-  return (
-    <DocumentUploadPage
-      classId={classId}
-      assignmentId={assignmentId}
-      documentType={asDocumentType(documentType)}
-      documentId={documentId}
-    />
-  );
-}
-
-function DocumentProcessingRouteComponent() {
-  const { classId, assignmentId, documentType, documentId } = documentProcessingRoute.useParams();
-  return (
-    <DocumentProcessingPage
-      classId={classId}
-      assignmentId={assignmentId}
-      documentType={asDocumentType(documentType)}
-      documentId={documentId}
-    />
-  );
-}
-
-function DocumentWorkspaceRouteComponent() {
-  const { classId, assignmentId, documentType, documentId } = documentWorkspaceRoute.useParams();
-  const { pageId } = documentWorkspaceRoute.useSearch();
-  const navigate = useNavigate({ from: documentWorkspaceRoute.fullPath });
-  return (
-    <DocumentWorkspacePage
-      classId={classId}
-      assignmentId={assignmentId}
-      documentType={asDocumentType(documentType)}
-      documentId={documentId}
-      selectedPageId={pageId}
-      onSelectedPageIdChange={(nextPageId) =>
-        void navigate({ search: { pageId: nextPageId ?? undefined }, replace: true })
-      }
-    />
-  );
 }

@@ -20,7 +20,7 @@ import {
 } from '../../hooks/use-upload-flow';
 import { assignmentReaderKeys } from '../../lib/assignment-reader-query-keys';
 import { SeatingApiError } from '../../lib/http';
-import { defaultSubmissionsSearch } from './submissions-panel';
+import { defaultSubmissionsSearch } from '../../lib/assignment-reader-search';
 import { UploadFlowView, type UploadFlowItem } from './upload-flow-view';
 
 interface QueueItem {

@@ -9,24 +9,10 @@ import {
 } from '../../hooks/use-assignment-reader';
 import { formatDate } from '../../lib/assignment-reader-format';
 import { SeatingApiError } from '../../lib/http';
+import type { SubmissionsSearch } from '../../lib/assignment-reader-search';
 import { CanonicalList, type CanonicalListColumn } from './canonical-list';
 import { ConfirmActionDialog } from './confirm-action-dialog';
 import { SubmissionStatusChip } from './status-chips';
-
-export interface SubmissionsSearch {
-  q: string;
-  sort: NonNullable<SubmissionListQuery['sort']>;
-  direction: NonNullable<SubmissionListQuery['direction']>;
-  page: number;
-  status?: SubmissionListQuery['status'];
-}
-
-export const defaultSubmissionsSearch: SubmissionsSearch = {
-  q: '',
-  sort: 'studentName',
-  direction: 'asc',
-  page: 1,
-};
 
 const STATUS_OPTIONS: { value: SubmissionListQuery['status']; label: string }[] = [
   { value: undefined, label: 'All' },
