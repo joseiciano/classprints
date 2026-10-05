@@ -39,8 +39,7 @@ export function ConfigsPage() {
             Class profiles
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Save rosters, room layouts, and classroom dynamics so your next seating chart starts
-            with the details already in place.
+            Save classroom layouts for easy use later
           </p>
         </div>
         <Link

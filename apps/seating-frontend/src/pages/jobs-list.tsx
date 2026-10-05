@@ -6,8 +6,7 @@ import { FormAlert, JobStatusChip, formatDate } from '../components/job-panels';
 import { fetchSeatingJobs, type SeatingJobSummary } from '../lib/seating-api';
 
 const pageDetails = {
-  title: 'Charts',
-  description: "Every seating arrangement you've generated, newest first.",
+  title: 'Seating Charts',
   loading: 'Loading seating charts…',
   empty: 'No seating charts yet.',
 };
@@ -61,7 +60,6 @@ export function JobsPage() {
           <h1 className="mt-1 font-display text-[32px] font-medium leading-tight text-foreground">
             {pageDetails.title}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{pageDetails.description}</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="relative block sm:w-64">
