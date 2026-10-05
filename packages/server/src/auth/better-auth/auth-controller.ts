@@ -53,6 +53,25 @@ const createAuthFor = <Bindings extends Record<string, unknown>>(
   const sql = deps.sqlFactory(env);
   return createAuth(sql, deps.createBetterAuthConfig(env, requestOrigin, waitUntil));
 };
+/** Better Auth's generated OpenAPI document for its native endpoints. Requires
+ * `enableOpenApi` in the Better Auth config (non-production only). */
+export const generateAuthOpenApiSchema = async <Bindings extends Record<string, unknown>>(
+  deps: AuthDeps<Bindings>,
+  env: Bindings,
+  requestOrigin: string,
+): Promise<{
+  paths?: Record<string, unknown>;
+  components?: { schemas?: Record<string, unknown> };
+}> => {
+  const auth = createAuthFor(deps, env, requestOrigin) as unknown as {
+    api: { generateOpenAPISchema?: () => Promise<never> };
+  };
+  if (!auth.api.generateOpenAPISchema) {
+    throw new Error('Better Auth OpenAPI plugin is not enabled');
+  }
+  return auth.api.generateOpenAPISchema();
+};
+
 /** Post-verification redirect target: the sign-in page can show a success
  * notice if automatic session restoration is unavailable in this browser. */
 const frontendCallbackOf = (env: Record<string, unknown>): string => {
