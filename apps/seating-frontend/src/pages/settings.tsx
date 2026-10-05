@@ -6,6 +6,7 @@ import { useEmailNotifications } from '../hooks/use-email-notifications';
 import { useDeleteAccount } from '../hooks/use-delete-account';
 import { Button } from '../components/ui/button';
 import { Switch } from '../components/ui/switch';
+import { useTheme } from '../components/ui/theme-toggle';
 import { Dialog } from '../components/ui/dialog';
 import {
   AlertTriangle,
@@ -21,6 +22,7 @@ import {
 import { useEffect, useState } from 'react';
 
 export function SettingsPage() {
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isPlus, openPortal, isOpeningPortal, isLoading } = useSubscription();
@@ -246,6 +248,22 @@ export function SettingsPage() {
                     <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
                     {user.emailVerified ? 'Verified' : 'Not verified'}
                   </span>
+                </dd>
+              </div>
+              <div className="grid gap-2 py-4 sm:grid-cols-[130px_minmax(0,1fr)_auto] sm:items-center">
+                <dt
+                  id="theme-label"
+                  className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground"
+                >
+                  Dark mode
+                </dt>
+                <dd className="text-sm text-foreground">{theme === 'dark' ? 'On' : 'Off'}</dd>
+                <dd>
+                  <Switch
+                    checked={theme === 'dark'}
+                    onCheckedChange={toggleTheme}
+                    aria-labelledby="theme-label"
+                  />
                 </dd>
               </div>
             </dl>
