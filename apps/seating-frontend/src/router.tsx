@@ -9,17 +9,7 @@ import {
   redirect,
   useLocation,
 } from '@tanstack/react-router';
-import {
-  BookOpen,
-  CreditCard,
-  LayoutGrid,
-  LogOut,
-  Menu,
-  Plus,
-  Settings,
-  SlidersHorizontal,
-  X,
-} from 'lucide-react';
+import { BookOpen, LayoutGrid, LogOut, Menu, Settings, SlidersHorizontal, X } from 'lucide-react';
 import { FooterBar } from './components/ui/footer-bar';
 import { LoadingScreen } from './components/ui/loading-screen';
 import { Logo } from './components/ui/logo';
@@ -35,18 +25,22 @@ import {
   validateDocumentWorkspaceSearch,
   validateSubmissionsSearch,
 } from './lib/assignment-reader-search';
-import { useSubscription } from './hooks/use-subscription';
 import { APPLICATION_NAME } from './lib/constants';
 import { useAuth } from './providers/auth-provider';
 import type { AuthUser } from '@classprints/shared';
 
 const APP_LINKS = [
-  { label: 'Classes', to: '/classes', icon: BookOpen, exact: false, section: undefined },
-  { label: 'Charts', to: '/charts', icon: LayoutGrid, exact: false, section: undefined },
-  { label: 'Configs', to: '/configs', icon: SlidersHorizontal, exact: true, section: undefined },
-  { label: 'New chart', to: '/create-arrangement', icon: Plus, exact: true, section: 'Create' },
+  {
+    label: 'Assignments',
+    to: '/classes',
+    icon: BookOpen,
+    exact: false,
+    section: 'Assignment Reader',
+  },
+  { label: 'Charts', to: '/charts', icon: LayoutGrid, exact: false, section: 'Seating Charts' },
+  { label: 'Classes', to: '/configs', icon: SlidersHorizontal, exact: true, section: undefined },
   { label: 'Settings', to: '/settings', icon: Settings, exact: true, section: 'Account' },
-  { label: 'Pricing', to: '/pricing', icon: CreditCard, exact: true, section: undefined },
+  { label: 'Sign out', to: '/sign-out', icon: LogOut, exact: true, section: undefined },
 ] as const;
 
 type AuthSnapshot = { user: AuthUser | null; initializing: boolean };
@@ -158,7 +152,10 @@ const authCallbackRoute = createRoute({
 const createArrangementRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/create-arrangement',
-  component: lazyRouteComponent(() => import('./pages/create-arrangement'), 'CreateArrangementPage'),
+  component: lazyRouteComponent(
+    () => import('./pages/create-arrangement'),
+    'CreateArrangementPage',
+  ),
 });
 
 const configsRoute = createRoute({
@@ -170,7 +167,10 @@ const configsRoute = createRoute({
 const configsArrangementRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configs/arrangement',
-  component: lazyRouteComponent(() => import('./pages/configs-arrangement'), 'ConfigsArrangementPage'),
+  component: lazyRouteComponent(
+    () => import('./pages/configs-arrangement'),
+    'ConfigsArrangementPage',
+  ),
 });
 
 const jobsRoute = createRoute({
@@ -197,33 +197,48 @@ const classesRoute = createRoute({
 const classDashboardRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId',
-  component: lazyRouteComponent(() => import('./pages/assignment-reader/class-dashboard'), 'ClassDashboardRoute'),
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/class-dashboard'),
+    'ClassDashboardRoute',
+  ),
   validateSearch: validateClassDashboardSearch,
 });
 
 const assignmentDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId',
-  component: lazyRouteComponent(() => import('./pages/assignment-reader/assignment-detail'), 'AssignmentDetailRoute'),
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/assignment-detail'),
+    'AssignmentDetailRoute',
+  ),
   validateSearch: validateSubmissionsSearch,
 });
 
 const documentUploadRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/upload',
-  component: lazyRouteComponent(() => import('./pages/assignment-reader/document-upload'), 'DocumentUploadRoute'),
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/document-upload'),
+    'DocumentUploadRoute',
+  ),
 });
 
 const documentProcessingRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/processing',
-  component: lazyRouteComponent(() => import('./pages/assignment-reader/document-processing'), 'DocumentProcessingRoute'),
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/document-processing'),
+    'DocumentProcessingRoute',
+  ),
 });
 
 const documentWorkspaceRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/workspace',
-  component: lazyRouteComponent(() => import('./pages/assignment-reader/document-workspace'), 'DocumentWorkspaceRoute'),
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/document-workspace'),
+    'DocumentWorkspaceRoute',
+  ),
   validateSearch: validateDocumentWorkspaceSearch,
 });
 
@@ -505,7 +520,6 @@ function AuthenticatedLayout() {
 
 function AppSidebar() {
   const { user } = useAuth();
-  const { isPlus, isLoading } = useSubscription();
   const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || 'Educator';
   const initials = displayName
     .split(/\s+/)
@@ -555,12 +569,6 @@ function AppSidebar() {
           <Link to="/customer-service" className="hover:text-foreground hover:underline">
             Support
           </Link>
-          <Link
-            to="/sign-out"
-            className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
-          >
-            <LogOut aria-hidden="true" className="h-3 w-3" /> Sign out
-          </Link>
         </nav>
         <div className="flex items-center gap-2.5">
           <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
@@ -570,10 +578,6 @@ function AppSidebar() {
             <b className="block truncate text-[13px] font-semibold">{displayName}</b>
             <span className="block truncate text-[11px] text-ink-3">{user?.email}</span>
           </span>
-          <span className="rounded-full border border-amber/40 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] text-amber">
-            {isLoading ? '…' : isPlus ? 'Plus' : 'Free'}
-          </span>
-          <ThemeToggle />
         </div>
       </div>
     </aside>
