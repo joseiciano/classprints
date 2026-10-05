@@ -41,6 +41,7 @@ const APP_LINKS = [
   { label: 'Charts', to: '/charts', icon: LayoutGrid, exact: false, section: 'Seating Charts' },
   { label: 'Classes', to: '/configs', icon: SlidersHorizontal, exact: true, section: undefined },
   { label: 'Settings', to: '/settings', icon: Settings, exact: true, section: 'Account' },
+  { label: 'Sign out', to: '/sign-out', icon: LogOut, exact: true, section: undefined },
 ] as const;
 
 type AuthSnapshot = { user: AuthUser | null; initializing: boolean };
@@ -570,12 +571,6 @@ function AppSidebar() {
           <Link to="/customer-service" className="hover:text-foreground hover:underline">
             Support
           </Link>
-          <Link
-            to="/sign-out"
-            className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
-          >
-            <LogOut aria-hidden="true" className="h-3 w-3" /> Sign out
-          </Link>
         </nav>
         <div className="flex items-center gap-2.5">
           <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
@@ -588,7 +583,6 @@ function AppSidebar() {
           <span className="rounded-full border border-amber/40 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] text-amber">
             {isLoading ? '…' : isPlus ? 'Plus' : 'Free'}
           </span>
-          <ThemeToggle />
         </div>
       </div>
     </aside>
