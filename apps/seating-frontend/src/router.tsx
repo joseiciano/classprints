@@ -25,7 +25,6 @@ import {
   validateDocumentWorkspaceSearch,
   validateSubmissionsSearch,
 } from './lib/assignment-reader-search';
-import { useSubscription } from './hooks/use-subscription';
 import { APPLICATION_NAME } from './lib/constants';
 import { useAuth } from './providers/auth-provider';
 import type { AuthUser } from '@classprints/shared';
@@ -521,7 +520,6 @@ function AuthenticatedLayout() {
 
 function AppSidebar() {
   const { user } = useAuth();
-  const { isPlus, isLoading } = useSubscription();
   const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || 'Educator';
   const initials = displayName
     .split(/\s+/)
@@ -579,9 +577,6 @@ function AppSidebar() {
           <span className="min-w-0 flex-1 leading-tight">
             <b className="block truncate text-[13px] font-semibold">{displayName}</b>
             <span className="block truncate text-[11px] text-ink-3">{user?.email}</span>
-          </span>
-          <span className="rounded-full border border-amber/40 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] text-amber">
-            {isLoading ? '…' : isPlus ? 'Plus' : 'Free'}
           </span>
         </div>
       </div>
