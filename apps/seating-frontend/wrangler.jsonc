@@ -30,7 +30,7 @@
       "workers_dev": false,
       "routes": [
         {
-          "pattern": "classprints.app",
+          "pattern": "bellvel.com",
           "custom_domain": true
         }
       ],

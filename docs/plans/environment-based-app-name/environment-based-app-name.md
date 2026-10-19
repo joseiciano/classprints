@@ -12,7 +12,7 @@ tags: [feature, branding, frontend, backend, email, ci-cd]
 
 The product is currently hard-coded as "ClassPrints" everywhere. This plan makes the user-facing product name, outbound email sender identity, and support email depend on the deploy environment: **staging keeps "ClassPrints"; production becomes "Bellvel"**.
 
-This ticket is a **complete, self-contained unit**. Non-goals (explicitly left unchanged, no follow-up required by this plan): production domain `classprints.app`, Cloudflare worker names (`classprints-web|api|email|optimizer`), Analytics Engine dataset names, Hyperdrive names, `@classprints/*` package names, `__CLASSPRINTS_RUNTIME_ENV__`, `hidden@classprints.local`, `design/` and `plan/` docs, and the staging domains/addresses.
+This ticket is a **complete, self-contained unit**. Production is served on `bellvel.com` (web) and `api.bellvel.com` (API), with `www.bellvel.com` redirecting to the apex via a zone redirect rule; `classprints.app` is not used in production. Non-goals (explicitly left unchanged, no follow-up required by this plan): Cloudflare worker names (`classprints-web|api|email|optimizer`), Analytics Engine dataset names, Hyperdrive names, `@classprints/*` package names, `__CLASSPRINTS_RUNTIME_ENV__`, `hidden@classprints.local`, `design/` and `plan/` docs, and the staging domains/addresses.
 
 Environment signal per surface:
 
@@ -110,7 +110,7 @@ Environment signal per surface:
 ## 3. Alternatives
 
 - **ALT-001**: Vite `--mode staging|production` with committed `.env.*` files — rejected: `.env*` is git-ignored (CON-002) and `build` script is mode-agnostic.
-- **ALT-002**: Runtime detection via hostname (`classprints.app` → Bellvel) in the SPA — rejected: couples branding to the domain (which stays `classprints.app`) and flashes the wrong name on custom domains/workers.dev previews.
+- **ALT-002**: Runtime detection via hostname (`classprints.app` → Bellvel) in the SPA — rejected: couples branding to the hostname and flashes the wrong name on custom domains/workers.dev previews.
 - **ALT-003**: Serve the name from the API (`/api/config`) — rejected: adds a request before first paint and still needs per-env backend config.
 - **ALT-004**: Derive backend name from `EMAIL_FROM_NAME` instead of a new var — rejected: sender display name and in-copy product name are different concerns and may diverge.
 
@@ -147,7 +147,7 @@ Environment signal per surface:
 
 - **RISK-001**: A missed hard-coded string leaves "ClassPrints" in production; mitigated by TEST-005.
 - **RISK-002**: Legal pages (Terms/Privacy) name the operating entity implicitly via the product name; swapping the name does not update any legal entity/contact details. Legal review of Bellvel wording is outside this plan.
-- **RISK-003**: Production mixes brands in URLs (`classprints.app`, Stripe return URLs, workers) with the Bellvel display name until a future domain migration; users may notice the mismatch.
+- **RISK-003**: Production still exposes `classprints-*` Worker names (e.g. in `workers.dev` URLs if ever enabled) alongside the Bellvel brand; user-facing URLs are all `bellvel.com`.
 - **RISK-004**: If DEP-001 is not complete at deploy time, production verification emails fail (sender not allowed); deploy production only after DEP-001 and DEP-002.
 - **ASSUMPTION-001**: The user chose "display name + email/support" but did not supply addresses; `noreply@bellvel.com` and `support@bellvel.com` are placeholders-by-assumption and must be confirmed. Changing them requires edits only in TASK-007, TASK-008, TASK-010, TASK-014.
 - **ASSUMPTION-002**: Stripe-hosted checkout/portal branding is configured in the Stripe dashboard and is out of scope.

@@ -31,9 +31,10 @@ Core decisions captured from discussion (2026-09-15):
   (staging subdomain vs prod domain), Neon (per-env DB).
 - **Production-only product rename**: the user-facing product name is per environment —
   staging shows "ClassPrints", production shows "Bellvel" (including email sender name/address
-  and support email). Infrastructure identifiers (Worker names `classprints-*`, the
-  `classprints.app` domain, queue/Hyperdrive/Analytics names) are **identical in both
-  environments** and are NOT renamed. Details and code changes live in
+  and support email). Production is served on `bellvel.com` / `api.bellvel.com` (zone in production account
+  `4cf8d3097c50fca484f1ee77883e8380`); `classprints.app` stays staging-only. Infrastructure
+  identifiers (Worker names `classprints-*`, queue/Hyperdrive/Analytics names) are
+  **identical in both environments** and are NOT renamed. Details and code changes live in
   `docs/plans/environment-based-app-name/environment-based-app-name.md`; this plan only covers the pipeline/config side.
 
 This plan is self-contained: an implementing agent or engineer needs nothing outside it
@@ -73,8 +74,8 @@ alternatives/risks, not tasks).
   `RESEND_FROM_EMAIL`, and frontend build-time `VITE_APP_NAME` / `VITE_SUPPORT_EMAIL`.
 - **REQ-012**: Branding comes only from the vars listed in REQ-010. Staging must render
   "ClassPrints"; production must render "Bellvel". Code must not hardcode either name outside
-  the documented fallbacks. Worker names, domains and resource names are not branding and stay
-  `classprints-*` / `classprints.app` in both environments.
+  the documented fallbacks. Worker names and resource names are not branding and stay `classprints-*` in both
+  environments. Production domains are `bellvel.com` / `api.bellvel.com`.
 - **REQ-011**: Staging environment must be resettable / disposable in spirit: staging DB is
   a separate Neon project or branch, safe to wipe and restore from prod shape at any time.
 - **SEC-001**: Cloudflare API tokens must be least-privilege per account (Workers
@@ -144,7 +145,7 @@ alternatives/risks, not tasks).
       Secrets (`BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) are
       not declared in the config (wrangler 4.57 has no `secrets.required` key); they are
       set per TASK-016. `env.production` mirrors the full binding set with an explicit
-      `name`, prod routes (`api.classprints.app` custom domain, `workers_dev` false), prod
+      `name`, prod routes (`api.bellvel.com` custom domain, `workers_dev` false), prod
       vars (`ENVIRONMENT` `production`, prod URLs, live Stripe price IDs,
       `APP_DISPLAY_NAME` `Bellvel`, `EMAIL_FROM_NAME` `Bellvel`, `EMAIL_FROM_ADDRESS`
       `noreply@bellvel.com`, and the same address in `send_email.allowed_sender_addresses`),
@@ -420,8 +421,9 @@ alternatives/risks, not tasks).
   `docs/plans/environment-based-app-name/environment-based-app-name.md`.
 - **ASSUMPTION-003**: The user controls both Cloudflare accounts and can create API tokens
   with the scopes in SEC-001 in each.
-- **ASSUMPTION-004**: Custom domains (`classprints.app`, `api.classprints.app`) are (or can
-  be) zoned in the production CF account; staging uses `*.workers.dev` or a staging
+- **ASSUMPTION-004**: Production custom domains (`bellvel.com`, `api.bellvel.com`) are zoned in
+  the production CF account (`bellvel.com` verified active 2026-10-19); `www.bellvel.com`
+  redirects to the apex via a zone redirect rule; staging uses `*.workers.dev` or a staging
   subdomain zoned in the staging account.
 - **ASSUMPTION-005**: For this plan, all domains already exist and are usable, including
   `bellvel.com` (Email Sending in the production CF account, Resend verification,
