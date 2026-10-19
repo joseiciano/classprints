@@ -6,11 +6,20 @@
 # configs. Idempotent: existing resources are detected and skipped.
 #
 # Usage:
-#   CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=... scripts/bootstrap.sh staging|production
+#   CLOUDFLARE_ACCOUNT_ID=... scripts/bootstrap.sh staging|production
 #
 # Required env:
-#   CLOUDFLARE_API_TOKEN   least-privilege deploy token for THIS account (SEC-001)
 #   CLOUDFLARE_ACCOUNT_ID  the account to provision
+#
+# Optional env:
+#   CLOUDFLARE_API_TOKEN   token for THIS account (SEC-001); without it, the
+#                          current `wrangler login` session is used
+#   SUPPORT_FORWARD_TO     inbox that the support address forwards to; the
+#                          email-routing step is skipped when unset
+#
+# The email steps need Wrangler >= 4.151 (`wrangler email`), which needs
+# Node >= 22. They run through `npx wrangler@$EMAIL_WRANGLER_VERSION` so the
+# repo's pinned deploy Wrangler is untouched.
 #
 # Never prints or stores secret values (SEC-004) — only resource IDs.
 
@@ -25,7 +34,6 @@ case "$ENVIRONMENT" in
     ;;
 esac
 
-: "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN must be set}"
 : "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID must be set}"
 
 command -v wrangler >/dev/null 2>&1 || {
@@ -76,6 +84,67 @@ echo
 # Analytics Engine datasets are implicit (created on first write); no action.
 # Rate limiting bindings need no resource (namespace_id is self-chosen).
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Email: Cloudflare Email Sending for the sender domain (the API's send_email
+# binding only allows that domain's noreply address), and Email Routing so the
+# support address reaches a real inbox. Domains must match the wrangler configs.
+# ---------------------------------------------------------------------------
+EMAIL_WRANGLER_VERSION="4.151.2"
+case "$ENVIRONMENT" in
+  production)
+    EMAIL_ZONE="bellvel.com"
+    SENDING_DOMAIN="bellvel.com"
+    SUPPORT_ADDRESS="support@bellvel.com"
+    ;;
+  staging)
+    EMAIL_ZONE="myclassprints.com"
+    SENDING_DOMAIN="staging.myclassprints.com"
+    SUPPORT_ADDRESS=""
+    ;;
+esac
+
+if [ "$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)" -lt 22 ]; then
+  echo "email       : SKIPPED — needs Node >= 22 for wrangler@$EMAIL_WRANGLER_VERSION" >&2
+else
+  email_wrangler() {
+    npx -y "wrangler@$EMAIL_WRANGLER_VERSION" email "$@"
+  }
+
+  if email_wrangler sending enable "$SENDING_DOMAIN" >/dev/null 2>&1; then
+    echo "email send  : $SENDING_DOMAIN (enabled)"
+  else
+    echo "email send  : $SENDING_DOMAIN (ENABLE FAILED — re-run: npx wrangler@$EMAIL_WRANGLER_VERSION email sending enable $SENDING_DOMAIN)" >&2
+  fi
+
+  if [ -n "$SUPPORT_ADDRESS" ] && [ -n "${SUPPORT_FORWARD_TO:-}" ]; then
+    email_wrangler routing enable "$EMAIL_ZONE" >/dev/null 2>&1 \
+      && echo "email route : $EMAIL_ZONE (enabled)" \
+      || echo "email route : $EMAIL_ZONE (ENABLE FAILED)" >&2
+
+    if email_wrangler routing addresses list 2>/dev/null | grep -qF "$SUPPORT_FORWARD_TO"; then
+      echo "email dest  : $SUPPORT_FORWARD_TO (exists, skipped)"
+    else
+      email_wrangler routing addresses create "$SUPPORT_FORWARD_TO" >/dev/null 2>&1 \
+        && echo "email dest  : $SUPPORT_FORWARD_TO (created — click the verification email Cloudflare sends it)" \
+        || echo "email dest  : $SUPPORT_FORWARD_TO (CREATE FAILED)" >&2
+    fi
+
+    if email_wrangler routing rules list "$EMAIL_ZONE" 2>/dev/null | grep -qF "$SUPPORT_ADDRESS"; then
+      echo "email rule  : $SUPPORT_ADDRESS (exists, skipped)"
+    else
+      email_wrangler routing rules create "$EMAIL_ZONE" \
+        --name "support forward" \
+        --match-type literal --match-field to --match-value "$SUPPORT_ADDRESS" \
+        --action-type forward --action-value "$SUPPORT_FORWARD_TO" >/dev/null 2>&1 \
+        && echo "email rule  : $SUPPORT_ADDRESS -> $SUPPORT_FORWARD_TO (created)" \
+        || echo "email rule  : $SUPPORT_ADDRESS (CREATE FAILED)" >&2
+    fi
+  elif [ -n "$SUPPORT_ADDRESS" ]; then
+    echo "email route : SKIPPED — set SUPPORT_FORWARD_TO to forward $SUPPORT_ADDRESS"
+  fi
+fi
+echo
 
 # ---------------------------------------------------------------------------
 # Hyperdrive: requires the environment's Neon DATABASE_URL. Run separately per

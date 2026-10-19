@@ -28,12 +28,25 @@
     "production": {
       "name": "classprints-web",
       "workers_dev": false,
+      // www.bellvel.com is attached only so the worker can 301 it to the apex.
+      // run_worker_first makes that redirect apply to asset paths (/, /index.html) too.
       "routes": [
         {
           "pattern": "bellvel.com",
           "custom_domain": true
+        },
+        {
+          "pattern": "www.bellvel.com",
+          "custom_domain": true
         }
       ],
+      "assets": {
+        "directory": "./dist",
+        "binding": "ASSETS",
+        "html_handling": "auto-trailing-slash",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": true
+      },
       "services": [
         {
           "binding": "API",
