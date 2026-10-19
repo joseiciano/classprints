@@ -75,16 +75,16 @@ const sendVerificationEmailWith = async (
 
 describe('seating-backend verification email branding', () => {
   it('brands subject, text and html with APP_DISPLAY_NAME', async () => {
-    const sent = await sendVerificationEmailWith('Bellvel');
+    const sent = await sendVerificationEmailWith('ClassPrints');
 
     expect(sent).toHaveLength(1);
     const [message] = sent;
     expect(message?.to).toBe('teacher@example.test');
-    expect(message?.subject).toBe('Verify Your Email - Bellvel');
-    expect(message?.text).toBe(`Verify your Bellvel email address: ${verificationUrl}`);
-    expect(message?.html).toContain('<title>Verify Your Email - Bellvel</title>');
+    expect(message?.subject).toBe('Verify Your Email - ClassPrints');
+    expect(message?.text).toBe(`Verify your ClassPrints email address: ${verificationUrl}`);
+    expect(message?.html).toContain('<title>Verify Your Email - ClassPrints</title>');
     expect(message?.html).toContain(`href="${verificationUrl}"`);
-    expect(JSON.stringify(message)).not.toContain('ClassPrints');
+    expect(JSON.stringify(message)).not.toContain('Bellvel');
   });
 
   // A blank APP_DISPLAY_NAME (e.g. an empty wrangler var) must not produce

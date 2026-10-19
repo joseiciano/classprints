@@ -42,7 +42,7 @@ export const buildApp = (options: AppOptions = {}) => {
         .filter(Boolean);
 
       const sendVerificationEmail = (input: { user: { email: string }; url: string }) => {
-        const appName = env.APP_DISPLAY_NAME || 'ClassPrints';
+        const appName = env.APP_DISPLAY_NAME || 'Bellvel';
         const sender = new EmailSender(env.EMAIL, env.EMAIL_FROM_ADDRESS, env.EMAIL_FROM_NAME);
         const send = sender
           .send({

@@ -18,7 +18,7 @@ export default defineConfig({
     {
       name: 'html-app-name',
       transformIndexHtml: (html) =>
-        html.replaceAll('%APP_NAME%', process.env.VITE_APP_NAME || 'ClassPrints'),
+        html.replaceAll('%APP_NAME%', process.env.VITE_APP_NAME || 'Bellvel'),
     },
   ],
   test: {

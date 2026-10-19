@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // The product name and support address are chosen per deployment via Vite
-// env vars (Bellvel in production, ClassPrints elsewhere).
+// env vars (Bellvel by default; staging opts into ClassPrints).
 const loadConstants = async () => {
   vi.resetModules();
   return import('../src/lib/constants');
@@ -13,8 +13,8 @@ afterEach(() => {
 });
 
 describe.each([
-  { constant: 'APPLICATION_NAME', envVar: 'VITE_APP_NAME', configured: 'Bellvel' },
-  { constant: 'SUPPORT_EMAIL', envVar: 'VITE_SUPPORT_EMAIL', configured: 'support@bellvel.example' },
+  { constant: 'APPLICATION_NAME', envVar: 'VITE_APP_NAME', configured: 'ClassPrints' },
+  { constant: 'SUPPORT_EMAIL', envVar: 'VITE_SUPPORT_EMAIL', configured: 'MyClassPrints@gmail.com' },
 ] as const)('$constant', ({ constant, envVar, configured }) => {
   it(`uses ${envVar} when the deployment sets it`, async () => {
     vi.stubEnv(envVar, configured);

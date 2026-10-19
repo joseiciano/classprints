@@ -29,7 +29,7 @@ Environment signal per surface:
 - **REQ-003**: Production outbound email display name is `Bellvel`; production sender address is `noreply@bellvel.com` (see ASSUMPTION-001).
 - **REQ-004**: Production support email shown in the UI/legal pages is `support@bellvel.com`; staging keeps `MyClassPrints@gmail.com` (see ASSUMPTION-001).
 - **REQ-005**: No component outside `apps/seating-frontend/src/lib/constants.ts` may hard-code the app name or support email in frontend source (`apps/seating-frontend/src`), except tests asserting both values.
-- **REQ-006**: If env vars are unset (local dev, tests), frontend falls back to `ClassPrints` / `MyClassPrints@gmail.com`; backend falls back to `ClassPrints`.
+- **REQ-006**: If env vars are unset (local dev, tests, or a misconfigured deploy), everything falls back to the production brand: frontend `Bellvel` / `support@bellvel.com`, backend `Bellvel`. Staging shows `ClassPrints` only because its config sets it explicitly.
 - **CON-001**: Do not rename worker names, domains, datasets, packages, or queue/Hyperdrive resources (non-goals above).
 - **CON-002**: `.env*` files are git-ignored except `.env.example` / `.env.*.example`; defaults must live in code, not in a committed `.env`.
 - **CON-003**: `renderVerificationTemplate` exists as two identical copies (`packages/server/src/email/verification-template.ts`, `packages/server/src/auth/better-auth/verification-template.ts`); both must receive the same change.
@@ -43,8 +43,8 @@ Environment signal per surface:
 - GOAL-001: All frontend code reads the app name and support email from `constants.ts`, driven by build-time env vars.
 
 - [x] **TASK-001**: Edit `apps/seating-frontend/src/lib/constants.ts`
-  - Replace line 1 with `export const APPLICATION_NAME = import.meta.env.VITE_APP_NAME || 'ClassPrints';`
-  - Replace line 2 with `export const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'MyClassPrints@gmail.com';`
+  - Replace line 1 with `export const APPLICATION_NAME = import.meta.env.VITE_APP_NAME || 'Bellvel';`
+  - Replace line 2 with `export const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'support@bellvel.com';`
 - [x] **TASK-002**: Edit `apps/seating-frontend/src/env.d.ts`
   - Append `interface ImportMetaEnv { readonly VITE_APP_NAME?: string; readonly VITE_SUPPORT_EMAIL?: string; }` and `interface ImportMeta { readonly env: ImportMetaEnv; }` after the existing `/// <reference types="vite/client" />`.
 - [x] **TASK-003**: Edit `apps/seating-frontend/src/components/ui/footer-bar.tsx`
@@ -56,9 +56,9 @@ Environment signal per surface:
   - `apps/seating-frontend/src/pages/settings.tsx` (line 395 → `` `${APPLICATION_NAME} Plus` `` / `` `${APPLICATION_NAME} Free` ``)
   - `apps/seating-frontend/src/pages/privacy-policy.tsx` (lines 50, 85, 105, 132, 140, 159, 174, 177, 182, 236)
   - `apps/seating-frontend/src/pages/terms-of-service.tsx` (lines 7, 51, 68, 83, 86, 90, 99, 114, 142, 152, 161, 168, 177, 183, 191, 206, 211, 213). Line 7 is inside a module-level array: build it with `` `Who can use ${APPLICATION_NAME}` ``.
-  - Run `git grep -n "ClassPrints" apps/seating-frontend/src` afterwards; only `constants.ts` fallbacks may remain.
+  - Run `git grep -n "ClassPrints" apps/seating-frontend/src` afterwards; it must return nothing.
 - [x] **TASK-005**: Edit `apps/seating-frontend/vite.config.mts`
-  - Add an inline plugin `{ name: 'html-app-name', transformIndexHtml: (html) => html.replaceAll('%APP_NAME%', process.env.VITE_APP_NAME || 'ClassPrints') }` to `plugins`.
+  - Add an inline plugin `{ name: 'html-app-name', transformIndexHtml: (html) => html.replaceAll('%APP_NAME%', process.env.VITE_APP_NAME || 'Bellvel') }` to `plugins`.
 - [x] **TASK-006**: Edit `apps/seating-frontend/index.html` line 7
   - Change to `<title>%APP_NAME% — Classroom seating, thoughtfully arranged</title>`.
 - [x] **TASK-007**: Update `apps/seating-frontend/.env.staging.example` and `.env.production.example`
@@ -87,7 +87,7 @@ Environment signal per surface:
 - [x] **TASK-011**: Edit both copies of the template (CON-003): `packages/server/src/email/verification-template.ts` and `packages/server/src/auth/better-auth/verification-template.ts`
   - Extend `VerificationTemplateProps` with `appName: string`; destructure it; replace the two `ClassPrints` occurrences (`<title>` and body paragraph) with `${appName}`.
 - [x] **TASK-012**: Edit `apps/seating-backend/src/index.ts` (lines 44-46)
-  - `const appName = env.APP_DISPLAY_NAME || 'ClassPrints';`
+  - `const appName = env.APP_DISPLAY_NAME || 'Bellvel';`
   - `subject: \`Verify Your Email - ${appName}\``, `html: renderVerificationTemplate({ verificationLink: input.url, appName })`, `text: \`Verify your ${appName} email address: ${input.url}\``.
 - [x] **TASK-013**: Add `APP_DISPLAY_NAME` to the mock env objects in `apps/seating-backend/tests/index.test.ts`, `seating.routes.test.ts`, `user.routes.test.ts` (and any other test file whose typecheck fails) so `pnpm typecheck` passes.
 
@@ -137,10 +137,10 @@ Environment signal per surface:
 ## 6. Testing
 
 - **TEST-001**: `packages/server` — `renderVerificationTemplate({ verificationLink, appName: 'Bellvel' })` output contains `Bellvel` in `<title>` and body, contains the link, and does not contain `ClassPrints`; same assertion with `'ClassPrints'` inverted. Run against both template copies.
-- **TEST-002**: `apps/seating-backend` — the `sendVerificationEmail` path produces subject `Verify Your Email - Bellvel` and text containing `Bellvel` when `APP_DISPLAY_NAME='Bellvel'`, and falls back to `ClassPrints` when the var is empty.
-- **TEST-003**: `apps/seating-frontend` — with `vi.stubEnv('VITE_APP_NAME', 'Bellvel')` and `vi.resetModules()`, `constants.ts` exports `APPLICATION_NAME === 'Bellvel'`; with it unset, exports `'ClassPrints'` (same for `SUPPORT_EMAIL`).
-- **TEST-004**: Build check: `VITE_APP_NAME=Bellvel pnpm --filter @classprints/web run build` → `apps/seating-frontend/dist/index.html` contains `<title>Bellvel —` and `grep -c ClassPrints dist/index.html` is 0; repeat without the var → title contains `ClassPrints`.
-- **TEST-005**: Leftover scan: `git grep -n "ClassPrints" -- apps/seating-frontend/src packages/server/src apps/seating-backend/src` returns only `constants.ts` fallback (and the `'ClassPrints'` fallback in `index.ts`).
+- **TEST-002**: `apps/seating-backend` — the `sendVerificationEmail` path produces subject `Verify Your Email - ClassPrints` and text containing `ClassPrints` when `APP_DISPLAY_NAME='ClassPrints'` (the staging override) and falls back to `Bellvel` when the var is empty or unset.
+- **TEST-003**: `apps/seating-frontend` — with `vi.stubEnv('VITE_APP_NAME', 'ClassPrints')` and `vi.resetModules()`, `constants.ts` exports `APPLICATION_NAME === 'ClassPrints'`; with it unset or empty, exports the production default (same for `SUPPORT_EMAIL`).
+- **TEST-004**: Build check: `VITE_APP_NAME=ClassPrints pnpm --filter @classprints/web run build` → `apps/seating-frontend/dist/index.html` contains `<title>ClassPrints —` and `grep -ci bellvel dist/index.html` is 0; repeat without the var → title contains `Bellvel`.
+- **TEST-005**: Leftover scan: `git grep -n "ClassPrints" -- apps/seating-frontend/src packages/server/src apps/seating-backend/src` returns nothing; `ClassPrints` lives only in staging config (`wrangler.jsonc` top-level vars, `deploy.yml`).
 - **TEST-006**: Config check: `grep -n "Bellvel\|bellvel" apps/seating-backend/wrangler.jsonc apps/email-worker/wrangler.jsonc` shows hits only inside `env.production` blocks.
 
 ## 7. Risks & Assumptions
