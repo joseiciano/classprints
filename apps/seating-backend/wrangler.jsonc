@@ -1,6 +1,7 @@
 {
   // ClassPrints API worker — top-level = staging (default deploy target, REQ-007),
   // env.production = production overrides (REQ-008).
+  // User-facing display name varies by env: ClassPrints (staging), Bellvel (production).
   // Secrets (BETTER_AUTH_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET) are set
   // per account via `wrangler secret put <KEY>` (SEC-002); wrangler 4.57 has no
   // `secrets.required` config key, so required secret names are tracked here only.

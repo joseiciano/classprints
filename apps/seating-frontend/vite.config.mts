@@ -11,7 +11,16 @@ const resolvePath = (relativePath: string) => path.resolve(__dirname, relativePa
 
 export default defineConfig({
   base: '/',
-  plugins: [react(), tailwindcss(), tsconfigPaths()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    tsconfigPaths(),
+    {
+      name: 'html-app-name',
+      transformIndexHtml: (html) =>
+        html.replaceAll('%APP_NAME%', process.env.VITE_APP_NAME || 'ClassPrints'),
+    },
+  ],
   test: {
     // `vite-tsconfig-paths` only path-resolves files covered by
     // tsconfig.json's `include` (vite.config.mts, src, worker) — never

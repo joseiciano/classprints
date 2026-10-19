@@ -2,6 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../providers/auth-provider';
+import { APPLICATION_NAME } from '../lib/constants';
 
 const columns = ['1', '2', '3', '4', '5', '6', '7'];
 const sampleSeats = [
@@ -86,7 +87,7 @@ export function OverviewPage() {
             Every student, in the <em className="text-primary">right</em> seat.
           </h1>
           <p className="mt-6 max-w-[48ch] text-lg leading-8 text-muted-foreground">
-            ClassPrints turns your class roster, classroom dynamics, and room layout into an
+            {APPLICATION_NAME} turns your class roster, classroom dynamics, and room layout into an
             optimized seating chart—algorithmic or AI-assisted—in seconds.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -199,7 +200,7 @@ export function OverviewPage() {
       <section className="border-y border-border" aria-labelledby="landing-features">
         <div className="mx-auto grid w-full max-w-[1120px] px-4 py-8 sm:px-6 sm:py-12 md:grid-cols-3">
           <h2 id="landing-features" className="sr-only">
-            Why teachers use ClassPrints
+            Why teachers use {APPLICATION_NAME}
           </h2>
           {features.map((feature, index) => (
             <article

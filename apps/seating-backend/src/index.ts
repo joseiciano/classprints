@@ -42,13 +42,14 @@ export const buildApp = (options: AppOptions = {}) => {
         .filter(Boolean);
 
       const sendVerificationEmail = (input: { user: { email: string }; url: string }) => {
+        const appName = env.APP_DISPLAY_NAME || 'ClassPrints';
         const sender = new EmailSender(env.EMAIL, env.EMAIL_FROM_ADDRESS, env.EMAIL_FROM_NAME);
         const send = sender
           .send({
             to: input.user.email,
-            subject: 'Verify Your Email - ClassPrints',
-            html: renderVerificationTemplate({ verificationLink: input.url }),
-            text: `Verify your ClassPrints email address: ${input.url}`,
+            subject: `Verify Your Email - ${appName}`,
+            html: renderVerificationTemplate({ verificationLink: input.url, appName }),
+            text: `Verify your ${appName} email address: ${input.url}`,
           })
           .catch((error) => console.error('[auth] Failed to send verification email:', error));
 

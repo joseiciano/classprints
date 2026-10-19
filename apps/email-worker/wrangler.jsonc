@@ -1,6 +1,7 @@
 {
   // ClassPrints email worker — consumes completed email jobs and sends result emails.
   // Top-level = staging (default), env.production = production overrides.
+  // Sender display name varies by env: ClassPrints (staging), Bellvel (production).
   // Secrets (RESEND_API_KEY) are set per account via `wrangler secret put` (SEC-002).
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "classprints-email",

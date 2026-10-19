@@ -1,14 +1,14 @@
 ---
 goal: Environment-based app name — "ClassPrints" in staging, "Bellvel" in production (display name, sender identity, support email)
 date_created: 2026-10-13
-last_updated: 2026-10-13
-status: 'Planned'
+last_updated: 2026-10-19
+status: 'Completed'
 tags: [feature, branding, frontend, backend, email, ci-cd]
 ---
 
 # Introduction
 
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+![Status: Completed](https://img.shields.io/badge/status-Completed-brightgreen)
 
 The product is currently hard-coded as "ClassPrints" everywhere. This plan makes the user-facing product name, outbound email sender identity, and support email depend on the deploy environment: **staging keeps "ClassPrints"; production becomes "Bellvel"**.
 
@@ -42,14 +42,14 @@ Environment signal per surface:
 
 - GOAL-001: All frontend code reads the app name and support email from `constants.ts`, driven by build-time env vars.
 
-- [ ] **TASK-001**: Edit `apps/seating-frontend/src/lib/constants.ts`
+- [x] **TASK-001**: Edit `apps/seating-frontend/src/lib/constants.ts`
   - Replace line 1 with `export const APPLICATION_NAME = import.meta.env.VITE_APP_NAME || 'ClassPrints';`
   - Replace line 2 with `export const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'MyClassPrints@gmail.com';`
-- [ ] **TASK-002**: Edit `apps/seating-frontend/src/env.d.ts`
+- [x] **TASK-002**: Edit `apps/seating-frontend/src/env.d.ts`
   - Append `interface ImportMetaEnv { readonly VITE_APP_NAME?: string; readonly VITE_SUPPORT_EMAIL?: string; }` and `interface ImportMeta { readonly env: ImportMetaEnv; }` after the existing `/// <reference types="vite/client" />`.
-- [ ] **TASK-003**: Edit `apps/seating-frontend/src/components/ui/footer-bar.tsx`
+- [x] **TASK-003**: Edit `apps/seating-frontend/src/components/ui/footer-bar.tsx`
   - Remove the literal default `brand = 'ClassPrints'`; import `APPLICATION_NAME` from `../../lib/constants` and use `brand = APPLICATION_NAME`.
-- [ ] **TASK-004**: Replace hard-coded `ClassPrints` with `{APPLICATION_NAME}` (import from `../lib/constants`; use template literals where the string is inside an attribute/array) in each file:
+- [x] **TASK-004**: Replace hard-coded `ClassPrints` with `{APPLICATION_NAME}` (import from `../lib/constants`; use template literals where the string is inside an attribute/array) in each file:
   - `apps/seating-frontend/src/pages/overview.tsx` (lines 89, 202)
   - `apps/seating-frontend/src/pages/customer-service.tsx` (lines 13, 57; line 43 already uses the constant)
   - `apps/seating-frontend/src/pages/sign-in.tsx` (line 73)
@@ -57,18 +57,18 @@ Environment signal per surface:
   - `apps/seating-frontend/src/pages/privacy-policy.tsx` (lines 50, 85, 105, 132, 140, 159, 174, 177, 182, 236)
   - `apps/seating-frontend/src/pages/terms-of-service.tsx` (lines 7, 51, 68, 83, 86, 90, 99, 114, 142, 152, 161, 168, 177, 183, 191, 206, 211, 213). Line 7 is inside a module-level array: build it with `` `Who can use ${APPLICATION_NAME}` ``.
   - Run `git grep -n "ClassPrints" apps/seating-frontend/src` afterwards; only `constants.ts` fallbacks may remain.
-- [ ] **TASK-005**: Edit `apps/seating-frontend/vite.config.mts`
+- [x] **TASK-005**: Edit `apps/seating-frontend/vite.config.mts`
   - Add an inline plugin `{ name: 'html-app-name', transformIndexHtml: (html) => html.replaceAll('%APP_NAME%', process.env.VITE_APP_NAME || 'ClassPrints') }` to `plugins`.
-- [ ] **TASK-006**: Edit `apps/seating-frontend/index.html` line 7
+- [x] **TASK-006**: Edit `apps/seating-frontend/index.html` line 7
   - Change to `<title>%APP_NAME% — Classroom seating, thoughtfully arranged</title>`.
-- [ ] **TASK-007**: Update `apps/seating-frontend/.env.staging.example` and `.env.production.example`
+- [x] **TASK-007**: Update `apps/seating-frontend/.env.staging.example` and `.env.production.example`
   - Append documented, non-secret keys. Staging: `VITE_APP_NAME=ClassPrints`, `VITE_SUPPORT_EMAIL=MyClassPrints@gmail.com`. Production: `VITE_APP_NAME=Bellvel`, `VITE_SUPPORT_EMAIL=support@bellvel.com`.
 
 ### Implementation Phase 2: Deploy pipeline sets the frontend variables
 
 - GOAL-002: The deploy workflow injects the right values at frontend build time per environment.
 
-- [ ] **TASK-008**: Edit `.github/workflows/deploy.yml`, step `Build + deploy classprints-web`
+- [x] **TASK-008**: Edit `.github/workflows/deploy.yml`, step `Build + deploy classprints-web`
   - Add to the step's `env:` block:
     - `VITE_APP_NAME: ${{ inputs.environment == 'production' && 'Bellvel' || 'ClassPrints' }}`
     - `VITE_SUPPORT_EMAIL: ${{ inputs.environment == 'production' && 'support@bellvel.com' || 'MyClassPrints@gmail.com' }}`
@@ -78,24 +78,24 @@ Environment signal per surface:
 
 - GOAL-003: The verification email (subject, text, HTML) and sender display name use the environment's name.
 
-- [ ] **TASK-009**: Edit `apps/seating-backend/src/types/env.ts`
+- [x] **TASK-009**: Edit `apps/seating-backend/src/types/env.ts`
   - Add `APP_DISPLAY_NAME: string;` next to `APPLICATION_NAME` (line 13).
-- [ ] **TASK-010**: Edit `apps/seating-backend/wrangler.jsonc`
+- [x] **TASK-010**: Edit `apps/seating-backend/wrangler.jsonc`
   - Top-level `vars` (staging): add `"APP_DISPLAY_NAME": "ClassPrints"` (no other change; `EMAIL_FROM_NAME` stays `ClassPrints`).
   - `env.production.vars`: add `"APP_DISPLAY_NAME": "Bellvel"`; change `"EMAIL_FROM_NAME"` (line 84) to `"Bellvel"`; change `"EMAIL_FROM_ADDRESS"` (line 83) and `send_email[0].allowed_sender_addresses` (line 89) to `noreply@bellvel.com`.
   - Update the file header comment (line 2) to say the display name varies by environment.
-- [ ] **TASK-011**: Edit both copies of the template (CON-003): `packages/server/src/email/verification-template.ts` and `packages/server/src/auth/better-auth/verification-template.ts`
+- [x] **TASK-011**: Edit both copies of the template (CON-003): `packages/server/src/email/verification-template.ts` and `packages/server/src/auth/better-auth/verification-template.ts`
   - Extend `VerificationTemplateProps` with `appName: string`; destructure it; replace the two `ClassPrints` occurrences (`<title>` and body paragraph) with `${appName}`.
-- [ ] **TASK-012**: Edit `apps/seating-backend/src/index.ts` (lines 44-46)
+- [x] **TASK-012**: Edit `apps/seating-backend/src/index.ts` (lines 44-46)
   - `const appName = env.APP_DISPLAY_NAME || 'ClassPrints';`
   - `subject: \`Verify Your Email - ${appName}\``, `html: renderVerificationTemplate({ verificationLink: input.url, appName })`, `text: \`Verify your ${appName} email address: ${input.url}\``.
-- [ ] **TASK-013**: Add `APP_DISPLAY_NAME` to the mock env objects in `apps/seating-backend/tests/index.test.ts`, `seating.routes.test.ts`, `user.routes.test.ts` (and any other test file whose typecheck fails) so `pnpm typecheck` passes.
+- [x] **TASK-013**: Add `APP_DISPLAY_NAME` to the mock env objects in `apps/seating-backend/tests/index.test.ts`, `seating.routes.test.ts`, `user.routes.test.ts` (and any other test file whose typecheck fails) so `pnpm typecheck` passes.
 
 ### Implementation Phase 4: Email worker sender
 
 - GOAL-004: Result emails from the email worker show `Bellvel` and the Bellvel address in production.
 
-- [ ] **TASK-014**: Edit `apps/email-worker/wrangler.jsonc`
+- [x] **TASK-014**: Edit `apps/email-worker/wrangler.jsonc`
   - `env.production.vars.RESEND_FROM_EMAIL` (line 44) → `"Bellvel <noreply@bellvel.com>"`. Staging value (line 15) unchanged.
   - Update header comment (line 2) similarly to TASK-010.
 
@@ -103,9 +103,9 @@ Environment signal per surface:
 
 - GOAL-005: Behavior is defended by tests and the full repo checks pass.
 
-- [ ] **TASK-015**: Delegate to the `tester` agent: add the tests in section 6 (TEST-001..TEST-003).
-- [ ] **TASK-016**: Run `pnpm typecheck && pnpm test`; both must exit 0.
-- [ ] **TASK-017**: Run build verification (TEST-004) and the leftover-literal scan (TEST-005).
+- [x] **TASK-015**: Delegate to the `tester` agent: add the tests in section 6 (TEST-001..TEST-003).
+- [x] **TASK-016**: Run `pnpm typecheck && pnpm test`; both must exit 0.
+- [x] **TASK-017**: Run build verification (TEST-004) and the leftover-literal scan (TEST-005).
 
 ## 3. Alternatives
 

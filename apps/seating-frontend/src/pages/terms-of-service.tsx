@@ -1,10 +1,10 @@
 import { Link } from '@tanstack/react-router';
-import { SUPPORT_EMAIL } from '../lib/constants';
+import { APPLICATION_NAME, SUPPORT_EMAIL } from '../lib/constants';
 
 const lastUpdated = 'October 1, 2026';
 
 const contents = [
-  ['terms-eligibility', 'Who can use ClassPrints'],
+  ['terms-eligibility', `Who can use ${APPLICATION_NAME}`],
   ['terms-service', 'The service'],
   ['terms-data', 'Classroom data'],
   ['terms-use', 'Acceptable use'],
@@ -48,7 +48,7 @@ export function TermsOfServicePage() {
             Terms of Service
           </h1>
           <p className="mt-4 text-lg leading-8 text-muted-foreground">
-            These Terms explain the rules for using ClassPrints. By creating an account, starting a
+            These Terms explain the rules for using {APPLICATION_NAME}. By creating an account, starting a
             subscription, or using the service, you agree to them.
           </p>
           <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
@@ -65,7 +65,7 @@ export function TermsOfServicePage() {
           </h2>
           <ul className="mt-3 grid gap-2 text-[15px] leading-6 text-muted-foreground">
             <li className="before:mr-2 before:text-primary before:content-['—']">
-              ClassPrints is intended for adult educators and authorized school staff.
+              {APPLICATION_NAME} is intended for adult educators and authorized school staff.
             </li>
             <li className="before:mr-2 before:text-primary before:content-['—']">
               You keep ownership of the classroom information you provide.
@@ -80,14 +80,14 @@ export function TermsOfServicePage() {
         </section>
 
         <section id="terms-eligibility" className={`${sectionClass} mt-7`}>
-          <h2 className={headingClass}>1. Who can use ClassPrints</h2>
+          <h2 className={headingClass}>1. Who can use {APPLICATION_NAME}</h2>
           <p className={copyClass}>
             You must be at least 18 years old, or the age of legal majority where you live, and able
-            to enter into a binding agreement. ClassPrints is designed for educators and authorized
+            to enter into a binding agreement. {APPLICATION_NAME} is designed for educators and authorized
             school staff; it is not intended for students to create or manage accounts.
           </p>
           <p className={copyClass}>
-            If you use ClassPrints for a school or district, you confirm that you are authorized to
+            If you use {APPLICATION_NAME} for a school or district, you confirm that you are authorized to
             act for that organization and to provide the classroom information you enter. Keep your
             account details accurate and protect your login credentials.
           </p>
@@ -96,7 +96,7 @@ export function TermsOfServicePage() {
         <section id="terms-service" className={sectionClass}>
           <h2 className={headingClass}>2. The service</h2>
           <p className={copyClass}>
-            ClassPrints creates seating arrangements from the class roster, room layout,
+            {APPLICATION_NAME} creates seating arrangements from the class roster, room layout,
             relationship preferences, and seating constraints you provide. You are responsible for
             reviewing every result and deciding whether it is appropriate for your classroom.
           </p>
@@ -111,7 +111,7 @@ export function TermsOfServicePage() {
           <h2 className={headingClass}>3. Your classroom data</h2>
           <p className={copyClass}>
             You keep ownership of student names, relationship mappings, seating preferences,
-            classroom layouts, saved profiles, and other content you provide. You give ClassPrints a
+            classroom layouts, saved profiles, and other content you provide. You give {APPLICATION_NAME} a
             limited right to host, process, and display that content only as needed to operate,
             secure, and support the service.
           </p>
@@ -153,7 +153,7 @@ export function TermsOfServicePage() {
         <section id="terms-use" className={sectionClass}>
           <h2 className={headingClass}>4. Acceptable use</h2>
           <p className={copyClass}>
-            Use ClassPrints lawfully and only with data you are authorized to manage. You may not:
+            Use {APPLICATION_NAME} lawfully and only with data you are authorized to manage. You may not:
           </p>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-7 text-muted-foreground">
             <li>access another user’s account or classroom information without permission;</li>
@@ -163,7 +163,7 @@ export function TermsOfServicePage() {
               except where law expressly permits it; or
             </li>
             <li>
-              use ClassPrints to discriminate, harass, or make decisions unrelated to classroom
+              use {APPLICATION_NAME} to discriminate, harass, or make decisions unrelated to classroom
               seating.
             </li>
           </ul>
@@ -172,14 +172,14 @@ export function TermsOfServicePage() {
         <section id="terms-billing" className={sectionClass}>
           <h2 className={headingClass}>5. Plans and billing</h2>
           <p className={copyClass}>
-            ClassPrints offers free and paid plans. Prices, billing periods, and included features
+            {APPLICATION_NAME} offers free and paid plans. Prices, billing periods, and included features
             are shown before purchase. Paid subscriptions renew automatically at the selected
             interval until canceled through the billing portal.
           </p>
           <p className={copyClass}>
             Cancellation takes effect at the end of the current paid period. Fees already paid are
             non-refundable unless required by law or stated otherwise at purchase. Stripe handles
-            payment-card details; ClassPrints receives subscription and customer identifiers and
+            payment-card details; {APPLICATION_NAME} receives subscription and customer identifiers and
             billing status. If prices change, the new price will apply no earlier than your next
             renewal after notice.
           </p>
@@ -188,13 +188,13 @@ export function TermsOfServicePage() {
         <section id="terms-ownership" className={sectionClass}>
           <h2 className={headingClass}>6. Ownership</h2>
           <p className={copyClass}>
-            ClassPrints and its licensors own the application, software, branding, and
+            {APPLICATION_NAME} and its licensors own the application, software, branding, and
             documentation. These Terms give you a limited, non-exclusive, non-transferable right to
             use the service while your account is active. They do not transfer ownership of the
             service or its source code to you.
           </p>
           <p className={copyClass}>
-            If you send product feedback, you allow us to use it to improve ClassPrints without
+            If you send product feedback, you allow us to use it to improve {APPLICATION_NAME} without
             payment or restriction. This does not give us ownership of your classroom data.
           </p>
         </section>
@@ -202,7 +202,7 @@ export function TermsOfServicePage() {
         <section id="terms-ending" className={sectionClass}>
           <h2 className={headingClass}>7. Suspension and ending use</h2>
           <p className={copyClass}>
-            You may stop using ClassPrints or delete your account at any time. We may suspend or
+            You may stop using {APPLICATION_NAME} or delete your account at any time. We may suspend or
             terminate access for non-payment, misuse, a security threat, or a material violation of
             these Terms. Where practical, we will provide notice and an opportunity to correct the
             issue.
@@ -219,14 +219,14 @@ export function TermsOfServicePage() {
         <section id="terms-liability" className={sectionClass}>
           <h2 className={headingClass}>8. Disclaimers and liability</h2>
           <p className={copyClass}>
-            ClassPrints is provided “as is” and “as available.” Generated seating arrangements are
+            {APPLICATION_NAME} is provided “as is” and “as available.” Generated seating arrangements are
             classroom-planning aids, not a substitute for an educator’s professional judgment. We do
             not promise uninterrupted service, error-free results, or that data will never be lost.
           </p>
           <p className={copyClass}>
-            To the extent permitted by law, ClassPrints is not liable for indirect, incidental,
+            To the extent permitted by law, {APPLICATION_NAME} is not liable for indirect, incidental,
             special, or consequential damages. Our total liability relating to the service will not
-            exceed the amount you paid ClassPrints during the 12 months before the event giving rise
+            exceed the amount you paid {APPLICATION_NAME} during the 12 months before the event giving rise
             to the claim. Nothing here limits rights or liabilities that cannot legally be limited.
           </p>
         </section>
