@@ -6,8 +6,6 @@
 // A cross-origin API (e.g. `classprints-api.<sub>.workers.dev`) issues cookies
 // on the wrong origin, so after a refresh the browser sends nothing and the
 // user is logged out.
-//
-// `www.` hosts are redirected to the apex so the session lives on one origin.
 export interface FrontendWorkerEnv {
   ASSETS: { fetch: (req: Request) => Promise<Response> };
   API: { fetch: (req: Request) => Promise<Response> };
@@ -16,10 +14,6 @@ export interface FrontendWorkerEnv {
 export default {
   async fetch(request: Request, env: FrontendWorkerEnv) {
     const url = new URL(request.url);
-    if (url.hostname.startsWith('www.')) {
-      url.hostname = url.hostname.slice('www.'.length);
-      return Response.redirect(url.toString(), 301);
-    }
     if (url.pathname.startsWith('/api/')) {
       return env.API.fetch(request);
     }

@@ -26,55 +26,25 @@ const makeEnv = () => {
 };
 
 describe('frontend asset worker', () => {
-  describe('www host', () => {
-    it.each([
-      {
-        name: 'page with query',
-        url: 'https://www.bellvel.com/settings?x=1',
-        location: 'https://bellvel.com/settings?x=1',
-      },
-      { name: 'root', url: 'https://www.bellvel.com/', location: 'https://bellvel.com/' },
-      {
-        name: 'API path',
-        url: 'https://www.bellvel.com/api/auth/session?a=b&c=d',
-        location: 'https://bellvel.com/api/auth/session?a=b&c=d',
-      },
-    ])(
-      'permanently redirects $name to the apex without serving it',
-      async ({ url, location }) => {
-        const { env, assetsUrls, apiUrls } = makeEnv();
+  it('forwards /api/* to the API binding', async () => {
+    const { env, assetsUrls, apiUrls } = makeEnv();
+    const url = 'https://bellvel.com/api/auth/session?a=1';
 
-        const response = await worker.fetch(new Request(url), env);
+    const response = await worker.fetch(new Request(url), env);
 
-        expect(response.status).toBe(301);
-        expect(response.headers.get('Location')).toBe(location);
-        expect(assetsUrls).toEqual([]);
-        expect(apiUrls).toEqual([]);
-      },
-    );
+    expect(await response.text()).toBe('from-api');
+    expect(apiUrls).toEqual([url]);
+    expect(assetsUrls).toEqual([]);
   });
 
-  describe('apex host', () => {
-    it('forwards /api/* to the API binding', async () => {
-      const { env, assetsUrls, apiUrls } = makeEnv();
-      const url = 'https://bellvel.com/api/auth/session?a=1';
+  it('serves other paths from static assets', async () => {
+    const { env, assetsUrls, apiUrls } = makeEnv();
+    const url = 'https://bellvel.com/settings?x=1';
 
-      const response = await worker.fetch(new Request(url), env);
+    const response = await worker.fetch(new Request(url), env);
 
-      expect(await response.text()).toBe('from-api');
-      expect(apiUrls).toEqual([url]);
-      expect(assetsUrls).toEqual([]);
-    });
-
-    it('serves other paths from static assets', async () => {
-      const { env, assetsUrls, apiUrls } = makeEnv();
-      const url = 'https://bellvel.com/settings?x=1';
-
-      const response = await worker.fetch(new Request(url), env);
-
-      expect(await response.text()).toBe('from-assets');
-      expect(assetsUrls).toEqual([url]);
-      expect(apiUrls).toEqual([]);
-    });
+    expect(await response.text()).toBe('from-assets');
+    expect(assetsUrls).toEqual([url]);
+    expect(apiUrls).toEqual([]);
   });
 });

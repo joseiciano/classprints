@@ -222,5 +222,11 @@ Production-only prerequisites (a deploy fails without these — see the
        CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, DATABASE_URL,
        BETTER_AUTH_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
        RESEND_API_KEY, LLM_API_KEY          (secrets)
+
+  7. www.bellvel.com -> bellvel.com redirect (dashboard, zone bellvel.com):
+       DNS: AAAA  www  100::  (Proxied)
+       Rules > Redirect Rules > Create: hostname equals www.bellvel.com,
+       dynamic redirect to concat("https://bellvel.com", http.request.uri.path),
+       status 301, preserve query string.
 EOF
 fi
