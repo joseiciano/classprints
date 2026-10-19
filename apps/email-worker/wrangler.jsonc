@@ -41,7 +41,7 @@
       "name": "classprints-email",
       "workers_dev": false,
       "vars": {
-        "RESEND_FROM_EMAIL": "ClassPrints <noreply@classprints.app>"
+        "RESEND_FROM_EMAIL": "Bellvel <noreply@bellvel.com>"
       },
       "hyperdrive": [
         {

@@ -28,6 +28,7 @@
     "STRIPE_PORTAL_RETURN_URL": "https://classprints-web.icianojn.workers.dev/billing/portal-return",
     "EMAIL_FROM_ADDRESS": "noreply@staging.myclassprints.com",
     "EMAIL_FROM_NAME": "ClassPrints",
+    "APP_DISPLAY_NAME": "ClassPrints",
   },
   "send_email": [
     {
@@ -85,7 +86,13 @@
   "env": {
     "production": {
       "name": "classprints-api",
-      "workers_dev": true,
+      "workers_dev": false,
+      "routes": [
+        {
+          "pattern": "api.classprints.app",
+          "custom_domain": true,
+        },
+      ],
       "vars": {
         "ENVIRONMENT": "production",
         "APPLICATION_NAME": "seating-backend",
@@ -97,13 +104,14 @@
         "STRIPE_CHECKOUT_SUCCESS_URL": "https://classprints.app/billing/success",
         "STRIPE_CHECKOUT_CANCEL_URL": "https://classprints.app/billing/cancel",
         "STRIPE_PORTAL_RETURN_URL": "https://classprints.app/billing/portal-return",
-        "EMAIL_FROM_ADDRESS": "noreply@classprints.app",
-        "EMAIL_FROM_NAME": "ClassPrints",
+        "EMAIL_FROM_ADDRESS": "noreply@bellvel.com",
+        "EMAIL_FROM_NAME": "Bellvel",
+        "APP_DISPLAY_NAME": "Bellvel",
       },
       "send_email": [
         {
           "name": "EMAIL",
-          "allowed_sender_addresses": ["noreply@classprints.app"],
+          "allowed_sender_addresses": ["noreply@bellvel.com"],
         },
       ],
       "hyperdrive": [
