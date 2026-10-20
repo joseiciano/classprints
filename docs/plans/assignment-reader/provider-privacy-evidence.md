@@ -32,12 +32,12 @@ REQ-026, and [Ticket 9](tickets/9-instrument-disclose-verify-and-release.md)
 TASK-028 has published the approved disclosures to the live privacy policy
 and terms of service. Staging/dev deployments are not blocked by this gate.
 
-Current status: **not yet verified**. No model has been selected
-(`TRANSCRIPTION_MODEL` / `TRANSCRIPTION_FALLBACK_MODELS` are unset placeholders
-in `apps/assignment-worker/wrangler.jsonc`), so the sections below cannot be
-completed from this engineering session — they require operations model
-selection (ASSUMPTION-003) and an external policy/legal review that only an
-accountable product/legal owner can perform.
+Current status: **models selected, not yet verified**. Models were chosen on
+2026-10-19 (§3) and set in `apps/assignment-worker/wrangler.jsonc` for both
+environments. Image input and structured-output support were checked against
+OpenRouter's model metadata only; transcription accuracy on real student work
+(staging), the provider policy checks in §4, and product/legal sign-off remain
+open.
 
 ## 2. Ownership
 
@@ -62,8 +62,8 @@ corresponding environment is deployed to production.
 
 | Environment | Model (primary) | Fallback model(s) | Image input capable | Native structured outputs | Verified by | Verified on | Source link |
 |---|---|---|---|---|---|---|---|
-| staging-default | NOT SELECTED | NOT SELECTED | — | — | — | — | — |
-| production | NOT SELECTED | NOT SELECTED | — | — | — | — | — |
+| staging-default | `google/gemini-3.8-flash` | `anthropic/claude-haiku-5.5`, `openai/gpt-6-luna` | Yes (all three) | Yes (all three) | Engineering (capability flags only) | 2026-10-19 | [OpenRouter models API](https://openrouter.ai/api/v1/models) |
+| production | `google/gemini-3.8-flash` | `anthropic/claude-haiku-5.5`, `openai/gpt-6-luna` | Yes (all three) | Yes (all three) | Engineering (capability flags only) | 2026-10-19 | [OpenRouter models API](https://openrouter.ai/api/v1/models) |
 
 If native structured-output support cannot be verified for a selected model,
 `TRANSCRIPTION_STRUCTURED_OUTPUTS` must be set to `false` for that

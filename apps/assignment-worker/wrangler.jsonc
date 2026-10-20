@@ -17,8 +17,8 @@
     "enabled": true
   },
   "vars": {
-    "TRANSCRIPTION_MODEL": "",
-    "TRANSCRIPTION_FALLBACK_MODELS": "",
+    "TRANSCRIPTION_MODEL": "google/gemini-3.8-flash",
+    "TRANSCRIPTION_FALLBACK_MODELS": "anthropic/claude-haiku-5.5,openai/gpt-6-luna",
     "TRANSCRIPTION_STRUCTURED_OUTPUTS": "true"
   },
   "hyperdrive": [
@@ -81,9 +81,9 @@
       "name": "classprints-transcriber",
       "workers_dev": false,
       "vars": {
-        "TRANSCRIPTION_MODEL": "<TRANSCRIPTION_MODEL_PRODUCTION>",
-        "TRANSCRIPTION_FALLBACK_MODELS": "<TRANSCRIPTION_FALLBACK_MODELS_PRODUCTION>",
-        "TRANSCRIPTION_STRUCTURED_OUTPUTS": "<TRANSCRIPTION_STRUCTURED_OUTPUTS_PRODUCTION>"
+        "TRANSCRIPTION_MODEL": "google/gemini-3.8-flash",
+        "TRANSCRIPTION_FALLBACK_MODELS": "anthropic/claude-haiku-5.5,openai/gpt-6-luna",
+        "TRANSCRIPTION_STRUCTURED_OUTPUTS": "true"
       },
       "hyperdrive": [
         {
