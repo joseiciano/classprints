@@ -20,7 +20,7 @@ Environment signal per surface:
 | --- | --- | --- |
 | Frontend (Vite build) | `.github/workflows/deploy.yml` `inputs.environment` | Build-time env vars `VITE_APP_NAME`, `VITE_SUPPORT_EMAIL` |
 | seating-backend worker | `wrangler.jsonc` top-level (staging) vs `env.production` | New var `APP_DISPLAY_NAME` (+ existing `EMAIL_FROM_*`) |
-| email-worker | `wrangler.jsonc` top-level (staging) vs `env.production` | Existing var `RESEND_FROM_EMAIL` display-name part |
+| email-worker | `wrangler.jsonc` top-level (staging) vs `env.production` | `EMAIL_FROM_NAME` / `EMAIL_FROM_ADDRESS` (Cloudflare `send_email`; was Resend `RESEND_FROM_EMAIL` until 2026-10-19) |
 
 ## 1. Requirements & Constraints
 
@@ -34,7 +34,7 @@ Environment signal per surface:
 - **CON-002**: `.env*` files are git-ignored except `.env.example` / `.env.*.example`; defaults must live in code, not in a committed `.env`.
 - **CON-003**: `renderVerificationTemplate` exists as two identical copies (`packages/server/src/email/verification-template.ts`, `packages/server/src/auth/better-auth/verification-template.ts`); both must receive the same change.
 - **GUD-001**: Follow existing repo style (single quotes, 2-space indent, Prettier config in `.prettierrc`).
-- **PAT-001**: Single source of truth per runtime: frontend `constants.ts`; backend `env.APP_DISPLAY_NAME`; email-worker `RESEND_FROM_EMAIL`.
+- **PAT-001**: Single source of truth per runtime: frontend `constants.ts`; backend `env.APP_DISPLAY_NAME`; email-worker `EMAIL_FROM_NAME`.
 
 ## 2. Implementation Steps
 
@@ -131,7 +131,7 @@ Environment signal per surface:
 - **FILE-007**: `.github/workflows/deploy.yml` — inject build vars.
 - **FILE-008**: `apps/seating-backend/src/types/env.ts`, `src/index.ts`, `wrangler.jsonc` — `APP_DISPLAY_NAME`, sender config.
 - **FILE-009**: `packages/server/src/email/verification-template.ts`, `packages/server/src/auth/better-auth/verification-template.ts` — `appName` prop.
-- **FILE-010**: `apps/email-worker/wrangler.jsonc` — production `RESEND_FROM_EMAIL`.
+- **FILE-010**: `apps/email-worker/wrangler.jsonc` — production `EMAIL_FROM_*` + `send_email` sender.
 - **FILE-011**: `apps/seating-backend/tests/*.test.ts` — env mock updates plus new tests.
 
 ## 6. Testing

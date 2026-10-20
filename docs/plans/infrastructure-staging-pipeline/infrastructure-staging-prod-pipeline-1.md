@@ -27,8 +27,9 @@ Core decisions captured from discussion (2026-09-15):
 - **Two Neon databases** — one per environment (separate projects or branches). Connection
   strings live as `DATABASE_URL` secrets in the matching GitHub Environment. Schema
   migrations run in the deploy workflow, identical step for both envs.
-- **Third-party SaaS split per environment**: Stripe (test vs live keys), Resend
-  (staging subdomain vs prod domain), Neon (per-env DB).
+- **Third-party SaaS split per environment**: Stripe (test vs live keys), Neon (per-env DB). Email goes
+  through Cloudflare Email Service in each account (no Resend; decided 2026-10-19): staging
+  sends from `staging.myclassprints.com`, production from `bellvel.com`.
 - **Production-only product rename**: the user-facing product name is per environment —
   staging shows "ClassPrints", production shows "Bellvel" (including email sender name/address
   and support email). Production is served on `bellvel.com` / `api.bellvel.com` (zone in production account
@@ -70,8 +71,7 @@ alternatives/risks, not tasks).
   `FRONTEND_URL`, `ALLOWED_ORIGINS`, Resend domain/key, Hyperdrive/queue IDs) must live in
   `wrangler.jsonc` per env or GitHub Environment secrets — never hardcoded or defaulted
   to prod values in code. This explicitly includes the branding config: `APP_DISPLAY_NAME`,
-  `EMAIL_FROM_NAME`, `EMAIL_FROM_ADDRESS`, `send_email.allowed_sender_addresses`, email-worker
-  `RESEND_FROM_EMAIL`, and frontend build-time `VITE_APP_NAME` / `VITE_SUPPORT_EMAIL`.
+  `EMAIL_FROM_NAME`, `EMAIL_FROM_ADDRESS`, `send_email.allowed_sender_addresses` (API and email worker), and frontend build-time `VITE_APP_NAME` / `VITE_SUPPORT_EMAIL`.
 - **REQ-012**: Branding comes only from the vars listed in REQ-010. Staging must render
   "ClassPrints"; production must render "Bellvel". Code must not hardcode either name outside
   the documented fallbacks. Worker names and resource names are not branding and stay `classprints-*` in both
@@ -197,9 +197,9 @@ alternatives/risks, not tasks).
       (Workers Scripts:Edit, Queues, Hyperdrive:Edit, plus Account Settings:Read as
       required by wrangler). Record tokens for GitHub Environment setup in Phase 3. (SEC-001)
 - [ ] **TASK-010**: Configure third-party per env: Stripe — test-mode product/prices for
-      staging, live prices for prod (IDs into wrangler vars, keys into secrets); Resend —
-      verify staging subdomain and prod domain, one API key per env. The `bellvel.com`
-      domain (Cloudflare Email Sending in the production account, Resend verification,
+      staging, live prices for prod (IDs into wrangler vars, keys into secrets). Email: Cloudflare Email Sending on
+      each env's sender domain (`scripts/bootstrap.sh`). The `bellvel.com`
+      domain (Cloudflare Email Sending in the production account,
       `support@bellvel.com` mailbox) is **assumed to exist** for the purposes of this plan;
       acquiring/onboarding it is done after these changes and gates only the first production
       deploy. (REQ-010, ASSUMPTION-005)
@@ -238,7 +238,7 @@ alternatives/risks, not tasks).
 - [ ] **TASK-015**: Create GitHub Environments `staging` and `production`: populate each
       with `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `DATABASE_URL`,
       `BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
-      `RESEND_API_KEY` (values per env from Phase 2). Branding values
+      `LLM_API_KEY` (values per env from Phase 2). Branding values
       (`VITE_APP_NAME`, `VITE_SUPPORT_EMAIL`) are non-secret and live in the deploy workflow
       keyed on `inputs.environment` (see TASK-013). Enable required reviewers on
       `production` only. Restrict each environment to its triggering branch

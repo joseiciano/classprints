@@ -195,7 +195,6 @@ Next steps (manual, secrets never pass through this script — SEC-002):
       env.production = production.)
 
   2. Set worker secrets for this account:
-       wrangler secret put RESEND_API_KEY          --config apps/email-worker/wrangler.jsonc
        wrangler secret put LLM_API_KEY             --config apps/seating-worker/wrangler.jsonc
        wrangler secret put LLM_API_KEY             --config apps/assignment-worker/wrangler.jsonc
      (run from repo root with this account's token; or use scripts/sync-secrets.sh)
@@ -229,7 +228,7 @@ Production-only prerequisites (a deploy fails without these — see the
      (set-env-secrets.sh production handles this):
        CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, DATABASE_URL,
        BETTER_AUTH_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
-       RESEND_API_KEY, LLM_API_KEY          (secrets)
+       LLM_API_KEY                          (secrets)
 
   7. www.bellvel.com -> bellvel.com redirect (dashboard, zone bellvel.com):
        DNS: AAAA  www  100::  (Proxied)

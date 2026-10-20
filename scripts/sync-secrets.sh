@@ -14,7 +14,6 @@
 #   BETTER_AUTH_SECRET     API worker auth secret
 #   STRIPE_SECRET_KEY      API worker Stripe key
 #   STRIPE_WEBHOOK_SECRET  API worker Stripe webhook secret
-#   RESEND_API_KEY         email worker key
 #   LLM_API_KEY            optimizer worker key (optional)
 
 set -eu
@@ -102,16 +101,13 @@ else
   : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN must be set (env or $ENV_FILE)}"
 fi
 
-APPS="${APP_ARGS:- apps/seating-backend apps/email-worker apps/seating-worker apps/assignment-worker}"
+APPS="${APP_ARGS:- apps/seating-backend apps/seating-worker apps/assignment-worker}"
 for app in $APPS; do
   case "$app" in
     apps/seating-backend|seating-backend)
       put_secret "$app" BETTER_AUTH_SECRET
       put_secret "$app" STRIPE_SECRET_KEY
       put_secret "$app" STRIPE_WEBHOOK_SECRET
-      ;;
-    apps/email-worker|email-worker)
-      put_secret "$app" RESEND_API_KEY
       ;;
     apps/seating-worker|seating-worker)
       put_secret "$app" LLM_API_KEY

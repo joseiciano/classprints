@@ -58,4 +58,32 @@ describe('buildEmailContent', () => {
     const content = buildEmailContent({ ...job, statusMetadata: null }, []);
     expect(content.html).toContain('No seating arrangements');
   });
+
+  describe('plain-text alternative', () => {
+    const resultsOf = (count: number): SeatingResult[] =>
+      Array.from({ length: count }, (_, index) => ({ ...results[0], id: index + 1 }));
+
+    it.each([
+      { name: 'no results', resultCount: 0, students: 2, expected: 'We generated 0 arrangements for your 2 students.' },
+      { name: 'one result', resultCount: 1, students: 2, expected: 'We generated 1 arrangement for your 2 students.' },
+      { name: 'many results', resultCount: 3, students: 5, expected: 'We generated 3 arrangements for your 5 students.' },
+      { name: 'one student', resultCount: 1, students: 1, expected: 'We generated 1 arrangement for your 1 student.' },
+    ])('states result and student counts in text and html ($name)', ({ resultCount, students, expected }) => {
+      const content = buildEmailContent(
+        { ...job, students: Array.from({ length: students }, (_, i) => `Student ${i}`) },
+        resultsOf(resultCount),
+      );
+
+      expect(content.text).toContain('Your seating arrangements are ready.');
+      expect(content.text).toContain(expected);
+      expect(content.html).toContain(expected);
+    });
+
+    it('contains no HTML markup even when the HTML body renders tables and a summary', () => {
+      const content = buildEmailContent(job, results);
+
+      expect(content.html).toMatch(/<table/);
+      expect(content.text).not.toMatch(/<\/?[a-z][^>]*>/i);
+    });
+  });
 });

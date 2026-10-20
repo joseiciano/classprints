@@ -1,8 +1,8 @@
 {
   // ClassPrints email worker — consumes completed email jobs and sends result emails.
   // Top-level = staging (default), env.production = production overrides.
-  // Sender display name varies by env: ClassPrints (staging), Bellvel (production).
-  // Secrets (RESEND_API_KEY) are set per account via `wrangler secret put` (SEC-002).
+  // Sends through Cloudflare Email Service (send_email binding); no secrets needed.
+  // Sender varies by env: ClassPrints (staging), Bellvel (production).
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "classprints-email",
   "main": "src/index.ts",
@@ -13,8 +13,15 @@
     "enabled": true
   },
   "vars": {
-    "RESEND_FROM_EMAIL": "ClassPrints <noreply@staging.classprints.email>"
+    "EMAIL_FROM_ADDRESS": "noreply@staging.myclassprints.com",
+    "EMAIL_FROM_NAME": "ClassPrints"
   },
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_sender_addresses": ["noreply@staging.myclassprints.com"]
+    }
+  ],
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
@@ -42,8 +49,15 @@
       "name": "classprints-email",
       "workers_dev": false,
       "vars": {
-        "RESEND_FROM_EMAIL": "Bellvel <noreply@bellvel.com>"
+        "EMAIL_FROM_ADDRESS": "noreply@bellvel.com",
+        "EMAIL_FROM_NAME": "Bellvel"
       },
+      "send_email": [
+        {
+          "name": "EMAIL",
+          "allowed_sender_addresses": ["noreply@bellvel.com"]
+        }
+      ],
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",
