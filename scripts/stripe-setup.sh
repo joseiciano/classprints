@@ -12,7 +12,8 @@
 #   scripts/stripe-setup.sh staging|production
 #
 # Reads STRIPE_SECRET_KEY from .env.<env> (or the shell). Production refuses a
-# test key and staging refuses a live key. Requires curl and jq.
+# test key and staging refuses a live key. A restricted key needs write access
+# to Products, Prices and Webhook Endpoints. Requires curl and jq.
 
 set -eu
 
@@ -21,12 +22,12 @@ case "$ENVIRONMENT" in
   production)
     PRODUCT_NAME="Bellvel Plus"
     WEBHOOK_URL="https://bellvel.com/api/v1/billing/webhook"
-    KEY_PREFIX="sk_live_"
+    KEY_MODE="live"
     ;;
   staging)
     PRODUCT_NAME="ClassPrints Plus"
     WEBHOOK_URL="https://classprints-web.icianojn.workers.dev/api/v1/billing/webhook"
-    KEY_PREFIX="sk_test_"
+    KEY_MODE="test"
     ;;
   *)
     echo "usage: scripts/stripe-setup.sh staging|production" >&2
@@ -40,10 +41,11 @@ if [ -f "$ENV_FILE" ] && [ -z "${STRIPE_SECRET_KEY:-}" ]; then
   STRIPE_SECRET_KEY=$(sed -n 's/^STRIPE_SECRET_KEY=//p' "$ENV_FILE" | sed "s/^[\"']//; s/[\"']\$//")
 fi
 : "${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY must be set (in $ENV_FILE or the shell)}"
+# Secret (sk_) and restricted (rk_) keys both work; the mode must match the env.
 case "$STRIPE_SECRET_KEY" in
-  "$KEY_PREFIX"*) ;;
+  "sk_${KEY_MODE}_"* | "rk_${KEY_MODE}_"*) ;;
   *)
-    echo "error: $ENVIRONMENT needs a ${KEY_PREFIX}... key" >&2
+    echo "error: $ENVIRONMENT needs an sk_${KEY_MODE}_... or rk_${KEY_MODE}_... key" >&2
     exit 1
     ;;
 esac
