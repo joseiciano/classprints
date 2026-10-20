@@ -8,7 +8,7 @@ function getCurrentTheme(): Theme {
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 }
 
-export function ThemeToggle({ className = '' }: { className?: string }) {
+export function useTheme() {
   const [theme, setTheme] = useState<Theme>(getCurrentTheme);
 
   useEffect(() => {
@@ -30,6 +30,12 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
     }
     setTheme(nextTheme);
   };
+
+  return { theme, nextTheme, toggleTheme };
+}
+
+export function ThemeToggle({ className = '' }: { className?: string }) {
+  const { theme, nextTheme, toggleTheme } = useTheme();
 
   return (
     <button

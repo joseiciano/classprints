@@ -49,6 +49,39 @@ vi.mock('@classprints/server/billing', async (importOriginal) => {
   };
 });
 
+// TASK-018: account deletion schedules Assignment Reader cross-store
+// cleanup through the service/repository pair, which needs a real Postgres
+// connection this suite never provides. These routes tests exercise HTTP
+// orchestration (auth, billing, response shape), not the SQL layer, which
+// the assignment-reader repository/service unit and integration tests cover
+// directly — so the collaborator is mocked here the same way auth/billing are.
+const mockScheduleAccountDeletion = vi.fn();
+
+vi.mock('../src/assignment-reader/assignment-reader.repository', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, createAssignmentReaderRepository: vi.fn(() => ({})) };
+});
+
+vi.mock('../src/assignment-reader/assignment-reader.service', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    // A plain `function`, not an arrow function: `new AssignmentReaderService(...)`
+    // needs a constructor-compatible mock implementation.
+    AssignmentReaderService: vi.fn().mockImplementation(function (this: { scheduleAccountDeletion: typeof mockScheduleAccountDeletion }) {
+      this.scheduleAccountDeletion = mockScheduleAccountDeletion;
+    }),
+  };
+});
+
+// Double-submit CSRF (api-manifest.md §1.1): mutating requests must carry the
+// session marker cookie and the matching header. GETs are exempt.
+const CSRF_TOKEN = 'test-csrf-token';
+const CSRF_HEADERS = {
+  Cookie: `seating_csrf_token=${CSRF_TOKEN}`,
+  'X-CSRF-Token': CSRF_TOKEN,
+};
+
 describe('User Routes', () => {
   const app = buildApp();
 
@@ -69,6 +102,34 @@ describe('User Routes', () => {
     vi.clearAllMocks();
   });
 
+  describe('PUT /api/v1/user/email validation', () => {
+    const put = (body: string) =>
+      app.fetch(
+        new Request('http://localhost/api/v1/user/email', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer mock-token',
+            ...CSRF_HEADERS,
+          },
+          body,
+        }),
+        createEnv() as any,
+      );
+
+    it('keeps the { error } shape for an invalid email', async () => {
+      const res = await put(JSON.stringify({ newEmail: 'nope' }));
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: 'Invalid email address' });
+    });
+
+    it('keeps the { error } shape for malformed JSON', async () => {
+      const res = await put('{not json');
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: 'Invalid JSON body' });
+    });
+  });
+
   describe('DELETE /api/v1/user/account', () => {
     it('should soft-delete user account successfully', async () => {
       mockAuthService.getProfile.mockResolvedValue({
@@ -79,23 +140,38 @@ describe('User Routes', () => {
         deleted_at: null,
       });
       mockAuthService.softDeleteProfile.mockResolvedValue('2026-03-06T10:00:00.000Z');
+      mockScheduleAccountDeletion.mockResolvedValue({
+        operation: {
+          id: 'deletion-op-1',
+          targetType: 'account',
+          targetId: 'test-user-id',
+          status: 'pending',
+          acceptedAt: '2026-03-06T10:00:00.000Z',
+        },
+        created: true,
+      });
 
       const req = new Request('http://localhost/api/v1/user/account', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer mock-token',
+          ...CSRF_HEADERS,
         },
       });
 
       const res = await app.fetch(req, createEnv() as any);
 
-      expect(res.status).toBe(200);
+      // Accepting this request immediately revokes sessions server-side
+      // (api-routes-review.md §3.1), so the response is a pending
+      // DeletionOperation, not a synchronous "done" confirmation.
+      expect(res.status).toBe(202);
       const data = await res.json();
 
-      expect(data.success).toBe(true);
-      expect(data.message).toBe('Account has been soft-deleted successfully');
-      expect(data.deletedAt).toBeDefined();
+      expect(data.data.targetType).toBe('account');
+      expect(data.data.status).toBe('pending');
+      expect(mockAuthService.softDeleteProfile).toHaveBeenCalledWith('test-user-id');
+      expect(mockScheduleAccountDeletion).toHaveBeenCalledWith('test-user-id');
     });
 
     it('should return 400 if account is already deleted', async () => {
@@ -112,6 +188,7 @@ describe('User Routes', () => {
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer mock-token',
+          ...CSRF_HEADERS,
         },
       });
 
@@ -131,6 +208,7 @@ describe('User Routes', () => {
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer mock-token',
+          ...CSRF_HEADERS,
         },
       });
 
@@ -157,6 +235,7 @@ describe('User Routes', () => {
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer mock-token',
+          ...CSRF_HEADERS,
         },
       });
 
@@ -174,6 +253,7 @@ describe('User Routes', () => {
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer invalid-token',
+          ...CSRF_HEADERS,
         },
       });
 

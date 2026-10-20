@@ -1,6 +1,7 @@
 {
   // ClassPrints API worker — top-level = staging (default deploy target, REQ-007),
   // env.production = production overrides (REQ-008).
+  // User-facing display name varies by env: ClassPrints (staging), Bellvel (production).
   // Secrets (BETTER_AUTH_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET) are set
   // per account via `wrangler secret put <KEY>` (SEC-002); wrangler 4.57 has no
   // `secrets.required` config key, so required secret names are tracked here only.
@@ -13,8 +14,8 @@
   "observability": {
     "enabled": true,
   },
-  // Staging (default) — replace <...> placeholders with real values after bootstrap
-  // (scripts/bootstrap.sh prints the IDs; see plan TASK-006).
+  // Staging (default) — replace <...> placeholders with real values after
+  // bootstrap (scripts/bootstrap.sh prints the IDs).
   "vars": {
     "ENVIRONMENT": "staging",
     "APPLICATION_NAME": "seating-backend",
@@ -28,6 +29,7 @@
     "STRIPE_PORTAL_RETURN_URL": "https://classprints-web.icianojn.workers.dev/billing/portal-return",
     "EMAIL_FROM_ADDRESS": "noreply@staging.myclassprints.com",
     "EMAIL_FROM_NAME": "ClassPrints",
+    "APP_DISPLAY_NAME": "ClassPrints",
   },
   "send_email": [
     {
@@ -47,8 +49,25 @@
         "binding": "SEATING_JOBS",
         "queue": "seating-jobs",
       },
+      {
+        "binding": "TRANSCRIPTION_JOBS",
+        "queue": "transcription-jobs",
+      },
+      {
+        "binding": "DOCUMENT_CLEANUP_JOBS",
+        "queue": "document-cleanup-jobs",
+      },
     ],
   },
+  "images": {
+    "binding": "IMAGES",
+  },
+  "r2_buckets": [
+    {
+      "binding": "ASSIGNMENT_IMAGES",
+      "bucket_name": "assignment-reader-staging",
+    },
+  ],
   "ratelimits": [
     {
       "name": "API_RATELIMITER",
@@ -68,31 +87,38 @@
   "env": {
     "production": {
       "name": "classprints-api",
-      "workers_dev": true,
+      "workers_dev": false,
+      "routes": [
+        {
+          "pattern": "api.bellvel.com",
+          "custom_domain": true,
+        },
+      ],
       "vars": {
         "ENVIRONMENT": "production",
         "APPLICATION_NAME": "seating-backend",
-        "FRONTEND_URL": "https://classprints.app",
-        "ALLOWED_ORIGINS": "https://classprints.app",
-        "STRIPE_PRICE_PLUS_MONTHLY": "<STRIPE_PRICE_PLUS_MONTHLY_PRODUCTION>",
-        "STRIPE_PRICE_PLUS_QUARTERLY": "<STRIPE_PRICE_PLUS_QUARTERLY_PRODUCTION>",
-        "STRIPE_PRICE_PLUS_ANNUAL": "<STRIPE_PRICE_PLUS_ANNUAL_PRODUCTION>",
-        "STRIPE_CHECKOUT_SUCCESS_URL": "https://classprints.app/billing/success",
-        "STRIPE_CHECKOUT_CANCEL_URL": "https://classprints.app/billing/cancel",
-        "STRIPE_PORTAL_RETURN_URL": "https://classprints.app/billing/portal-return",
-        "EMAIL_FROM_ADDRESS": "noreply@classprints.app",
-        "EMAIL_FROM_NAME": "ClassPrints",
+        "FRONTEND_URL": "https://bellvel.com",
+        "ALLOWED_ORIGINS": "https://bellvel.com",
+        "STRIPE_PRICE_PLUS_MONTHLY": "price_1USi5LRqUpXfgjegzH9Em1BE",
+        "STRIPE_PRICE_PLUS_QUARTERLY": "price_1USi5LRqUpXfgjeg9srOqyf1",
+        "STRIPE_PRICE_PLUS_ANNUAL": "price_1USi5MRqUpXfgjeg9uIHZLHI",
+        "STRIPE_CHECKOUT_SUCCESS_URL": "https://bellvel.com/billing/success",
+        "STRIPE_CHECKOUT_CANCEL_URL": "https://bellvel.com/billing/cancel",
+        "STRIPE_PORTAL_RETURN_URL": "https://bellvel.com/billing/portal-return",
+        "EMAIL_FROM_ADDRESS": "noreply@bellvel.com",
+        "EMAIL_FROM_NAME": "Bellvel",
+        "APP_DISPLAY_NAME": "Bellvel",
       },
       "send_email": [
         {
           "name": "EMAIL",
-          "allowed_sender_addresses": ["noreply@classprints.app"],
+          "allowed_sender_addresses": ["noreply@bellvel.com"],
         },
       ],
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",
-          "id": "<PRODUCTION_HYPERDRIVE_ID>",
+          "id": "939494edf57943408759e32fb888ff27",
         },
       ],
       "queues": {
@@ -101,8 +127,25 @@
             "binding": "SEATING_JOBS",
             "queue": "seating-jobs",
           },
+          {
+            "binding": "TRANSCRIPTION_JOBS",
+            "queue": "transcription-jobs",
+          },
+          {
+            "binding": "DOCUMENT_CLEANUP_JOBS",
+            "queue": "document-cleanup-jobs",
+          },
         ],
       },
+      "images": {
+        "binding": "IMAGES",
+      },
+      "r2_buckets": [
+        {
+          "binding": "ASSIGNMENT_IMAGES",
+          "bucket_name": "assignment-reader-production",
+        },
+      ],
       "ratelimits": [
         {
           "name": "API_RATELIMITER",

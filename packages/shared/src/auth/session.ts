@@ -45,3 +45,9 @@ export const readCookie = (name: string, cookieString?: string): string | null =
 
 export const readCsrfToken = (cookieString?: string): string | null =>
   readCookie(getCsrfCookieName(), cookieString);
+
+/** Header object carrying the double-submit CSRF token, or `{}` when no token cookie is set. */
+export const csrfHeaders = (): Record<string, string> => {
+  const token = readCsrfToken();
+  return token ? { [getCsrfHeaderName()]: token } : {};
+};

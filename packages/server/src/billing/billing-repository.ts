@@ -62,14 +62,6 @@ export class BillingRepository {
     return row ? mapCustomer(row) : null;
   }
 
-  async getEmailByUserId(userId: string): Promise<string | null> {
-    const rows = await this.sql`
-      select email from "user" where id = ${userId} limit 1
-    `;
-    const row = rows[0] as { email: string | null } | undefined;
-    return row?.email ?? null;
-  }
-
   async getCustomerByStripeCustomerId(stripeCustomerId: string): Promise<BillingCustomer | null> {
     const rows = await this.sql`
       select user_id, stripe_customer_id, created_at

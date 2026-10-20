@@ -1,5 +1,4 @@
 import type { Sql } from '@classprints/server/db';
-import { isPlusAllowlistedEmail } from '@classprints/server/billing';
 import type { JobRecord, JobStatusMetadata, SeatingResult } from '../types';
 
 export type EmailDeliveryEligibility =
@@ -12,20 +11,13 @@ export async function checkEmailDeliveryEligibility(
   sql: Sql,
   userId: string,
 ): Promise<EmailDeliveryEligibility> {
-  const userRows = await sql`
-    select email from "user" where id = ${userId} limit 1
+  const subscriptionRows = await sql`
+    select status from subscriptions where user_id = ${userId} limit 1
   `;
-  const email = (userRows[0] as { email: string | null } | undefined)?.email;
+  const subscription = subscriptionRows[0] as { status: string } | undefined;
 
-  if (!isPlusAllowlistedEmail(email)) {
-    const subscriptionRows = await sql`
-      select status from subscriptions where user_id = ${userId} limit 1
-    `;
-    const subscription = subscriptionRows[0] as { status: string } | undefined;
-
-    if (!subscription || subscription.status !== 'active') {
-      return 'no_subscription';
-    }
+  if (!subscription || subscription.status !== 'active') {
+    return 'no_subscription';
   }
 
   const profileRows = await sql`

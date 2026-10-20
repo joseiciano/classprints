@@ -4,5 +4,5 @@
     "types": ["@cloudflare/workers-types"],
     "moduleResolution": "Bundler"
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "worker-configuration.d.ts"]
 }

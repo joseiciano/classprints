@@ -1,4 +1,5 @@
 import { betterAuth } from 'better-auth';
+import { openAPI } from 'better-auth/plugins';
 import { PostgresJSDialect } from 'kysely-postgres-js';
 import type { Sql } from '../../db/sql';
 
@@ -18,6 +19,11 @@ export interface BetterAuthConfig {
   /** Sends the verification email; required when email verification is enabled. */
   sendVerificationEmail?: (input: { user: { email: string }; url: string; token: string }) => void;
   fromEmail?: string;
+  /**
+   * Adds Better Auth's OpenAPI plugin so its native endpoints can be merged into
+   * the API docs. Non-production only: it exposes the endpoint schema.
+   */
+  enableOpenApi?: boolean;
 }
 
 /**
@@ -55,6 +61,7 @@ export const createAuth = (sql: Sql, config: BetterAuthConfig) =>
         validateSchema: false,
       },
     },
+    plugins: config.enableOpenApi ? [openAPI({ disableDefaultReference: true })] : [],
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,

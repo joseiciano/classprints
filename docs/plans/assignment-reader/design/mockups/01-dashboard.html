@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assignment Reader · 01 Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="assets/mockup.css">
+</head>
+<body class="mockup">
+
+  <header class="screen-head">
+    <span class="wf-tag">Wireframe · not visual design</span>
+    <div class="screen-title">Class dashboard — <em>assignments &amp; seating charts behind tabs</em></div>
+    <p class="screen-sub">PRD capabilities 1 and 6: Elena opens a class from the Class Assignments page and toggles between the canonical Assignments (Date · Assignment · Status) and Seating Charts (Date · Class · Student Count) tables — without maintaining a separate tracking sheet.</p>
+  </header>
+
+  <main class="frame">
+    <div class="frame-bar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span class="path">classes/grade-3-room-12</span>
+      <span class="flow-name">PRD §1 Class hierarchy · §6 Tracking</span>
+    </div>
+    <div class="frame-body">
+
+      <div class="appbar">
+        <span class="brand"><span class="mark">A</span> Assignment Reader</span>
+        <span class="who"><span>Elena Ellis</span><span class="avatar">EE</span></span>
+      </div>
+
+      <div class="split" style="align-items:start;">
+        <aside style="position:sticky; top:18px;">
+          <nav class="panel" style="padding:8px 0;" aria-label="Primary">
+            <span class="h-small" style="padding:10px 16px 2px; display:block;">Management</span>
+            <a href="01b-class-assignments.html" class="rowline" style="padding:10px 16px; text-decoration:none; color:var(--ink); font-weight:700; background:var(--accent-wash); border-left:3px solid var(--accent);">Classes</a>
+            <span class="h-small" style="padding:16px 16px 2px; display:block;">Account</span>
+            <a href="#" class="rowline" style="padding:10px 16px; text-decoration:none; color:var(--ink); font-weight:700;">Settings</a>
+            <a href="#" class="rowline" style="padding:10px 16px; text-decoration:none; color:var(--ink); font-weight:700;">Pricing</a>
+          </nav>
+        </aside>
+        <div class="col">
+          <div class="crumbs">
+            <b>Classes</b> <span class="sep"></span> <b>Grade 3 · Room 12</b>
+          </div>
+
+          <div class="card ink-border" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:22px;">
+            <div class="seg">
+              <button class="on">Assignments</button>
+              <button>Seating Charts</button>
+            </div>
+            <span class="btn-row" style="margin-left:auto;">
+              <button class="btn ghost sm">Rename</button>
+              <button class="btn ghost sm">Archive class</button>
+              <button class="btn primary sm">New assignment</button>
+            </span>
+          </div>
+          <div class="note" data-n="5" style="margin-bottom:22px;">
+            <b>One list at a time.</b> The section tab toggles between the class's Assignments table (Date · Assignment · Status) and Seating Charts table (Date · Class · Student Count). Both use the same canonical list component with search, sortable headers, and pagination; only the active tab's list is visible.
+          </div>
+
+
+          <!-- ============ assignments list ============ -->
+          <div class="panel" style="margin-bottom:22px;">
+            <div class="panel-head">
+              <span class="panel-title">Assignments</span>
+              <div style="display:flex; gap:10px; margin-left:auto; align-items:center;">
+                <input class="input" style="width:220px;" value="Search date, assignment, or status…" aria-label="Search assignments">
+                <button class="btn primary sm">Search</button>
+              </div>
+            </div>
+            <div class="panel-body" style="padding:0;">
+              <table style="width:100%; border-collapse:collapse; font-size:13.5px;">
+                <thead>
+                  <tr style="border-bottom:1.5px solid var(--ink-line); text-align:left;">
+                    <th style="padding:10px 16px; font-weight:700;">Date <span class="mono faint">▾</span></th>
+                    <th style="padding:10px 16px; font-weight:700;">Assignment <span class="mono faint"></span></th>
+                    <th style="padding:10px 16px; font-weight:700;">Status <span class="mono faint"></span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom:1px solid var(--ink-line); background:var(--accent-wash);">
+                    <td style="padding:12px 16px;" class="mono">3/7/26</td>
+                    <td style="padding:12px 16px;">Fractions worksheet 4 — Equivalent fractions</td>
+                    <td style="padding:12px 16px;"><span class="chip st-review"><span class="dot"></span> Need review</span></td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--ink-line);">
+                    <td style="padding:12px 16px;" class="mono">3/6/26</td>
+                    <td style="padding:12px 16px;">Paragraph of the week</td>
+                    <td style="padding:12px 16px;"><span class="chip st-review"><span class="dot"></span> Need review</span></td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--ink-line);">
+                    <td style="padding:12px 16px;" class="mono">3/5/26</td>
+                    <td style="padding:12px 16px;">Timed facts — Division</td>
+                    <td style="padding:12px 16px;"><span class="chip st-graded"><span class="dot"></span> Graded</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="display:flex; gap:10px; padding:12px 16px; border-top:1.5px solid var(--ink-line); align-items:center; justify-content:space-between;">
+              <span class="small faint">12 assignments · showing 1–10</span>
+              <span class="btn-row">
+                <button class="btn ghost sm">‹ Prev</button>
+                <button class="btn sm">1</button>
+                <button class="btn ghost sm">2</button>
+                <button class="btn ghost sm">Next ›</button>
+              </span>
+            </div>
+          </div>
+
+          <div class="note" data-n="1" style="max-width:none;">
+            <b>The canonical list component.</b> Columns are Date · Assignment · Status (one state chip: "Need review" while any work is ungraded, "Graded" when fully reviewed — no per-state radio chips). Headers sort ascending/descending on click, the connected search filters by any column, and the list paginates at 10 rows. Row click opens the assignment. The same component serves Seating Charts (Date · Class · Student Count), the Classes list, Submissions, and Processing pages.
+          </div>
+
+          <div class="note" data-n="4" style="margin-top:14px;">
+            <b>Maximum score is optional and enforced when present.</b> Scores accept up to two decimal places; values above the maximum are rejected with a clear error, and no percentage is calculated (resolved decision 4).
+          </div>
+
+          <div class="note danger" data-n="2" style="margin-top:14px; max-width:none;">
+            <b>Errors are system failures, not student outcomes.</b> The Error state covers upload and parsing failures for a page or document; repair stays scoped to the failed page (PRD §2/§3; resolved decision 6).
+          </div>
+
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <nav class="nav-next">
+    <a href="index.html">⌂ Overview</a>
+    <a href="01b-class-assignments.html">01a Class Assignments</a>
+    <a href="01-dashboard.html" class="on">01 Dashboard</a>
+    <a href="02-assignment.html">02 Assignment</a>
+    <a href="03-upload.html">03 Upload</a>
+    <a href="04-processing.html">04 Processing</a>
+    <a href="05-workspace.html">05 Workspace</a>
+  </nav>
+  <nav class="nav-next">
+    <a href="01b-class-assignments.html">← Class assignments</a>
+    <a href="02-assignment.html">Assignment →</a>
+  </nav>
+
+  <footer class="foot">
+    <span>© 2026 ClassPrints</span>
+    <span><a href="#">Terms</a> &nbsp; <a href="#">Privacy</a> &nbsp; <a href="#">Support</a></span>
+  </footer>
+
+</body>
+</html>

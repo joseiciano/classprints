@@ -2,7 +2,12 @@ import postgres from 'postgres';
 import type { Hyperdrive } from '@cloudflare/workers-types';
 
 export type Sql = postgres.Sql<Record<string, unknown>>;
-export type SqlFactory = (bindings: { HYPERDRIVE: Hyperdrive }) => Sql;
+/** Minimal structural Hyperdrive surface so call sites can pass any binding
+ *  shape (workers-types or generated runtime types) without cast friction. */
+export interface HyperdriveLike {
+  readonly connectionString: string;
+}
+export type SqlFactory = (bindings: { HYPERDRIVE: HyperdriveLike }) => Sql;
 
 /**
  * Creates a SQL client from a Hyperdrive binding (Neon origin).

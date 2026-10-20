@@ -5,50 +5,42 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   redirect,
   useLocation,
 } from '@tanstack/react-router';
-import {
-  CreditCard,
-  LayoutGrid,
-  LogOut,
-  Menu,
-  Plus,
-  Settings,
-  SlidersHorizontal,
-  X,
-} from 'lucide-react';
+import { BookOpen, LayoutGrid, LogOut, Menu, Settings, SlidersHorizontal, X } from 'lucide-react';
 import { FooterBar } from './components/ui/footer-bar';
 import { LoadingScreen } from './components/ui/loading-screen';
 import { Logo } from './components/ui/logo';
 import { ThemeToggle } from './components/ui/theme-toggle';
 import { AuthCallbackPage } from './pages/auth-callback';
-import { ConfigsArrangementPage } from './pages/configs-arrangement';
-import { ConfigsPage } from './pages/configs';
-import { CreateArrangementPage } from './pages/create-arrangement';
-import { CustomerServicePage } from './pages/customer-service';
-import { JobDetailPage } from './pages/job-detail';
-import { JobsPage } from './pages/jobs-list';
 import { OverviewPage } from './pages/overview';
-import { PricingPage } from './pages/pricing';
-import { PrivacyPolicyPage } from './pages/privacy-policy';
-import { SettingsPage } from './pages/settings';
 import { SignInPage } from './pages/sign-in';
 import { SignOutPage } from './pages/sign-out';
-import { SignUpPage } from './pages/sign-up';
-import { TermsOfServicePage } from './pages/terms-of-service';
-import { VerifyEmailPage } from './pages/verify-email';
-import { useSubscription } from './hooks/use-subscription';
+import { RouteErrorFallback } from './components/ui/route-error';
+import {
+  validateClassDashboardSearch,
+  validateClassesSearch,
+  validateDocumentWorkspaceSearch,
+  validateSubmissionsSearch,
+} from './lib/assignment-reader-search';
 import { APPLICATION_NAME } from './lib/constants';
 import { useAuth } from './providers/auth-provider';
 import type { AuthUser } from '@classprints/shared';
 
 const APP_LINKS = [
-  { label: 'Charts', to: '/charts', icon: LayoutGrid, exact: false },
-  { label: 'Configs', to: '/configs', icon: SlidersHorizontal, exact: true },
-  { label: 'New chart', to: '/create-arrangement', icon: Plus, exact: true },
-  { label: 'Settings', to: '/settings', icon: Settings, exact: true },
-  { label: 'Pricing', to: '/pricing', icon: CreditCard, exact: true },
+  {
+    label: 'Assignments',
+    to: '/classes',
+    icon: BookOpen,
+    exact: false,
+    section: 'Assignment Reader',
+  },
+  { label: 'Charts', to: '/charts', icon: LayoutGrid, exact: false, section: 'Seating Charts' },
+  { label: 'Classes', to: '/configs', icon: SlidersHorizontal, exact: true, section: undefined },
+  { label: 'Settings', to: '/settings', icon: Settings, exact: true, section: 'Account' },
+  { label: 'Sign out', to: '/sign-out', icon: LogOut, exact: true, section: undefined },
 ] as const;
 
 type AuthSnapshot = { user: AuthUser | null; initializing: boolean };
@@ -99,38 +91,30 @@ const indexRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: '/',
   component: OverviewPage,
-  beforeLoad: ({ context }) => {
-    if (context.auth.initializing) {
-      return;
-    }
-    if (context.auth.user) {
-      throw redirect({ to: '/charts' });
-    }
-  },
 });
 
 const pricingRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: '/pricing',
-  component: PricingPage,
+  component: lazyRouteComponent(() => import('./pages/pricing'), 'PricingPage'),
 });
 
 const termsOfServiceRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: '/terms-of-service',
-  component: TermsOfServicePage,
+  component: lazyRouteComponent(() => import('./pages/terms-of-service'), 'TermsOfServicePage'),
 });
 
 const privacyPolicyRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: '/privacy-policy',
-  component: PrivacyPolicyPage,
+  component: lazyRouteComponent(() => import('./pages/privacy-policy'), 'PrivacyPolicyPage'),
 });
 
 const customerServiceRoute = createRoute({
   getParentRoute: () => publicLayoutRoute,
   path: '/customer-service',
-  component: CustomerServicePage,
+  component: lazyRouteComponent(() => import('./pages/customer-service'), 'CustomerServicePage'),
 });
 
 const signInRoute = createRoute({
@@ -146,13 +130,13 @@ const signInRoute = createRoute({
 const signUpRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: '/sign-up',
-  component: SignUpPage,
+  component: lazyRouteComponent(() => import('./pages/sign-up'), 'SignUpPage'),
 });
 
 const verifyEmailRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: '/verify-email',
-  component: VerifyEmailPage,
+  component: lazyRouteComponent(() => import('./pages/verify-email'), 'VerifyEmailPage'),
   validateSearch: (search: Record<string, unknown>): { email?: string; redirect?: string } => ({
     email: typeof search.email === 'string' ? search.email : undefined,
     redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
@@ -168,37 +152,100 @@ const authCallbackRoute = createRoute({
 const createArrangementRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/create-arrangement',
-  component: CreateArrangementPage,
+  component: lazyRouteComponent(
+    () => import('./pages/create-arrangement'),
+    'CreateArrangementPage',
+  ),
 });
 
 const configsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configs',
-  component: ConfigsPage,
+  component: lazyRouteComponent(() => import('./pages/configs'), 'ConfigsPage'),
 });
 
 const configsArrangementRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configs/arrangement',
-  component: ConfigsArrangementPage,
+  component: lazyRouteComponent(
+    () => import('./pages/configs-arrangement'),
+    'ConfigsArrangementPage',
+  ),
 });
 
 const jobsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/charts',
-  component: JobsPage,
+  component: lazyRouteComponent(() => import('./pages/jobs-list'), 'JobsPage'),
 });
 
 const jobDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/charts/$jobId',
-  component: JobDetailRouteComponent,
+  component: lazyRouteComponent(() => import('./pages/job-detail'), 'JobDetailRoute'),
+});
+
+// ——— Assignment Reader: classes, assignments, and documents (TASK-019) ———————
+
+const classesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/classes',
+  component: lazyRouteComponent(() => import('./pages/assignment-reader/classes'), 'ClassesRoute'),
+  validateSearch: validateClassesSearch,
+});
+
+const classDashboardRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/classes/$classId',
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/class-dashboard'),
+    'ClassDashboardRoute',
+  ),
+  validateSearch: validateClassDashboardSearch,
+});
+
+const assignmentDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/classes/$classId/assignments/$assignmentId',
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/assignment-detail'),
+    'AssignmentDetailRoute',
+  ),
+  validateSearch: validateSubmissionsSearch,
+});
+
+const documentUploadRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/upload',
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/document-upload'),
+    'DocumentUploadRoute',
+  ),
+});
+
+const documentProcessingRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/processing',
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/document-processing'),
+    'DocumentProcessingRoute',
+  ),
+});
+
+const documentWorkspaceRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/classes/$classId/assignments/$assignmentId/documents/$documentType/$documentId/workspace',
+  component: lazyRouteComponent(
+    () => import('./pages/assignment-reader/document-workspace'),
+    'DocumentWorkspaceRoute',
+  ),
+  validateSearch: validateDocumentWorkspaceSearch,
 });
 
 const settingsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/settings',
-  component: SettingsPage,
+  component: lazyRouteComponent(() => import('./pages/settings'), 'SettingsPage'),
   validateSearch: (search: Record<string, unknown>): { success?: boolean } => ({
     success: search.success === true ? true : undefined,
   }),
@@ -233,6 +280,12 @@ const routeTree = rootRoute.addChildren([
     configsArrangementRoute,
     jobsRoute,
     jobDetailRoute,
+    classesRoute,
+    classDashboardRoute,
+    assignmentDetailRoute,
+    documentUploadRoute,
+    documentProcessingRoute,
+    documentWorkspaceRoute,
     settingsRoute,
   ]),
   signOutRoute,
@@ -242,6 +295,8 @@ export const router = createRouter({
   routeTree,
   context: { auth: { user: null, initializing: true } },
   defaultPendingComponent: () => <LoadingScreen fullScreen={false} />,
+  defaultErrorComponent: RouteErrorFallback,
+  defaultPreload: 'intent',
 });
 
 export type SeatingRouter = typeof router;
@@ -297,7 +352,8 @@ function PublicLayout() {
 }
 
 function PublicHeader() {
-  const { user } = useAuth();
+  // Use the remembered hint while the session loads so the header doesn't flip.
+  const { likelySignedIn: user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -320,30 +376,27 @@ function PublicHeader() {
           <Link to="/pricing" className="transition-colors hover:text-foreground">
             Pricing
           </Link>
-          {user ? (
-            <Link to="/charts" className="transition-colors hover:text-foreground">
-              Charts
-            </Link>
-          ) : (
-            <Link to="/sign-in" className="transition-colors hover:text-foreground">
-              Sign in
-            </Link>
-          )}
+          <Link
+            to={user ? '/sign-out' : '/sign-in'}
+            className="transition-colors hover:text-foreground"
+          >
+            {user ? 'Sign out' : 'Sign in'}
+          </Link>
           <ThemeToggle />
           <Link
-            to={user ? '/create-arrangement' : '/sign-up'}
+            to={user ? '/charts' : '/sign-up'}
             className="inline-flex min-h-9 items-center rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-pine-ink dark:hover:bg-primary/80"
           >
-            {user ? 'New chart' : 'Get started'}
+            {user ? 'Dashboard' : 'Get started'}
           </Link>
         </nav>
         <div className="flex items-center gap-2 md:hidden">
           <ThemeToggle />
           <Link
-            to={user ? '/create-arrangement' : '/sign-up'}
+            to={user ? '/charts' : '/sign-up'}
             className="hidden min-h-9 items-center rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground sm:inline-flex"
           >
-            {user ? 'New chart' : 'Get started'}
+            {user ? 'Dashboard' : 'Get started'}
           </Link>
           <button
             ref={triggerRef}
@@ -376,16 +429,16 @@ function PublicHeader() {
               Pricing
             </Link>
             <Link
-              to={user ? '/charts' : '/sign-in'}
+              to={user ? '/sign-out' : '/sign-in'}
               className="flex min-h-11 items-center rounded-lg px-3 font-medium hover:bg-muted"
             >
-              {user ? 'Charts' : 'Sign in'}
+              {user ? 'Sign out' : 'Sign in'}
             </Link>
             <Link
-              to={user ? '/create-arrangement' : '/sign-up'}
+              to={user ? '/charts' : '/sign-up'}
               className="mt-2 flex min-h-11 items-center justify-center rounded-full bg-primary px-4 font-semibold text-primary-foreground sm:hidden"
             >
-              {user ? 'New chart' : 'Get started'}
+              {user ? 'Dashboard' : 'Get started'}
             </Link>
           </nav>
         </div>
@@ -432,7 +485,7 @@ function AuthenticatedLayout() {
             <Menu aria-hidden="true" className="h-5 w-5" />
           </button>
         </header>
-        <main className="mx-auto min-w-0 max-w-[1180px] animate-rise px-4 py-6 sm:px-6 lg:px-[42px] lg:py-[34px] lg:pb-[60px]">
+        <main className="mx-auto min-w-0 max-w-[1120px] animate-rise px-4 py-6 sm:px-6 lg:px-[42px] lg:py-[34px] lg:pb-[60px]">
           <Outlet />
         </main>
       </div>
@@ -467,7 +520,6 @@ function AuthenticatedLayout() {
 
 function AppSidebar() {
   const { user } = useAuth();
-  const { isPlus, isLoading } = useSubscription();
   const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || 'Educator';
   const initials = displayName
     .split(/\s+/)
@@ -481,16 +533,11 @@ function AppSidebar() {
         <BrandLink />
       </div>
       <nav aria-label="Workspace navigation" className="flex flex-col gap-0.5">
-        {APP_LINKS.map(({ label, to, icon: Icon, exact }, index) => (
+        {APP_LINKS.map(({ label, to, icon: Icon, exact, section }) => (
           <div key={to}>
-            {index === 2 ? (
+            {section ? (
               <p className="px-3 pb-1 pt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3">
-                Create
-              </p>
-            ) : null}
-            {index === 3 ? (
-              <p className="px-3 pb-1 pt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3">
-                Account
+                {section}
               </p>
             ) : null}
             <Link
@@ -522,12 +569,6 @@ function AppSidebar() {
           <Link to="/customer-service" className="hover:text-foreground hover:underline">
             Support
           </Link>
-          <Link
-            to="/sign-out"
-            className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
-          >
-            <LogOut aria-hidden="true" className="h-3 w-3" /> Sign out
-          </Link>
         </nav>
         <div className="flex items-center gap-2.5">
           <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
@@ -537,10 +578,6 @@ function AppSidebar() {
             <b className="block truncate text-[13px] font-semibold">{displayName}</b>
             <span className="block truncate text-[11px] text-ink-3">{user?.email}</span>
           </span>
-          <span className="rounded-full border border-amber/40 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] text-amber">
-            {isLoading ? '…' : isPlus ? 'Plus' : 'Free'}
-          </span>
-          <ThemeToggle />
         </div>
       </div>
     </aside>
@@ -602,9 +639,4 @@ function useFocusTrap(
       previousTrigger?.focus();
     };
   }, [containerRef, isOpen, setIsOpen, triggerRef]);
-}
-
-function JobDetailRouteComponent() {
-  const { jobId } = jobDetailRoute.useParams();
-  return <JobDetailPage jobId={jobId} />;
 }

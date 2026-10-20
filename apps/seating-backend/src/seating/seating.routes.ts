@@ -3,6 +3,12 @@ import type { Context } from 'hono';
 import type { SeatingJobQueueMessage } from '@classprints/seating-shared';
 import { ZodError } from 'zod';
 import { createSeatingConfigSchema, updateSeatingConfigSchema } from '@classprints/seating-shared';
+import { saveSeatingChartBodySchema } from '@classprints/assignment-reader-shared';
+import {
+  createAssignmentReaderRepository,
+  AssignmentReaderService,
+  AssignmentReaderError,
+} from '../assignment-reader';
 import { Metrics } from '../utils/metrics';
 import { createDb } from '../lib/db';
 import { createSeatingRepository } from './seating.db';
@@ -10,6 +16,7 @@ import { SeatingService, SeatingConfigService } from './seating.service';
 import type { SeatingHonoEnv, SeatingWorkerBindings } from '../types/env';
 import type { AuthenticatedUser } from '@classprints/server/auth';
 import { BillingService, type BillingServiceConfig } from '@classprints/server/billing';
+import { isHttpError } from '../lib/http-error';
 
 const IS_LLM_ENABLED = true;
 
@@ -175,6 +182,28 @@ export const registerSeatingRoutes = (app: Hono<SeatingHonoEnv>) => {
     }
   });
 
+  // TASK-009: copy a generated seating result into a class-scoped snapshot.
+  // Ownership of job, numeric result, and destination class is resolved by
+  // the assignment-reader service; archived classes are rejected.
+  app.post('/seating/:externalId/save-to-class', async (c) => {
+    try {
+      const user = getUser(c);
+      const externalId = c.req.param('externalId');
+      const body = saveSeatingChartBodySchema.parse(await c.req.json());
+      const repo = createAssignmentReaderRepository(createDb(c.env));
+      const service = new AssignmentReaderService({ repo });
+      const { chart, created } = await service.saveSeatingChartToClass(
+        user.id,
+        externalId,
+        body.classId,
+        body.resultId,
+      );
+      return c.json({ data: chart }, created ? 201 : 200);
+    } catch (error) {
+      return handleSeatingReaderError(error, c);
+    }
+  });
+
   app.get('/seating/:externalId/results', async (c) => {
     try {
       const user = getUser(c);
@@ -189,6 +218,21 @@ export const registerSeatingRoutes = (app: Hono<SeatingHonoEnv>) => {
     }
   });
 };
+
+const handleSeatingReaderError = (error: unknown, c: Context<SeatingHonoEnv>) => {
+  if (error instanceof AssignmentReaderError) {
+    return c.json(
+      {
+        error: error.message,
+        code: error.code,
+        ...(error.details ? { details: error.details } : {}),
+      },
+      error.status as 400 | 404 | 409 | 500,
+    );
+  }
+  return handleRouteError(error, c);
+};
+
 
 const createBillingConfig = (env: SeatingWorkerBindings): BillingServiceConfig => {
   console.log('[DEBUG] Route Stripe Key Length:', env.STRIPE_SECRET_KEY?.length ?? 0);
@@ -238,6 +282,10 @@ const handleRouteError = (error: unknown, c: Context<SeatingHonoEnv>) => {
       },
       400,
     );
+  }
+
+  if (isHttpError(error)) {
+    return c.json({ error: error.message }, error.status);
   }
 
   if (error instanceof SyntaxError) {

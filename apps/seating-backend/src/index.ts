@@ -1,8 +1,13 @@
 import { Hono } from 'hono';
+import { OpenAPIHono } from '@hono/zod-openapi';
+import { HTTPException } from 'hono/http-exception';
 import { cors } from 'hono/cors';
 import type { SeatingHonoEnv, SeatingWorkerBindings } from './types/env';
 import { registerSeatingRoutes } from './seating/seating.routes';
 import { registerUserRoutes } from './user/user.routes';
+import { registerAssignmentReaderRoutes } from './assignment-reader/assignment-reader.routes';
+import { registerApiDocs, isApiDocsEnabled } from './openapi/docs';
+import { validationHook } from './openapi/hooks';
 import {
   registerAuthController,
   requireAuth,
@@ -15,7 +20,7 @@ import { getCsrfHeaderName } from '@classprints/shared';
 import { createDb } from './lib/db';
 import { EmailSender, renderVerificationTemplate } from '@classprints/server/email';
 import { isHttpError } from '@classprints/server/http';
-import { createRateLimitMiddleware } from '@classprints/server/middleware';
+import { createRateLimitMiddleware, requireCsrf } from '@classprints/server/middleware';
 import type { ExecutionContext } from '@cloudflare/workers-types';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
@@ -37,13 +42,14 @@ export const buildApp = (options: AppOptions = {}) => {
         .filter(Boolean);
 
       const sendVerificationEmail = (input: { user: { email: string }; url: string }) => {
+        const appName = env.APP_DISPLAY_NAME || 'Bellvel';
         const sender = new EmailSender(env.EMAIL, env.EMAIL_FROM_ADDRESS, env.EMAIL_FROM_NAME);
         const send = sender
           .send({
             to: input.user.email,
-            subject: 'Verify Your Email - ClassPrints',
-            html: renderVerificationTemplate({ verificationLink: input.url }),
-            text: `Verify your ClassPrints email address: ${input.url}`,
+            subject: `Verify Your Email - ${appName}`,
+            html: renderVerificationTemplate({ verificationLink: input.url, appName }),
+            text: `Verify your ${appName} email address: ${input.url}`,
           })
           .catch((error) => console.error('[auth] Failed to send verification email:', error));
 
@@ -64,11 +70,12 @@ export const buildApp = (options: AppOptions = {}) => {
         trustedOrigins: allowedOrigins.length > 0 ? allowedOrigins : [env.FRONTEND_URL],
         logger: console,
         sendVerificationEmail,
+        enableOpenApi: isApiDocsEnabled(env),
       };
     },
   };
 
-  let app = new Hono<HonoEnv>();
+  let app = new OpenAPIHono<HonoEnv>({ defaultHook: validationHook });
 
   if (options.basePath) {
     app = app.basePath(options.basePath);
@@ -103,6 +110,14 @@ export const buildApp = (options: AppOptions = {}) => {
   });
 
   app.onError((error, c) => {
+    // Hono's request validator rejects unparsable JSON with a 400 HTTPException.
+    if (error instanceof HTTPException && error.status === 400) {
+      const message = error.message.startsWith('Malformed JSON')
+        ? 'Invalid JSON body'
+        : error.message;
+      return c.json({ error: message }, 400);
+    }
+
     if (isHttpError(error)) {
       const status = error.status as ContentfulStatusCode;
       return c.json({ error: error.message }, status);
@@ -182,15 +197,28 @@ export const buildApp = (options: AppOptions = {}) => {
   });
   app.route('/api/v1', billingApp);
 
-  const userApp = new Hono<HonoEnv>();
+  const userApp = new OpenAPIHono<HonoEnv>({ defaultHook: validationHook });
   userApp.use('*', requireAuth(authDeps));
+  userApp.use('*', requireCsrf());
   registerUserRoutes(userApp);
   app.route('/api/v1', userApp);
 
   const seatingApp = new Hono<HonoEnv>();
   seatingApp.use('/seating/*', requireAuth(authDeps));
+  seatingApp.use('/seating/*', requireCsrf());
   registerSeatingRoutes(seatingApp);
   app.route('/api/v1', seatingApp);
+
+  const assignmentReaderApp = new Hono<HonoEnv>();
+  assignmentReaderApp.use('*', requireAuth(authDeps));
+  assignmentReaderApp.use('*', requireCsrf());
+  registerAssignmentReaderRoutes(assignmentReaderApp);
+  app.route('/api/v1', assignmentReaderApp);
+
+  registerApiDocs(app, {
+    authDeps,
+    authBasePath: (env) => `${env.BASE_PATH ?? ''}/api/v1/auth/better-auth`,
+  });
 
   return app;
 };

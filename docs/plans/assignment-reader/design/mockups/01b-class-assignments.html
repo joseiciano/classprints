@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assignment Reader · 01a Class Assignments</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="assets/mockup.css">
+</head>
+<body class="mockup">
+
+  <header class="screen-head">
+    <span class="wf-tag">Wireframe · not visual design</span>
+    <div class="screen-title">Class assignments — <em>pick a class, see its work</em></div>
+    <p class="screen-sub">PRD capability 1: the "Classes" sidebar entry lands here — Elena's classes in the canonical table (Date · Class · Students · Assignments · Status). Selecting a class goes to its dashboard; assignments and seating charts live there behind tabs.</p>
+  </header>
+
+  <main class="frame">
+    <div class="frame-bar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span class="path">classes</span>
+      <span class="flow-name">PRD §1 Class hierarchy</span>
+    </div>
+    <div class="frame-body">
+
+      <div class="appbar">
+        <span class="brand"><span class="mark">A</span> Assignment Reader</span>
+        <span class="who"><span>Elena Ellis</span><span class="avatar">EE</span></span>
+      </div>
+
+      <div class="split" style="align-items:start;">
+        <aside style="position:sticky; top:18px;">
+          <nav class="panel" style="padding:8px 0;" aria-label="Primary">
+            <span class="h-small" style="padding:10px 16px 2px; display:block;">Management</span>
+            <a href="01b-class-assignments.html" class="rowline" style="padding:10px 16px; text-decoration:none; color:var(--accent-deep); font-weight:700; background:var(--accent-wash); border-left:3px solid var(--accent);">Classes</a>
+            <span class="h-small" style="padding:16px 16px 2px; display:block;">Account</span>
+            <a href="#" class="rowline" style="padding:10px 16px; text-decoration:none; color:var(--ink); font-weight:700;">Settings</a>
+            <a href="#" class="rowline" style="padding:10px 16px; text-decoration:none; color:var(--ink); font-weight:700;">Pricing</a>
+          </nav>
+        </aside>
+        <div class="col">
+
+          <div class="crumbs">
+            <b>Classes</b>
+          </div>
+
+          <!-- ============ classes list ============ -->
+          <div class="panel" style="margin-bottom:22px;">
+            <div class="panel-head">
+              <span class="panel-title">Classes</span>
+              <div style="display:flex; gap:10px; margin-left:auto; align-items:center;">
+                <input class="input" style="width:240px;" value="Search date, class, students, assignments, or status…" aria-label="Search classes">
+                <button class="btn primary sm">Search</button>
+              </div>
+            </div>
+            <div class="panel-body" style="padding:0;">
+              <table style="width:100%; border-collapse:collapse; font-size:13.5px;">
+                <thead>
+                  <tr style="border-bottom:1.5px solid var(--ink-line); text-align:left;">
+                    <th style="padding:10px 16px; font-weight:700;">Date <span class="mono faint">▾</span></th>
+                    <th style="padding:10px 16px; font-weight:700;">Class <span class="mono faint"></span></th>
+                    <th style="padding:10px 16px; font-weight:700;">Students <span class="mono faint"></span></th>
+                    <th style="padding:10px 16px; font-weight:700;">Assignments <span class="mono faint"></span></th>
+                    <th style="padding:10px 16px; font-weight:700;">Status <span class="mono faint"></span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom:1px solid var(--ink-line); background:var(--accent-wash);">
+                    <td style="padding:12px 16px;" class="mono">3/7/26</td>
+                    <td style="padding:12px 16px;">Grade 3 · Room 12</td>
+                    <td style="padding:12px 16px;">24</td>
+                    <td style="padding:12px 16px;">3</td>
+                    <td style="padding:12px 16px;"><span class="chip plain"><span class="dot"></span> Active</span></td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--ink-line);">
+                    <td style="padding:12px 16px;" class="mono">3/6/26</td>
+                    <td style="padding:12px 16px;">Grade 3 · Science Club</td>
+                    <td style="padding:12px 16px;">22</td>
+                    <td style="padding:12px 16px;">5</td>
+                    <td style="padding:12px 16px;"><span class="chip st-archived"><span class="dot"></span> Archived</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="display:flex; gap:10px; padding:12px 16px; border-top:1.5px solid var(--ink-line); align-items:center; justify-content:space-between;">
+              <span class="small faint">12 classes · showing 1–10</span>
+              <span class="btn-row">
+                <button class="btn ghost sm">‹ Prev</button>
+                <button class="btn sm">1</button>
+                <button class="btn ghost sm">2</button>
+                <button class="btn ghost sm">Next ›</button>
+              </span>
+            </div>
+          </div>
+
+          <div class="note" data-n="1">
+            <b>One sidebar entry, one table.</b> "Classes" opens this list (PRD navigation); clicking a class row opens its dashboard, where assignments and seating charts sit behind tabs. Columns: Date · Class · Students · Assignments · Status (Active | Archived) — sortable headers, connected search across all columns, pagination at 10 rows. No per-class or per-assignment lists live in the sidebar.
+          </div>
+          <div class="note accent" data-n="2" style="margin-top:14px;">
+            <b>The hierarchy is teacher-owned.</b> Each class contains teacher-managed roster students and assignments; students are records, not signed-in users (PRD capability 1). The counts summarize that hierarchy without creating separate navigation entries.
+          </div>
+          <div class="note danger" data-n="3" style="margin-top:14px;">
+            <b>Archive stays preserved and read-only.</b> The archived class is still a row in the list: assignments, materials, submissions, grading records remain viewable while uploads and edits stop (resolved decision 7).
+          </div>
+          <div class="note" data-n="4" style="margin-top:14px;">
+            <b>Archive is not deletion.</b> Archiving preserves the class and descendants in read-only form, while class deletion is a separate explicit action that removes relational data and original images (resolved decisions 3 and 7).
+          </div>
+
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <nav class="nav-next">
+    <a href="index.html">⌂ Overview</a>
+    <a href="01b-class-assignments.html" class="on">01a Class Assignments</a>
+    <a href="01-dashboard.html">01 Dashboard</a>
+    <a href="02-assignment.html">02 Assignment</a>
+    <a href="03-upload.html">03 Upload</a>
+    <a href="04-processing.html">04 Processing</a>
+    <a href="05-workspace.html">05 Workspace</a>
+  </nav>
+  <nav class="nav-next">
+    <a href="index.html">← Overview</a>
+    <a href="01-dashboard.html">Dashboard →</a>
+  </nav>
+
+  <footer class="foot">
+    <span>© 2026 ClassPrints</span>
+    <span><a href="#">Terms</a> &nbsp; <a href="#">Privacy</a> &nbsp; <a href="#">Support</a></span>
+  </footer>
+
+</body>
+</html>

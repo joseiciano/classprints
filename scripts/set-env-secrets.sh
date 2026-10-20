@@ -47,7 +47,7 @@ REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null) || {
 
 # Secrets managed by this pipeline.
 SECRETS="CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID DATABASE_URL \
-BETTER_AUTH_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET RESEND_API_KEY LLM_API_KEY"
+BETTER_AUTH_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET LLM_API_KEY"
 
 # Load KEY=VALUE pairs from the env file into the current shell (values may
 # contain '=' and quotes; blank lines and comments are skipped).

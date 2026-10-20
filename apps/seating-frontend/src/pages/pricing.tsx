@@ -138,7 +138,7 @@ export function PricingPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[920px] px-4 py-12 text-foreground sm:px-6 sm:py-16 lg:py-20">
+    <div className="mx-auto w-full max-w-[1120px] px-4 py-12 text-foreground sm:px-6 sm:py-16 lg:py-20">
       <header className="mx-auto mb-10 max-w-2xl text-center sm:mb-12">
         <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-primary">
           Simple plans

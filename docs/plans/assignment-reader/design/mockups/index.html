@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assignment Reader · Markups overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="assets/mockup.css">
+</head>
+<body class="mockup">
+
+  <header class="screen-head">
+    <span class="wf-tag">Wireframe · not visual design</span>
+    <div class="screen-title">Assignment Reader — <em>how it works</em>, in markups</div>
+    <p class="screen-sub">Annotated wireframes for the first release, generated from <span class="mono">plan/assignment-reader/product-doc.md</span>. Each screen is a standalone HTML page; numbered notes cite the PRD requirement each element serves. Visual style is deliberately schematic — the layout, states, and flows are the deliverable.</p>
+  </header>
+
+  <main class="frame">
+    <div class="frame-bar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span class="path">mockups/index.html</span>
+      <span class="flow-name">Overview</span>
+    </div>
+    <div class="frame-body">
+
+      <div class="appbar">
+        <span class="brand"><span class="mark">A</span> Assignment Reader</span>
+        <span class="who"><span>Elena Ellis · Grade 3</span><span class="avatar">EE</span></span>
+      </div>
+
+      <!-- ============ how to read ============ -->
+      <div class="cols" style="grid-template-columns: 1.2fr 1fr; margin-bottom: 30px;">
+        <div>
+          <div class="h-small" style="margin-bottom: 10px;">How to read these wireframes</div>
+          <div class="note-stack">
+            <div class="note" data-n="1">
+              <b>Numbered notes are the annotations.</b> Every screen carries numbered callouts (<span class="mono">data-n</span>) citing the PRD capability, principle, or resolved decision behind the element — e.g. <i>"decision 5: a page becomes reviewable as soon as its own draft completes"</i>.
+            </div>
+            <div class="note accent" data-n="2">
+              <b>Stamps mark document identity.</b> <span class="stamp faint" style="transform: scale(0.9);">Context · not graded</span> marks teacher-authored assignment materials wherever they appear; student work is stamped green. PRD principle 5: context and evidence must never be conflated.
+            </div>
+            <div class="note" data-n="3">
+              <b>Sample content is one canonical scenario</b> (see legend below) so states stay comparable across screens — Maya's 3-page submission is mid-transcription on every screen that shows it.
+            </div>
+            <div class="note accent" data-n="4">
+              <b>Processing, review, and grading stay separate.</b> The PRD state model permits completed pages to open while siblings still process, but the document receives no review state until every page completes; only student submissions can become Graded.
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="h-small" style="margin-bottom: 10px;">Status legend (PRD state model)</div>
+          <div class="legend" style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; align-items: start;">
+            <span class="chip st-uploading"><span class="dot"></span> Uploading</span>
+            <span class="chip st-queued"><span class="dot"></span> Queued</span>
+            <span class="chip st-processing"><span class="dot pulse"></span> Transcribing</span>
+            <span class="chip plain"><span class="dot"></span> Completed</span>
+            <span class="chip st-ready"><span class="dot"></span> Ready to grade</span>
+            <span class="chip st-review"><span class="dot"></span> Needs review</span>
+            <span class="chip st-failed"><span class="dot"></span> Error</span>
+            <span class="chip st-graded"><span class="dot"></span> Graded</span>
+            <span class="chip st-archived"><span class="dot"></span> Archived · read-only</span>
+          </div>
+          <p class="small faint" style="margin-top: 10px;">Processing, review, and grading are three separate states. Processing never implies review; assignment materials can never be graded.</p>
+        </div>
+      </div>
+
+      <!-- ============ flow map ============ -->
+      <div class="panel" style="margin-bottom: 26px;">
+        <div class="panel-head">
+          <span class="panel-title">Product workflow</span>
+          <span class="small faint">from product-doc.md §Product workflow — node numbers link to the screen that owns the step</span>
+        </div>
+        <div class="panel-body">
+
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <a href="01b-class-assignments.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:190px;">
+              <span class="mono faint">01a</span><b>Select class</b><span class="small faint">hierarchy: Classes → class → assignment</span>
+            </a>
+            <span class="mono faint">→</span>
+            <a href="01-dashboard.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:190px;">
+              <span class="mono faint">01</span><b>Select assignment</b><span class="small faint">per-class tables behind tabs: Assignments | Seating Charts</span>
+            </a>
+            <span class="mono faint">→</span>
+            <div class="card" style="min-width:200px;">
+              <span class="mono faint">02</span><br><b>What is being added?</b><br>
+              <span class="small muted">branch:</span>
+              <div class="small" style="display:grid; gap:4px; margin-top:6px;">
+                <span><span class="stamp faint" style="transform:scale(0.85); transform-origin:left center;">Context</span> materials</span>
+                <span><span class="stamp green faint" style="transform:scale(0.85); transform-origin:left center;">Student work</span> submission</span>
+              </div>
+            </div>
+            <span class="mono faint">→</span>
+            <a href="03-upload.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:220px;">
+              <span class="mono faint">03</span><b>Upload &amp; order pages</b><span class="small faint">JPEG/PNG/HEIC · ≤20 pages · order before transcribe</span>
+            </a>
+            <span class="mono faint">→</span>
+            <a href="04-processing.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:200px;">
+              <span class="mono faint">04</span><b>Document queued</b><span class="small faint">per-page async transcription</span>
+            </a>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top: 18px;">
+            <div class="card" style="min-width:220px; border-style: dashed;">
+              <span class="mono faint">04</span><br><b>Processing result</b><br>
+              <div style="display:grid; gap:6px; margin-top:6px;">
+                <span class="chip plain"><span class="dot"></span> Completed → Needs review</span>
+                <span class="chip st-failed"><span class="dot"></span> Error → Needs attention</span>
+              </div>
+              <span class="small faint">failed pages retry or replace → back to queue</span>
+            </div>
+            <span class="mono faint">→</span>
+            <a href="05-workspace.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:230px; outline: 2px solid var(--accent); outline-offset: 2px;">
+              <span class="mono faint">05 · core</span><b>Verify, edit ↔ grade in one workspace</b><span class="small faint">side-by-side, page by page · score & comments on the same screen</span>
+            </a>
+            <span class="mono faint">→</span>
+            <div class="card" style="min-width:170px; display:flex; flex-direction:column; gap:6px;">
+              <span class="mono faint">05</span><span class="chip st-ready"><span class="dot"></span> Ready to grade</span>
+              <span class="small faint">teacher verified the draft</span>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top: 18px;">
+            <a href="02-assignment.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:230px;">
+              <span class="mono faint">02 · materials</span><b>Available as context</b><span class="small faint">stamped, beside every review · never graded</span>
+            </a>
+            <span class="mono faint" style="opacity:0.4;">∥</span>
+            <a href="05-workspace.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:4px; min-width:230px;">
+              <span class="mono faint">05 · grading rail</span><b>Optional score + comments</b><span class="small faint">same screen as verification · 2-decimal score vs max</span>
+            </a>
+            <span class="mono faint">→</span>
+            <div class="card" style="display:flex; flex-direction:column; gap:6px;">
+              <span class="chip st-graded"><span class="dot"></span> Graded</span>
+              <span class="small faint">returned to Needs review ⇒ no longer graded</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ============ state model ============ -->
+      <div class="cols" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 30px;">
+        <div class="card">
+          <div class="h-small" style="margin-bottom:10px;">Processing — both doc types, per page</div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+            <span class="chip st-uploading"><span class="dot"></span> Uploading</span><span class="mono faint">→</span>
+            <span class="chip st-queued"><span class="dot"></span> Queued</span><span class="mono faint">→</span>
+            <span class="chip st-processing"><span class="dot pulse"></span> Transcribing</span><span class="mono faint">→</span>
+            <span class="chip plain"><span class="dot"></span> Completed</span>
+          </div>
+          <p class="small faint" style="margin-top:8px;">Runs page by page — each page carries its own state; a completed page is reviewable while siblings process. Error ⇒ retry page (default) or confirmed whole-document retranscription.</p>
+        </div>
+        <div class="card">
+          <div class="h-small" style="margin-bottom:10px;">Review — both doc types</div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+            <span class="chip st-review"><span class="dot"></span> Needs review</span><span class="mono faint">→</span>
+            <span class="chip st-ready"><span class="dot"></span> Ready to grade</span>
+          </div>
+          <p class="small faint" style="margin-top:8px;">Teacher-verified against the original. Materials end here: verified context. Can return to Needs review at any point.</p>
+        </div>
+        <div class="card">
+          <div class="h-small" style="margin-bottom:10px;">Grading — submissions only</div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+            <span class="chip plain">Not graded</span><span class="mono faint">→</span>
+            <span class="chip st-graded"><span class="dot"></span> Graded</span>
+          </div>
+          <p class="small faint" style="margin-top:8px;">Teacher-visible path on one workspace: Needs review → Ready to grade → Graded. Score optional, ≤ max when defined, two decimals. Returned submissions stop appearing graded.</p>
+        </div>
+      </div>
+
+      <!-- ============ screen index ============ -->
+      <div class="h-small" style="margin-bottom: 12px;">The six screens</div>
+      <div class="cols" style="grid-template-columns: repeat(3, 1fr);">
+        <a href="01b-class-assignments.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px;">
+          <span class="mono faint">01a</span><b class="h-panel">Class assignments</b>
+          <span class="small muted">The sidebar's "Classes" entry: the canonical table (Date · Class · Students · Assignments · Status Active/Archived) with search, sortable headers, pagination. Selecting a class opens its dashboard.</span>
+          <span class="mono faint" style="margin-top:auto;">PRD §1</span>
+        </a>
+        <a href="01-dashboard.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px;">
+          <span class="mono faint">01</span><b class="h-panel">Dashboard</b>
+          <span class="small muted">Per-class canonical tables — Assignments (Date · Assignment · Status) and Seating Charts (Date · Class · Student Count) behind a section tab. Search right-anchored, sortable headers, pagination at 10.</span>
+          <span class="mono faint" style="margin-top:auto;">PRD §1 §6 · decision 7</span>
+        </a>
+        <a href="02-assignment.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px;">
+          <span class="mono faint">02</span><b class="h-panel">Assignment detail</b>
+          <span class="small muted">The materials document (stamped context) and canonical Submissions table (Date · Name · Status) with search, status tabs, sortable headers, pagination, and submission scores.</span>
+          <span class="mono faint" style="margin-top:auto;">PRD §2 §3 §6 · decisions 3 8 9</span>
+        </a>
+        <a href="03-upload.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px;">
+          <span class="mono faint">03</span><b class="h-panel">Upload flow</b>
+          <span class="small muted">Both document types enter one ordered-page pipeline: pick target, photograph, fix oversized/failed files, drag pages into order, confirm — only then transcription starts.</span>
+          <span class="mono faint" style="margin-top:auto;">PRD §2 §3 · decisions 1 2</span>
+        </a>
+        <a href="04-processing.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px;">
+          <span class="mono faint">04</span><b class="h-panel">Processing states</b>
+          <span class="small muted">Per-page async pipeline with leave-anytime progress, per-page retry default, and the consent gate before whole-document retranscription.</span>
+          <span class="mono faint" style="margin-top:auto;">PRD §4 §7 · decisions 5 6</span>
+        </a>
+        <a href="05-workspace.html" class="card ink-border" style="text-decoration:none; color:var(--ink); display:flex; flex-direction:column; gap:6px; outline: 2px solid var(--accent); outline-offset: 2px;">
+          <span class="mono faint">05 · core</span><b class="h-panel">Review &amp; grading workspace</b>
+          <span class="small muted">One screen per document: original beside the editable draft, per-question rows for correct / incorrect / points / comment, and — for submissions — score, comments, and return-to-review in the same place. Grading unlocks when the document is ready to grade.</span>
+          <span class="mono faint" style="margin-top:auto;">PRD §5 §6 · decisions 4 5 11 12</span>
+        </a>
+      </div>
+
+      <!-- ============ scenario legend ============ -->
+      <div class="panel paper" style="margin-top: 28px;">
+        <div class="panel-head">
+          <span class="panel-title">Canonical scenario (shared across screens)</span>
+          <span class="small faint">so states stay comparable</span>
+        </div>
+        <div class="panel-body small">
+          <div class="rowline"><b style="min-width: 120px;">Teacher</b><span>Elena Ellis — third-grade, one class of ~24, short interrupted grading windows (persona 1)</span></div>
+          <div class="rowline"><b style="min-width: 120px;">Class</b><span>Grade 3 · Room 12; a second class Grade 3 · Science Club shown archived & read-only</span></div>
+          <div class="rowline"><b style="min-width: 120px;">Assignment</b><span>"Fractions worksheet 4 — Equivalent fractions" · max score 10 · materials v2 (replaced Mar 3, v1 retained read-only)</span></div>
+          <div class="rowline"><b style="min-width: 120px;">Materials</b><span>2 pages (instructions, fraction wall) — verified context, stamped <span class="stamp faint" style="transform:scale(0.85);">Context · not graded</span></span></div>
+          <div class="rowline"><b style="min-width: 120px;">Submissions</b><span>Maya Rodriguez — 3 pages, 2 complete and Page 3 transcribing (no document review state yet) · Priya Shah — Ready to grade · Jack Thompson — Graded 8.5 / 10 · Sam Okafor — Page 2 Error (retry) · Noah Kim — Not started</span></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <nav class="nav-next">
+    <a href="index.html" class="on">⌂ Overview</a>
+    <a href="01b-class-assignments.html">01a Class Assignments</a>
+    <a href="01-dashboard.html">01 Dashboard</a>
+    <a href="02-assignment.html">02 Assignment</a>
+    <a href="03-upload.html">03 Upload</a>
+    <a href="04-processing.html">04 Processing</a>
+    <a href="05-workspace.html">05 Workspace</a>
+  </nav>
+
+  <footer class="foot">
+    <span>© 2026 ClassPrints</span>
+    <span><a href="#">Terms</a> &nbsp; <a href="#">Privacy</a> &nbsp; <a href="#">Support</a></span>
+  </footer>
+
+</body>
+</html>

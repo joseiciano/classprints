@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assignment Reader · 02 Assignment detail</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="assets/mockup.css">
+</head>
+<body class="mockup">
+
+  <header class="screen-head">
+    <span class="wf-tag">Wireframe · not visual design</span>
+    <div class="screen-title">Assignment detail — <em>materials, submissions & status</em></div>
+    <p class="screen-sub">PRD §2/§3/§6: one screen per assignment showing the teacher-authored materials document, the class's submissions with their live per-document states, and the actions available on each.</p>
+  </header>
+
+  <main class="frame">
+    <div class="frame-bar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span class="path">assignments/grade-3-room-12/fractions-4</span>
+      <span class="flow-name">PRD §2 Materials · §3 Submissions · §6 Tracking</span>
+    </div>
+    <div class="frame-body">
+
+      <div class="appbar">
+        <span class="brand"><span class="mark">A</span> Assignment Reader</span>
+        <span class="who"><span>Elena Ellis</span><span class="avatar">EE</span></span>
+      </div>
+
+      <div class="split" style="align-items:start;">
+        <aside style="position:sticky; top:18px;">
+          <nav class="panel" style="padding:8px 0;" aria-label="Primary">
+            <span class="h-small" style="padding:10px 16px 2px; display:block;">Management</span>
+            <a href="01b-class-assignments.html" class="rowline" style="padding:10px 16px; text-decoration:none; color:var(--ink); font-weight:700; background:var(--accent-wash); border-left:3px solid var(--accent);">Classes</a>
+            <span class="h-small" style="padding:16px 16px 2px; display:block;">Account</span>
+            <a href="#" class="rowline" style="padding:10px 16px; text-decoration:none; color:var(--ink); font-weight:700;">Settings</a>
+            <a href="#" class="rowline" style="padding:10px 16px; text-decoration:none; color:var(--ink); font-weight:700;">Pricing</a>
+          </nav>
+        </aside>
+        <div class="col">
+
+          <div class="crumbs">
+            <b>Assignments</b> <span class="sep"></span> <b>Grade 3 · Room 12</b> <span class="sep"></span> <span>Fractions worksheet 4 — Equivalent fractions</span>
+          </div>
+
+          <!-- ============ assignment header ============ -->
+          <div class="panel" style="margin-bottom: 22px;">
+            <div class="panel-head" style="border-bottom: none;">
+              <span class="panel-title" style="font-size: 19px;">Fractions worksheet 4 — Equivalent fractions</span>
+              <span class="chip plain">Max 10</span>
+              <span class="chip st-review"><span class="dot"></span> Need review</span>
+              <span class="chip plain">Created Mar 1</span>
+              <span style="margin-left: auto;" class="btn-row">
+                <button class="btn primary">New submission</button>
+                <button class="btn ghost">Edit details</button>
+              </span>
+            </div>
+          </div>
+
+          <!-- ============ assignment materials ============ -->
+          <div class="panel paper" style="margin-bottom: 26px;">
+            <div class="panel-head">
+              <span class="stamp">Context · not graded</span>
+              <span class="panel-title">Assignment materials · v2 (replaced Mar 3)</span>
+            </div>
+            <div class="panel-body">
+              <div style="display: grid; grid-template-columns: 1fr 300px; gap: 22px; align-items: start;">
+                <div>
+                  <div class="pages-strip">
+                    <div class="thumb selected">
+                      <div class="photo"><div class="hand" style="font-size:11px; line-height:15px; padding:8px 8px 8px 24px;">Name ___ Date ___<br><b>Equivalent Fractions</b><br>Shade the fraction wall to find…</div></div>
+                      <div class="thumb-meta"><span>Page 1 · instructions</span><span class="st-ready mono">Verified</span></div>
+                    </div>
+                    <div class="thumb">
+                      <div class="photo"><div class="hand" style="font-size:11px; line-height:15px; padding:8px 8px 8px 24px;">Fraction wall<br>1 &nbsp; 1/2 &nbsp; 1/3 &nbsp; 1/4<br>1/6 &nbsp; 1/8 …</div></div>
+                      <div class="thumb-meta"><span>Page 2 · fraction wall</span><span class="st-ready mono">Verified</span></div>
+                    </div>
+                  </div>
+                  <div class="btn-row" style="margin-top: 16px;">
+                    <button class="btn primary sm">Open materials</button>
+                    <button class="btn sm">Replace materials</button>
+                    <button class="btn sm">Retranscribe document</button>
+                    <button class="btn danger sm">Delete</button>
+                  </div>
+                </div>
+                <div class="note-stack">
+                  <div class="note" data-n="1">
+                    <b>Materials are context, not student work.</b> The teacher authors one document per assignment; it is never a submission and never graded, and it is excluded from all grading counts (PRD §2, §6, principle 5). Hence the stamp.
+                  </div>
+                  <div class="note accent" data-n="2">
+                    <b>"Open materials" shows the source.</b> The button opens the materials document — the pages used to create the assignment — in the same side-by-side workspace (PRD §2). Replacing confirmed materials starts a new draft material version; the shipped current version stays read-only, and earlier versions remain available read-only. Retranscription never silently overwrites teacher edits (resolved decisions 6 and 8).
+                  </div>
+                  <div class="note danger" data-n="5">
+                    <b>Deletion is scoped, never silent.</b> A page, the materials document, or an entire submission can each be deleted; deleting a class or assignment cascades to everything inside it (PRD resolved decision 3).
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============ submissions ============ -->
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Submissions</span>
+              <span class="small faint">5 students · today Mar 7</span>
+              <div style="display:flex; gap:10px; margin-left:auto; align-items:center;">
+                <input class="input" style="width:220px;" value="Search date, name, or status…" aria-label="Search submissions">
+                <button class="btn primary sm">Search</button>
+              </div>
+            </div>
+            <div class="panel-body" style="display: grid; grid-template-columns: 1fr 280px; gap: 22px; align-items: start;">
+
+              <div>
+                <div class="seg" style="margin-bottom: 12px;">
+                  <button class="on">All 5</button>
+                  <button>Not started 1</button>
+                  <button>Uploading 0</button>
+                  <button>Queued 0</button>
+                  <button>Transcribing 1</button>
+                  <button>Error 1</button>
+                  <button>Needs review 0</button>
+                  <button>Ready to grade 1</button>
+                  <button>Graded 1</button>
+                </div>
+
+                <div class="panel-body" style="padding:0;">
+                  <table style="width:100%; border-collapse:collapse; font-size:13.5px;">
+                    <thead>
+                      <tr style="border-bottom:1.5px solid var(--ink-line); text-align:left;">
+                        <th style="padding:10px 16px; font-weight:700;">Date <span class="mono faint">▾</span></th>
+                        <th style="padding:10px 16px; font-weight:700;">Name <span class="mono faint"></span></th>
+                        <th style="padding:10px 16px; font-weight:700;">Status <span class="mono faint"></span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style="border-bottom:1px solid var(--ink-line); background:var(--accent-wash);">
+                        <td style="padding:12px 16px;" class="mono">3/6/26</td>
+                        <td style="padding:12px 16px;"><b>Maya Rodriguez</b><span class="small faint" style="display:block; margin-top:4px;">3 pages · started Mar 6</span></td>
+                        <td style="padding:12px 16px;">
+                          <div class="btn-row"><span class="chip st-processing"><span class="dot pulse"></span> Transcribing · 2 of 3 pages complete</span></div>
+                          <div class="btn-row" style="margin-top:7px;"><button class="btn primary sm">Open workspace</button></div>
+                        </td>
+                      </tr>
+                      <tr style="border-bottom:1px solid var(--ink-line);">
+                        <td style="padding:12px 16px;" class="mono">3/6/26</td>
+                        <td style="padding:12px 16px;"><b>Priya Shah</b><span class="small faint" style="display:block; margin-top:4px;">3 pages · started Mar 6</span></td>
+                        <td style="padding:12px 16px;">
+                          <div class="btn-row"><span class="chip st-ready"><span class="dot"></span> Ready to grade</span></div>
+                          <div class="btn-row" style="margin-top:7px;"><button class="btn primary sm">Grade</button><button class="btn sm">Open workspace</button></div>
+                        </td>
+                      </tr>
+                      <tr style="border-bottom:1px solid var(--ink-line);">
+                        <td style="padding:12px 16px;" class="mono">3/5/26</td>
+                        <td style="padding:12px 16px;"><b>Jack Thompson</b><span class="small faint" style="display:block; margin-top:4px;">3 pages · started Mar 5</span></td>
+                        <td style="padding:12px 16px;">
+                          <div class="btn-row"><span class="chip st-graded"><span class="dot"></span> Graded</span><span class="chip plain mono">8.5 / 10</span></div>
+                          <div class="small faint" style="margin-top:7px;">“Showed strong fraction sense — watch simplification of 6/8.”</div>
+                          <div class="btn-row" style="margin-top:7px;"><button class="btn sm">View</button><button class="btn ghost sm">Return to Needs review</button></div>
+                        </td>
+                      </tr>
+                      <tr style="border-bottom:1px solid var(--ink-line);">
+                        <td style="padding:12px 16px;" class="mono">3/6/26</td>
+                        <td style="padding:12px 16px;"><b>Sam Okafor</b><span class="small faint" style="display:block; margin-top:4px;">3 pages · started Mar 6</span></td>
+                        <td style="padding:12px 16px;">
+                          <div class="btn-row"><span class="chip st-failed"><span class="dot"></span> Error · Page 2</span></div>
+                          <div class="btn-row" style="margin-top:7px;"><a class="btn danger sm" href="04-processing.html">Review error</a></div>
+                        </td>
+                      </tr>
+                      <tr style="border-bottom:1px solid var(--ink-line);">
+                        <td style="padding:12px 16px;" class="mono">—</td>
+                        <td style="padding:12px 16px;"><b>Noah Kim</b><span class="small faint" style="display:block; margin-top:4px;">No submission · no pages yet</span></td>
+                        <td style="padding:12px 16px;">
+                          <div class="btn-row"><span class="chip plain">Not started</span></div>
+                          <div class="btn-row" style="margin-top:7px;"><a class="btn ghost sm" href="03-upload.html">Create submission</a></div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div style="display:flex; gap:10px; padding:12px 16px; border-top:1.5px solid var(--ink-line); align-items:center; justify-content:space-between;">
+                  <span class="small faint">5 students · showing 1–5</span>
+                  <span class="btn-row">
+                    <button class="btn ghost sm" disabled>‹ Prev</button>
+                    <button class="btn sm">1</button>
+                    <button class="btn ghost sm" disabled>Next ›</button>
+                  </span>
+                </div>
+              </div>
+
+              <div class="note-stack">
+                <div class="note" data-n="3">
+                  <b>Submissions exist on their own.</b> A submission can be created for any student whether or not the assignment has materials at all (PRD §3) — Noah's row exists with nothing transcribed and no context document required.
+                </div>
+                <div class="note accent" data-n="4">
+                  <b>States are per page, then per submission.</b> Each page carries its own state and completes independently (PRD resolved decision 5): Maya's Page 1 and Page 2 are complete while Page 3 is still transcribing, so her row shows only the processing state and page count. The document gets a review state only after every page completes.
+                </div>
+                <div class="note" data-n="6">
+                  <b>Submission tabs use displayStatus.</b> Filters match the API's granular displayStatus values: not_started, uploading, queued, transcribing, error, needs_review, ready_to_grade, and graded. Assignment-level aggregate status stays separate from this submission list.
+                </div>
+                <div class="note accent" data-n="7">
+                  <b>Rows open the document or create it.</b> Existing submissions open their workflow; a not-started student opens the upload flow so the teacher can create that submission (PRD §3, §5, §6).
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <nav class="nav-next">
+    <a href="index.html">⌂ Overview</a>
+    <a href="01b-class-assignments.html">01a Class Assignments</a>
+    <a href="01-dashboard.html">01 Dashboard</a>
+    <a href="02-assignment.html" class="on">02 Assignment</a>
+    <a href="03-upload.html">03 Upload</a>
+    <a href="04-processing.html">04 Processing</a>
+    <a href="05-workspace.html">05 Workspace</a>
+  </nav>
+  <nav class="nav-next">
+    <a href="01-dashboard.html">← Dashboard</a>
+    <a href="03-upload.html">Upload →</a>
+  </nav>
+
+  <footer class="foot">
+    <span>© 2026 ClassPrints</span>
+    <span><a href="#">Terms</a> &nbsp; <a href="#">Privacy</a> &nbsp; <a href="#">Support</a></span>
+  </footer>
+
+</body>
+</html>
