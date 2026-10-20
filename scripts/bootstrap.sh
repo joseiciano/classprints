@@ -56,10 +56,11 @@ for queue in seating-jobs seating-jobs-dlq email-jobs \
   document-cleanup-jobs document-cleanup-jobs-dlq; do
   if wrangler queues info "$queue" >/dev/null 2>&1; then
     echo "queue       : $queue (exists, skipped)"
+  elif out=$(wrangler queues create "$queue" 2>&1); then
+    echo "queue       : $queue (created)"
   else
-    wrangler queues create "$queue" >/dev/null 2>&1 \
-      && echo "queue       : $queue (created)" \
-      || echo "queue       : $queue (CREATE FAILED — check token permissions)" >&2
+    echo "queue       : $queue (CREATE FAILED)" >&2
+    printf '%s\n' "$out" | grep -E "ERROR|code:|\[code" | sed 's/^/              /' >&2
   fi
 done
 echo
@@ -72,10 +73,11 @@ echo
 for bucket in "assignment-reader-$ENVIRONMENT"; do
   if wrangler r2 bucket list 2>/dev/null | grep -q "^name: *$bucket\$"; then
     echo "r2 bucket   : $bucket (exists, skipped)"
+  elif out=$(wrangler r2 bucket create "$bucket" 2>&1); then
+    echo "r2 bucket   : $bucket (created)"
   else
-    wrangler r2 bucket create "$bucket" >/dev/null 2>&1 \
-      && echo "r2 bucket   : $bucket (created)" \
-      || echo "r2 bucket   : $bucket (CREATE FAILED — check token permissions)" >&2
+    echo "r2 bucket   : $bucket (CREATE FAILED)" >&2
+    printf '%s\n' "$out" | grep -E "ERROR|code:|\[code" | sed 's/^/              /' >&2
   fi
 done
 echo
