@@ -113,10 +113,11 @@ else
     npx -y "wrangler@$EMAIL_WRANGLER_VERSION" email "$@"
   }
 
-  if email_wrangler sending enable "$SENDING_DOMAIN" >/dev/null 2>&1; then
+  if out=$(email_wrangler sending enable "$SENDING_DOMAIN" 2>&1); then
     echo "email send  : $SENDING_DOMAIN (enabled)"
   else
-    echo "email send  : $SENDING_DOMAIN (ENABLE FAILED — re-run: npx wrangler@$EMAIL_WRANGLER_VERSION email sending enable $SENDING_DOMAIN)" >&2
+    echo "email send  : $SENDING_DOMAIN (ENABLE FAILED)" >&2
+    printf '%s\n' "$out" | grep -E "ERROR|code:|\[code" | sed 's/^/              /' >&2
   fi
 
   if [ -n "$SUPPORT_ADDRESS" ] && [ -n "${SUPPORT_FORWARD_TO:-}" ]; then
