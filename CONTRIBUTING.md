@@ -43,25 +43,31 @@ feature/*  ──PR──▶  staging (default)  ──evergreen PR──▶  ma
 
 ### One-time setup (per environment)
 
-Infrastructure is created once by a runbook and pinned by ID in the
-per-app `wrangler.jsonc` files — CI never auto-provisions resources.
+Infrastructure is created once by idempotent scripts and pinned by ID in the
+per-app `wrangler.jsonc` files — CI never auto-provisions resources. The
+`Makefile` wraps them; `<env>` is `staging` or `production`.
 
-1. **Cloudflare resources** (queues, Hyperdrive): run
-   `scripts/bootstrap.sh staging|production` with that account's
-   `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`, plus
-   `HYPERDRIVE_CONNECTION_STRING` set to the matching Neon pooled connection
-   string. The script prints IDs to paste into the `wrangler.jsonc` files.
-2. **Databases:** provision two Neon projects (or branches) — one per
-   environment; their pooled connection strings become the `DATABASE_URL`
-   secrets. The first deploy applies `database/migrations/*.sql` automatically.
-3. **Secrets:** copy `.env.<env>.example` to `.env.<env>` (gitignored), fill in
-   values, then:
-   - `scripts/set-env-secrets.sh staging|production` — pushes the values into
-     the matching GitHub Environment.
-   - `scripts/sync-secrets.sh staging|production` — mirrors the same values
-     into that Cloudflare account's Worker secrets (`wrangler secret put`).
-   Values never live in the repo or in shell history.
-4. **GitHub settings:** protect `main` and `staging` (require PR + status
+0. **Env file:** copy `.env.<env>.example` to `.env.<env>` (gitignored) and fill
+   in `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` (the deploy token),
+   `DATABASE_URL` (Neon, one database per environment), `BETTER_AUTH_SECRET`
+   (`openssl rand -base64 32`), `STRIPE_SECRET_KEY` and `LLM_API_KEY`.
+   `STRIPE_WEBHOOK_SECRET` is written by step 3.
+1. **Cloudflare resources:** `npx wrangler login` into the account, then
+   `make bootstrap-<env>`. Creates queues, the R2 bucket, Email Sending and
+   support forwarding, and Hyperdrive (against `DATABASE_URL`'s direct
+   endpoint), and prints IDs to pin in the `wrangler.jsonc` files.
+2. **Database:** `make migrate-<env>`. Afterwards every deploy applies new
+   `database/migrations/*.sql` automatically.
+3. **Stripe:** `make stripe-<env>`. Creates the Plus product, its prices and the
+   webhook, writes the webhook secret into `.env.<env>`, and prints the price
+   IDs to pin in `apps/seating-backend/wrangler.jsonc`.
+4. **Secrets:** `make secrets-<env>` pushes `.env.<env>` into the matching
+   GitHub Environment and the account's Worker secrets. Check with
+   `make secrets-list-<env>`. Values never live in the repo or in shell history.
+
+`make setup-<env>` runs steps 1–4 in order.
+
+5. **GitHub settings:** protect `main` and `staging` (require PR + status
    checks, no force pushes), enable required reviewers on the `production`
    environment only, restrict environments to their branches
    (staging ↔ `staging`, production ↔ `main`).

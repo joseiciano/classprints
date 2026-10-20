@@ -36,7 +36,7 @@ case "$ENVIRONMENT" in
 esac
 
 REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-ENV_FILE="$REPO_ROOT/.env.$ENVIRONMENT"
+ENV_FILE="${ENV_FILE:-$REPO_ROOT/.env.$ENVIRONMENT}"
 if [ -f "$ENV_FILE" ] && [ -z "${STRIPE_SECRET_KEY:-}" ]; then
   STRIPE_SECRET_KEY=$(sed -n 's/^STRIPE_SECRET_KEY=//p' "$ENV_FILE" | sed "s/^[\"']//; s/[\"']\$//")
 fi
