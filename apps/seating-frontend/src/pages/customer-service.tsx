@@ -10,7 +10,7 @@ const supportTopics = [
   },
   {
     icon: LifeBuoy,
-    title: 'Using ClassPrints',
+    title: `Using ${APPLICATION_NAME}`,
     description:
       'Ask about rosters, classroom constraints, saved profiles, generation methods, or working with a completed arrangement.',
   },
@@ -54,7 +54,7 @@ export function CustomerServicePage() {
         aria-labelledby="support-contact-heading"
       >
         <h2 id="support-contact-heading" className="sr-only">
-          Contact ClassPrints support
+          Contact {APPLICATION_NAME} support
         </h2>
         <a
           href={SUPPORT_FORM_URL}

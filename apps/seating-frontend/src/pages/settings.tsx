@@ -1,6 +1,7 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { csrfHeaders } from '@classprints/shared';
 import { useAuth } from '../providers/auth-provider';
+import { APPLICATION_NAME } from '../lib/constants';
 import { useSubscription } from '../hooks/use-subscription';
 import { useEmailNotifications } from '../hooks/use-email-notifications';
 import { useDeleteAccount } from '../hooks/use-delete-account';
@@ -412,7 +413,7 @@ export function SettingsPage() {
                 </span>
               </div>
               <p className="mt-4 font-display text-2xl font-medium text-foreground">
-                {isPlus ? 'ClassPrints Plus' : 'ClassPrints Free'}
+                {isPlus ? `${APPLICATION_NAME} Plus` : `${APPLICATION_NAME} Free`}
               </p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {isPlus

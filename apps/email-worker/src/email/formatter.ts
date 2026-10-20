@@ -5,10 +5,15 @@ import { baseLayout } from './templates';
 export interface EmailContent {
   subject: string;
   html: string;
+  text: string;
 }
 
 export const buildEmailContent = (job: JobRecord, results: SeatingResult[]): EmailContent => {
   const summary = buildSummary(job);
+  const countsLine = `We generated ${plural(results.length, 'arrangement')} for your ${plural(
+    job.students.length,
+    'student',
+  )}.`;
   const arrangementHtml = results.length
     ? results
         .map((result, index) => renderArrangement(result, index + 1, job.seatingGrid))
@@ -17,17 +22,22 @@ export const buildEmailContent = (job: JobRecord, results: SeatingResult[]): Ema
 
   const html = baseLayout(`
     <h1 style="font-size: 20px; margin-bottom: 8px;">Your seating arrangements are ready</h1>
-    <p style="margin-top: 0;">We generated ${results.length} arrangement${results.length === 1 ? '' : 's'} for your ${
-      job.students.length
-    } students.</p>
+    <p style="margin-top: 0;">${countsLine}</p>
     ${summary}
     ${arrangementHtml}
     <p style="font-size: 12px; color: #6b7280; margin-top: 32px;">Sent on ${new Date().toLocaleString()}.</p>
   `);
 
+  const text = [
+    `Your seating arrangements are ready.`,
+    countsLine,
+    `Open this email in an HTML-capable mail app to see the seating charts.`,
+  ].join('\n\n');
+
   return {
     subject: `Seating arrangements ready (${results.length})`,
     html,
+    text,
   } satisfies EmailContent;
 };
 
@@ -83,3 +93,5 @@ const renderArrangement = (result: SeatingResult, index: number, grid: SeatingGr
     </section>
   `;
 };
+
+const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;

@@ -27,8 +27,16 @@ Core decisions captured from discussion (2026-09-15):
 - **Two Neon databases** — one per environment (separate projects or branches). Connection
   strings live as `DATABASE_URL` secrets in the matching GitHub Environment. Schema
   migrations run in the deploy workflow, identical step for both envs.
-- **Third-party SaaS split per environment**: Stripe (test vs live keys), Resend
-  (staging subdomain vs prod domain), Neon (per-env DB).
+- **Third-party SaaS split per environment**: Stripe (test vs live keys), Neon (per-env DB). Email goes
+  through Cloudflare Email Service in each account (no Resend; decided 2026-10-19): staging
+  sends from `staging.myclassprints.com`, production from `bellvel.com`.
+- **Production-only product rename**: the user-facing product name is per environment —
+  staging shows "ClassPrints", production shows "Bellvel" (including email sender name/address
+  and support email). Production is served on `bellvel.com` / `api.bellvel.com` (zone in production account
+  `4cf8d3097c50fca484f1ee77883e8380`); `classprints.app` stays staging-only. Infrastructure
+  identifiers (Worker names `classprints-*`, queue/Hyperdrive/Analytics names) are
+  **identical in both environments** and are NOT renamed. Details and code changes live in
+  `docs/plans/environment-based-app-name/environment-based-app-name.md`; this plan only covers the pipeline/config side.
 
 This plan is self-contained: an implementing agent or engineer needs nothing outside it
 plus the repository. Completion of all phases = completion of the overarching goal
@@ -62,7 +70,12 @@ alternatives/risks, not tasks).
 - **REQ-010**: All environment-differing third-party configuration (Stripe price IDs,
   `FRONTEND_URL`, `ALLOWED_ORIGINS`, Resend domain/key, Hyperdrive/queue IDs) must live in
   `wrangler.jsonc` per env or GitHub Environment secrets — never hardcoded or defaulted
-  to prod values in code.
+  to prod values in code. This explicitly includes the branding config: `APP_DISPLAY_NAME`,
+  `EMAIL_FROM_NAME`, `EMAIL_FROM_ADDRESS`, `send_email.allowed_sender_addresses` (API and email worker), and frontend build-time `VITE_APP_NAME` / `VITE_SUPPORT_EMAIL`.
+- **REQ-012**: Branding comes only from the vars listed in REQ-010. Staging must render
+  "ClassPrints"; production must render "Bellvel". Code must not hardcode either name outside
+  the documented fallbacks. Worker names and resource names are not branding and stay `classprints-*` in both
+  environments. Production domains are `bellvel.com` / `api.bellvel.com`.
 - **REQ-011**: Staging environment must be resettable / disposable in spirit: staging DB is
   a separate Neon project or branch, safe to wipe and restore from prod shape at any time.
 - **SEC-001**: Cloudflare API tokens must be least-privilege per account (Workers
@@ -79,7 +92,9 @@ alternatives/risks, not tasks).
 - **CON-001**: Wrangler environments: bindings and `vars` are **non-inheritable** — every
   binding used by an app must be declared in both top-level (staging) and `env.production`.
   Inheritable keys (`name`, `main`, `compatibility_date`, `routes`, `workers_dev`) may be
-  inherited. `account_id` is inheritable but is supplied via `CLOUDFLARE_ACCOUNT_ID` env var
+  inherited. Note: under `-e <env>` wrangler appends `-<env>` to the Worker name unless
+  `env.<env>.name` is set, so every config must keep an explicit `name` in `env.production`
+  (the production rename does not touch Worker names). `account_id` is inheritable but is supplied via `CLOUDFLARE_ACCOUNT_ID` env var
   in CI rather than committed.
 - **CON-002**: Wrangler automatic resource provisioning must NOT be relied on in CI
   (IDs written back to config are lost with the checkout; a redeploy could create a second
@@ -91,7 +106,8 @@ alternatives/risks, not tasks).
 - **CON-004**: Existing deploy scripts use bare CLI flags
   (`wrangler deploy src/index.ts --name classprints-api ...`). These are replaced by the
   wrangler.jsonc files; worker names must be preserved:
-  `classprints-api`, `classprints-email`, `classprints-optimizer`.
+  `classprints-api`, `classprints-email`, `classprints-optimizer`, `classprints-web`. These
+  stay the same in production; the Bellvel rename is display-only (REQ-012).
 - **CON-005**: GitHub allows only one open PR per head/base pair — this is desirable here
   (one promotion pipeline). Multiple concurrent release trains are out of scope.
 - **GUD-001**: Hotfixes ride the same rails: branch off `staging`, PR to `staging`
@@ -122,24 +138,33 @@ alternatives/risks, not tasks).
       `classprints-api`, `main` `src/index.ts`, `compatibility_date` `2026-09-14`,
       `workers_dev` true. Top-level `vars` = staging values (`ENVIRONMENT` `staging`,
       staging `FRONTEND_URL` / `ALLOWED_ORIGINS`, Stripe **test** price IDs,
-      checkout/portal URLs pointing at staging). Top-level bindings: `hyperdrive`
+      checkout/portal URLs pointing at staging, `APP_DISPLAY_NAME` `ClassPrints`).
+      Top-level bindings: `hyperdrive`
       (staging ID), `queues.producers` + `queues.consumers` (staging queue ID),
       `rate_limiting` (API_RATELIMITER), `analytics_engine_datasets` (ANALYTICS) if used.
-      Declare `secrets.required` for `BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`,
-      `STRIPE_WEBHOOK_SECRET`. `env.production` mirrors the full binding set with prod
-      routes (`api.classprints.app` custom domain, `workers_dev` false), prod vars
-      (`ENVIRONMENT` `production`, prod URLs, live Stripe price IDs), prod binding IDs.
+      Secrets (`BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) are
+      not declared in the config (wrangler 4.57 has no `secrets.required` key); they are
+      set per TASK-016. `env.production` mirrors the full binding set with an explicit
+      `name`, prod routes (`api.bellvel.com` custom domain, `workers_dev` false), prod
+      vars (`ENVIRONMENT` `production`, prod URLs, live Stripe price IDs,
+      `APP_DISPLAY_NAME` `Bellvel`, `EMAIL_FROM_NAME` `Bellvel`, `EMAIL_FROM_ADDRESS`
+      `noreply@bellvel.com`, and the same address in `send_email.allowed_sender_addresses`),
+      prod binding IDs.
       (REQ-007, REQ-008, CON-001, CON-004)
 - [ ] **TASK-002**: Create `apps/email-worker/wrangler.jsonc` and
       `apps/seating-worker/wrangler.jsonc` with `name` `classprints-email` /
       `classprints-optimizer`, same staging-default + `env.production` structure, binding
       sets per their `package.json` build scripts (HYPERDRIVE + queue producer/consumer
-      roles as implemented in their `src/index.ts`). (REQ-008, CON-004)
+      roles as implemented in their `src/index.ts`). Email-worker `env.production`
+      `RESEND_FROM_EMAIL` is `Bellvel <noreply@bellvel.com>`; staging keeps its ClassPrints
+      sender. (REQ-008, REQ-012, CON-004)
 - [ ] **TASK-003**: For `apps/seating-frontend`: decide static-assets hosting per env
       (Workers static assets recommended — add `assets` + routes; or keep Vite build
       deployed via `wrangler pages deploy` with two Pages projects). Write the chosen
-      config alongside the other apps; frontend env-specific config is the API base URL
-      baked at build time (staging vs prod API origin). (REQ-008)
+      config alongside the other apps; frontend env-specific config is the build-time
+      `VITE_APP_NAME` / `VITE_SUPPORT_EMAIL` (ClassPrints vs Bellvel). The frontend reaches
+      the API via a same-origin service binding (`classprints-api`), so no API origin is
+      baked in. (REQ-008, REQ-012)
 - [ ] **TASK-004**: Update all three worker `package.json` `build` scripts to
       `wrangler deploy --dry-run --outdir dist` (config now supplies name/date/entry) so
       CI can validate config without deploying. (CON-004)
@@ -172,8 +197,12 @@ alternatives/risks, not tasks).
       (Workers Scripts:Edit, Queues, Hyperdrive:Edit, plus Account Settings:Read as
       required by wrangler). Record tokens for GitHub Environment setup in Phase 3. (SEC-001)
 - [ ] **TASK-010**: Configure third-party per env: Stripe — test-mode product/prices for
-      staging, live prices for prod (IDs into wrangler vars, keys into secrets); Resend —
-      verify staging subdomain and prod domain, one API key per env. (REQ-010)
+      staging, live prices for prod (IDs into wrangler vars, keys into secrets). Email: Cloudflare Email Sending on
+      each env's sender domain (`scripts/bootstrap.sh`). The `bellvel.com`
+      domain (Cloudflare Email Sending in the production account,
+      `support@bellvel.com` mailbox) is **assumed to exist** for the purposes of this plan;
+      acquiring/onboarding it is done after these changes and gates only the first production
+      deploy. (REQ-010, ASSUMPTION-005)
 
 ### Implementation Phase 3: GitHub repository + workflow wiring
 
@@ -197,7 +226,10 @@ alternatives/risks, not tasks).
       'staging' }}` for each worker app (`--cwd apps/<app>` or pnpm filter), passing
       `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` from GitHub Environment secrets.
       `runs-on: ubuntu-latest`, `environment: ${{ inputs.environment }}` on the job.
-      (REQ-002, REQ-003, REQ-006, REQ-009)
+      The frontend build/deploy step sets `VITE_APP_NAME` / `VITE_SUPPORT_EMAIL` from
+      `inputs.environment` (production: Bellvel / `support@bellvel.com`; staging:
+      ClassPrints / existing support address).
+      (REQ-002, REQ-003, REQ-006, REQ-009, REQ-012)
 - [ ] **TASK-014**: Create `.github/workflows/deploy-staging.yml`
       (`on: push: branches: [staging]` + `workflow_dispatch`) calling deploy.yml with
       `environment: staging`, `secrets: inherit`; and
@@ -206,7 +238,9 @@ alternatives/risks, not tasks).
 - [ ] **TASK-015**: Create GitHub Environments `staging` and `production`: populate each
       with `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `DATABASE_URL`,
       `BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
-      `RESEND_API_KEY` (values per env from Phase 2). Enable required reviewers on
+      `LLM_API_KEY` (values per env from Phase 2). Branding values
+      (`VITE_APP_NAME`, `VITE_SUPPORT_EMAIL`) are non-secret and live in the deploy workflow
+      keyed on `inputs.environment` (see TASK-013). Enable required reviewers on
       `production` only. Restrict each environment to its triggering branch
       (staging ↔ `staging`, production ↔ `main`). (SEC-001, SEC-002, SEC-003)
 - [ ] **TASK-016**: Set per-account Worker secrets via
@@ -224,17 +258,22 @@ alternatives/risks, not tasks).
       observable change (e.g. a version echo endpoint or log line), PR into `staging`,
       merge — confirm deploy-staging workflow runs green: migrations applied to staging DB,
       workers deployed to staging account, `ENVIRONMENT` reads `staging`
-      (check a config-echo route or `wrangler deployments list`). (REQ-002)
+      (check a config-echo route or `wrangler deployments list`). Also confirm staging shows
+      "ClassPrints" (page title, footer, verification email sender/subject). (REQ-002, REQ-012)
 - [ ] **TASK-018**: Production gate test: open the evergreen PR `staging`→`main`
       (title "Promote staging to production"); confirm it shows the feature's diff and
       required checks; merge — confirm the deploy job pauses at the `production`
       environment's required reviewer, approve, confirm prod deploy + migrations complete,
-      and the change is live on prod routes. (REQ-003, REQ-004, REQ-005, SEC-003)
+      and the change is live on prod routes. Also confirm production shows "Bellvel"
+      (title, footer, verification email sender name/address). (REQ-003, REQ-004, REQ-005,
+      REQ-012, SEC-003)
 - [ ] **TASK-019**: Config safety checks: from a clean checkout, run bare
       `wrangler deploy --dry-run` (no `-e`) in an app dir and confirm it resolves to the
       staging config (no production route/vars); run `-e production --dry-run` and confirm
       prod routes appear. Confirm `git status` is clean after both (no provisioned-ID
-      write-back expected since IDs are pinned). (REQ-007, CON-002)
+      write-back expected since IDs are pinned). Also assert the staging resolved config and
+      staging frontend build contain no "Bellvel"/"bellvel", while the production dry-run
+      shows the Bellvel vars. (REQ-007, REQ-012, CON-002)
 - [ ] **TASK-020**: Rollback drill (staging only): revert the TASK-017 change on `staging`
       (or merge a revert PR), confirm re-deploy removes the change; document in
       CONTRIBUTING: rollback = revert on staging + re-promote; `wrangler rollback` is the
@@ -342,6 +381,11 @@ alternatives/risks, not tasks).
   finds no values; `wrangler secret list --env <env>` shows required secrets per env;
   configs contain no secret values. (SEC-002, SEC-004)
 
+- **TEST-008**: Brand per environment: staging renders "ClassPrints" and production renders
+  "Bellvel" (UI, verification email sender name/address, support email); no "Bellvel" in
+  staging config/build. See TEST-001..006 in `docs/plans/environment-based-app-name/environment-based-app-name.md`.
+  (TASK-017, TASK-018, TASK-019)
+
 ## 7. Risks & Assumptions
 
 - **RISK-001**: Config drift between the two CF accounts (no Terraform state to diff).
@@ -369,18 +413,32 @@ alternatives/risks, not tasks).
 - **ASSUMPTION-001**: The repo has no existing `.github/workflows` or wrangler configs
   (verified 2026-09-15 via glob) — this plan creates them from scratch; if any appear
   meanwhile, reconcile instead of overwrite.
-- **ASSUMPTION-002**: `wrangler.jsonc` env-specific vars cover all differences the
-  workers need at runtime; no worker code changes are required to support two environments
-  (bindings are read from `env`, never hardcoded — confirmed in
+- **ASSUMPTION-002**: `wrangler.jsonc` env-specific vars cover the infra differences the
+  workers need at runtime (bindings are read from `env`, never hardcoded — confirmed in
   `apps/seating-backend/src/index.ts` usage of `env.ALLOWED_ORIGINS` / `env.FRONTEND_URL`).
+  The exception is branding: hardcoded "ClassPrints" strings in `seating-backend/src/index.ts`,
+  both verification email templates and the frontend require the code changes in
+  `docs/plans/environment-based-app-name/environment-based-app-name.md`.
 - **ASSUMPTION-003**: The user controls both Cloudflare accounts and can create API tokens
   with the scopes in SEC-001 in each.
-- **ASSUMPTION-004**: Custom domains (`classprints.app`, `api.classprints.app`) are (or can
-  be) zoned in the production CF account; staging uses `*.workers.dev` or a staging
+- **ASSUMPTION-004**: Production custom domains (`bellvel.com`, `api.bellvel.com`) are zoned in
+  the production CF account (`bellvel.com` verified active 2026-10-19); `www.bellvel.com`
+  redirects to the apex via a zone redirect rule; staging uses `*.workers.dev` or a staging
   subdomain zoned in the staging account.
+- **ASSUMPTION-005**: For this plan, all domains already exist and are usable, including
+  `bellvel.com` (Email Sending in the production CF account, Resend verification,
+  `support@bellvel.com` mailbox). Any acquisition/onboarding work is done after these changes
+  land and must complete before the first production deploy. `noreply@bellvel.com` and
+  `support@bellvel.com` are placeholders to confirm.
+- **ASSUMPTION-006**: The repo has drifted from ASSUMPTION-001: workflows
+  (`ci`, `deploy`, `deploy-staging`, `deploy-production`), all four `wrangler.jsonc`,
+  `scripts/reconcile-queues.sh` and `scripts/set-env-secrets.sh` already exist. Reconcile
+  tasks against them rather than overwrite; mark completed tasks done during implementation.
 
 ## 8. Related Specifications / Further Reading
 
+- `docs/plans/environment-based-app-name/environment-based-app-name.md` — production-only ClassPrints → Bellvel display
+  rename (code changes, vars, tests) that this plan's config and workflow tasks support.
 - [Wrangler Environments](https://developers.cloudflare.com/workers/wrangler/environments/) —
   non-inheritable keys, staging/production example, secret-per-env handling (CON-001).
 - [Wrangler Configuration](https://developers.cloudflare.com/workers/wrangler/configuration/) —

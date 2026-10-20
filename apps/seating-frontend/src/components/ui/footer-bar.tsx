@@ -1,3 +1,5 @@
+import { APPLICATION_NAME } from '../../lib/constants';
+
 export interface FooterBarProps {
   links?: { label: string; href: string }[];
   brand?: string;
@@ -7,7 +9,7 @@ export interface FooterBarProps {
 
 export const FooterBar = ({
   links,
-  brand = 'ClassPrints',
+  brand = APPLICATION_NAME,
   year,
   className = '',
 }: FooterBarProps) => {

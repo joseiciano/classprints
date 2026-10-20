@@ -2,6 +2,7 @@ import { useCallback, type ReactNode } from 'react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { SignInFlow, type SignInFlowHandlers } from '@classprints/shared/auth';
 import { useAuth } from '../providers/auth-provider';
+import { APPLICATION_NAME } from '../lib/constants';
 
 function AuthPageLayout({ children }: { children: ReactNode }) {
   return (
@@ -70,7 +71,7 @@ export function SignInPage() {
       renderForgotPasswordLink={null}
       renderSignUpLink={({ label }) => (
         <span>
-          New to ClassPrints?{' '}
+          New to {APPLICATION_NAME}?{' '}
           <Link
             to="/sign-up"
             className="font-semibold text-primary underline decoration-border underline-offset-4 hover:decoration-primary"

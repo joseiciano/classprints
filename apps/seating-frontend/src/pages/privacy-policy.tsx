@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { SUPPORT_EMAIL } from '../lib/constants';
+import { APPLICATION_NAME, SUPPORT_EMAIL } from '../lib/constants';
 
 const lastUpdated = 'October 1, 2026';
 
@@ -48,7 +48,7 @@ export function PrivacyPolicyPage() {
             Privacy Policy
           </h1>
           <p className="mt-4 text-lg leading-8 text-muted-foreground">
-            This Policy explains what ClassPrints collects, why we use it, when it is shared, and
+            This Policy explains what {APPLICATION_NAME} collects, why we use it, when it is shared, and
             the choices available to educators.
           </p>
           <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
@@ -88,7 +88,7 @@ export function PrivacyPolicyPage() {
 
         <section id="privacy-collect" className={`${sectionClass} mt-7`}>
           <h2 className={headingClass}>1. What we collect</h2>
-          <p className={copyClass}>We collect the categories needed to run ClassPrints:</p>
+          <p className={copyClass}>We collect the categories needed to run {APPLICATION_NAME}:</p>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-7 text-muted-foreground">
             <li>
               <strong className="font-semibold text-foreground">Account information:</strong> your
@@ -108,7 +108,7 @@ export function PrivacyPolicyPage() {
             <li>
               <strong className="font-semibold text-foreground">Billing information:</strong>{' '}
               subscription plan, customer and subscription identifiers, and billing status. Stripe
-              handles payment-card details; ClassPrints does not receive or store your full card
+              handles payment-card details; {APPLICATION_NAME} does not receive or store your full card
               number.
             </li>
             <li>
@@ -135,7 +135,7 @@ export function PrivacyPolicyPage() {
         <section id="privacy-ai" className={sectionClass}>
           <h2 className={headingClass}>3. AI-assisted mode</h2>
           <p className={copyClass}>
-            If you select AI-assisted generation, ClassPrints sends the student names, classroom
+            If you select AI-assisted generation, {APPLICATION_NAME} sends the student names, classroom
             layout, relationship mappings, and seating constraints needed for that request to
             OpenRouter and the selected model provider. They process that information to return an
             arrangement.
@@ -143,7 +143,7 @@ export function PrivacyPolicyPage() {
           <div className="mt-5 rounded-r-[9px] border-l-4 border-accent-foreground bg-accent px-4 py-3">
             <h3 className="text-sm font-semibold text-foreground">You have a non-AI option</h3>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Programmatic generation uses the ClassPrints optimization engine and does not send the
+              Programmatic generation uses the {APPLICATION_NAME} optimization engine and does not send the
               roster to the external AI provider. Use AI-assisted mode only when your school permits
               that processing. Review{' '}
               <a
@@ -163,11 +163,11 @@ export function PrivacyPolicyPage() {
           <h2 className={headingClass}>4. Assignment Reader</h2>
           <p className={copyClass}>
             Assignment Reader turns photos of assignment materials and student work into editable
-            text using AI-assisted transcription. When a teacher uploads a page, ClassPrints sends
+            text using AI-assisted transcription. When a teacher uploads a page, {APPLICATION_NAME} sends
             that image — and, when needed for the same transcription, the assignment materials,
             answer keys, or rubrics for that assignment — through OpenRouter to a selected AI model
             provider. A teacher reviews and can correct every transcription before it is used for
-            grading; ClassPrints does not grade automatically.
+            grading; {APPLICATION_NAME} does not grade automatically.
           </p>
           <p className={copyClass}>
             We are verifying the selected provider&apos;s data retention, deletion, and
@@ -182,7 +182,7 @@ export function PrivacyPolicyPage() {
         <section id="privacy-share" className={sectionClass}>
           <h2 className={headingClass}>5. When we share information</h2>
           <p className={copyClass}>
-            We disclose what is needed to providers that help operate ClassPrints, including cloud
+            We disclose what is needed to providers that help operate {APPLICATION_NAME}, including cloud
             hosting and databases, authentication, email delivery, payment processing, and—only when
             you choose AI-assisted generation—AI processing. These providers handle information
             under their own terms and applicable agreements.
@@ -197,15 +197,15 @@ export function PrivacyPolicyPage() {
         <section id="privacy-students" className={sectionClass}>
           <h2 className={headingClass}>6. Student information</h2>
           <p className={copyClass}>
-            ClassPrints is intended for educators and authorized school staff, not for students to
+            {APPLICATION_NAME} is intended for educators and authorized school staff, not for students to
             create accounts. Educators and schools are responsible for confirming that they may
             provide student information and for following applicable privacy laws and district or
-            school policies. ClassPrints does not claim FERPA or COPPA certification.
+            school policies. {APPLICATION_NAME} does not claim FERPA or COPPA certification.
           </p>
           <p className={copyClass}>
             Use the minimum information necessary. Do not enter grades, medical information,
             diagnoses, IEP contents, disciplinary records, or the reason for a seating constraint.
-            ClassPrints generally needs only a student name and the seating relationship or position
+            {APPLICATION_NAME} generally needs only a student name and the seating relationship or position
             to consider.
           </p>
         </section>
@@ -262,7 +262,7 @@ export function PrivacyPolicyPage() {
             <Link to="/terms-of-service" className={linkClass}>
               Terms of Service
             </Link>{' '}
-            for the rules governing use of ClassPrints.
+            for the rules governing use of {APPLICATION_NAME}.
           </p>
         </section>
       </article>

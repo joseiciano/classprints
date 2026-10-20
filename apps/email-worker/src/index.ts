@@ -1,8 +1,8 @@
 import type { MessageBatch } from '@cloudflare/workers-types';
 import type { SeatingJobQueueMessage } from '@classprints/seating-shared';
+import { EmailSender } from '@classprints/server/email';
 import { EmailJobStore, checkEmailDeliveryEligibility } from './db/queries';
 import { buildEmailContent } from './email/formatter';
-import { EmailSender } from './email/sender';
 import type { EmailWorkerBindings, JobRecord, SeatingResult } from './types';
 import { buildArrangementGridLog } from './utils/arrangement-log';
 import { Metrics } from './utils/metrics';
@@ -12,7 +12,7 @@ export default {
   async queue(batch: MessageBatch<SeatingJobQueueMessage>, env: EmailWorkerBindings) {
     const sql = createDb(env);
     const store = new EmailJobStore(sql);
-    const sender = new EmailSender(env.RESEND_API_KEY, env.RESEND_FROM_EMAIL);
+    const sender = new EmailSender(env.EMAIL, env.EMAIL_FROM_ADDRESS, env.EMAIL_FROM_NAME);
     const metrics = new Metrics(env.ANALYTICS);
 
     for (const message of batch.messages) {
@@ -73,7 +73,7 @@ const processEmailMessage = async (
   const email = buildEmailContent(job, results);
 
   try {
-    await sender.send({ to: job.email, subject: email.subject, html: email.html });
+    await sender.send({ to: job.email, subject: email.subject, html: email.html, text: email.text });
     await store.markEmailSent(job.id);
     metrics.trackEmailSent(job.id, true);
   } catch (error) {

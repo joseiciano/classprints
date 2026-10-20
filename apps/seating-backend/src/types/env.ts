@@ -9,6 +9,7 @@ export interface SeatingWorkerBindings extends CloudflareEnv {
   [key: string]: unknown;
   ENVIRONMENT: string;
   APPLICATION_NAME: string;
+  APP_DISPLAY_NAME: string;
   FRONTEND_URL: string;
   ALLOWED_ORIGINS: string;
   BASE_PATH?: string;
