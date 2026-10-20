@@ -16,7 +16,11 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "html_handling": "auto-trailing-slash",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // SPA mode answers browser navigations (Sec-Fetch-Mode: navigate) with
+    // index.html before the worker runs, so links opened directly (e.g. email
+    // verification) would never reach the API without this.
+    "run_worker_first": ["/api/*"]
   },
   "services": [
     {
