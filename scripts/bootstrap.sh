@@ -136,12 +136,17 @@ else
     if email_wrangler routing rules list "$EMAIL_ZONE" 2>/dev/null | grep -qF "$SUPPORT_ADDRESS"; then
       echo "email rule  : $SUPPORT_ADDRESS (exists, skipped)"
     else
-      email_wrangler routing rules create "$EMAIL_ZONE" \
+      if out=$(email_wrangler routing rules create "$EMAIL_ZONE" \
         --name "support forward" \
         --match-type literal --match-field to --match-value "$SUPPORT_ADDRESS" \
-        --action-type forward --action-value "$SUPPORT_FORWARD_TO" >/dev/null 2>&1 \
-        && echo "email rule  : $SUPPORT_ADDRESS -> $SUPPORT_FORWARD_TO (created)" \
-        || echo "email rule  : $SUPPORT_ADDRESS (CREATE FAILED)" >&2
+        --action-type forward --action-value "$SUPPORT_FORWARD_TO" 2>&1); then
+        echo "email rule  : $SUPPORT_ADDRESS -> $SUPPORT_FORWARD_TO (created)"
+      else
+        # Cloudflare refuses the rule until the destination clicks its
+        # verification link; re-run this script once it has.
+        echo "email rule  : $SUPPORT_ADDRESS (CREATE FAILED — verify $SUPPORT_FORWARD_TO, then re-run)" >&2
+        printf '%s\n' "$out" | grep -E "ERROR|code:|\[code" | sed 's/^/              /' >&2
+      fi
     fi
   elif [ -n "$SUPPORT_ADDRESS" ]; then
     echo "email route : SKIPPED — set SUPPORT_FORWARD_TO to forward $SUPPORT_ADDRESS"
