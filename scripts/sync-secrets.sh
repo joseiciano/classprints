@@ -75,9 +75,17 @@ put_secret() {
   # wrangler lives in each app's node_modules (pnpm workspace), not on PATH.
   WRANGLER="$REPO_ROOT/$app_dir/node_modules/.bin/wrangler"
   [ -x "$WRANGLER" ] || WRANGLER=wrangler
-  printf '%s' "$value" | (cd "$REPO_ROOT/$app_dir" && "$WRANGLER" secret put "$var_name" >/dev/null 2>&1) \
-    && echo "  $var_name: set" \
-    || { echo "  $var_name: FAILED" >&2; return 1; }
+  # Top-level config = staging; production must target env.production.
+  env_flag=""
+  [ "$ENVIRONMENT" = "production" ] && env_flag="--env production"
+  # shellcheck disable=SC2086
+  if out=$(printf '%s' "$value" | (cd "$REPO_ROOT/$app_dir" && "$WRANGLER" secret put "$var_name" $env_flag 2>&1)); then
+    echo "  $var_name: set ($app_dir)"
+  else
+    echo "  $var_name: FAILED ($app_dir)" >&2
+    printf '%s\n' "$out" | grep -E "ERROR|code:|\[code|not found|Authentication" | sed 's/^/      /' >&2
+    return 1
+  fi
 }
 
 if [ -n "${ALLOW_EMPTY:-}" ]; then
