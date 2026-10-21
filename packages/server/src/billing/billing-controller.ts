@@ -85,6 +85,7 @@ export const registerBillingRoutes = <
         parsed.data.plan as 'plus_monthly' | 'plus_quarterly' | 'plus_annual',
         config.checkoutSuccessUrl,
         config.checkoutCancelUrl,
+        user.email,
       );
 
       return c.json({ url }, 200);
