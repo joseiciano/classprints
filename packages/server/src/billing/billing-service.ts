@@ -36,6 +36,8 @@ export interface BillingServiceConfig {
   checkoutSuccessUrl: string;
   checkoutCancelUrl: string;
   portalReturnUrl: string;
+  /** Portal configuration (bpc_...) from stripe-setup.sh; empty uses the account's default. */
+  portalConfigurationId?: string;
   priceIds: StripePriceConfig;
   logger?: Pick<typeof console, 'info' | 'warn' | 'error'>;
 }
@@ -107,6 +109,9 @@ export class BillingService {
     const session = await this.stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
       return_url: returnUrl,
+      ...(this.config.portalConfigurationId
+        ? { configuration: this.config.portalConfigurationId }
+        : {}),
     });
 
     if (!session.url) {

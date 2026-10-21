@@ -22,6 +22,7 @@ export interface SeatingWorkerBindings extends CloudflareEnv {
   STRIPE_CHECKOUT_SUCCESS_URL: string;
   STRIPE_CHECKOUT_CANCEL_URL: string;
   STRIPE_PORTAL_RETURN_URL: string;
+  STRIPE_PORTAL_CONFIGURATION_ID: string;
   SEATING_JOBS: QueueFrom<SeatingJobQueueMessage>;
   TRANSCRIPTION_JOBS: QueueFrom<TranscriptionPageMessage>;
   DOCUMENT_CLEANUP_JOBS: QueueFrom<DeletionOperationMessage>;

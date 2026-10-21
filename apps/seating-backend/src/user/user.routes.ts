@@ -48,6 +48,7 @@ const createBillingService = (c: Context<SeatingHonoEnv>): BillingService => {
     checkoutSuccessUrl: c.env.STRIPE_CHECKOUT_SUCCESS_URL,
     checkoutCancelUrl: c.env.STRIPE_CHECKOUT_CANCEL_URL,
     portalReturnUrl: c.env.STRIPE_PORTAL_RETURN_URL,
+    portalConfigurationId: c.env.STRIPE_PORTAL_CONFIGURATION_ID,
     priceIds: {
       plusMonthly: c.env.STRIPE_PRICE_PLUS_MONTHLY,
       plusQuarterly: c.env.STRIPE_PRICE_PLUS_QUARTERLY,
