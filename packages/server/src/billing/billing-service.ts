@@ -134,7 +134,12 @@ export class BillingService {
     const subscription = await this.repository.getSubscriptionByUserId(userId);
     const status = subscription ? this.mapStripeStatus(subscription.status) : 'none';
     const tier = status === 'active' ? 'plus' : 'free';
-    const planId = this.getPlanIdFromPriceId(subscription?.price_id ?? null);
+    // An ended subscription keeps its price_id; reporting it as the plan would mark that plan
+    // "current" on the pricing page and block resubscribing to it.
+    const planId =
+      status === 'active' || status === 'past_due'
+        ? this.getPlanIdFromPriceId(subscription?.price_id ?? null)
+        : null;
 
     return {
       status,
