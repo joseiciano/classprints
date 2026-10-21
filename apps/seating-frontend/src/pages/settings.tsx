@@ -428,8 +428,8 @@ export function SettingsPage() {
               </p>
               {plusEndsAt ? (
                 <p className="mt-3 rounded-[10px] border border-border bg-muted px-3 py-2 text-sm leading-6 text-foreground">
-                  Your plan ends on {formatDate(plusEndsAt)}. To keep Plus, undo the cancellation
-                  in Manage billing.
+                  Your plan ends on {formatDate(plusEndsAt)}. To keep Plus, undo the cancellation in
+                  Manage billing.
                 </p>
               ) : null}
 
