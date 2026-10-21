@@ -1,19 +1,22 @@
 #!/bin/sh
 # scripts/stripe-setup.sh — one-time per-environment Stripe catalog + webhook setup.
 #
-# Creates the Plus product, its three recurring prices and the billing webhook
-# in the Stripe account behind STRIPE_SECRET_KEY, then:
-#   - prints the price IDs to paste into apps/seating-backend/wrangler.jsonc
+# Creates the Plus product, its three recurring prices, the billing webhook and
+# the customer portal configuration in the Stripe account behind
+# STRIPE_SECRET_KEY, then:
+#   - prints the price and portal configuration IDs to paste into
+#     apps/seating-backend/wrangler.jsonc
 #   - writes the new webhook signing secret into the env file
-# Idempotent: the product has a fixed ID, prices are found by lookup key, and
-# the webhook endpoint by URL, so re-running skips what already exists.
+# Idempotent: the product has a fixed ID, prices are found by lookup key, the
+# webhook endpoint by URL and the portal configuration by metadata, so
+# re-running skips what already exists.
 #
 # Usage:
 #   scripts/stripe-setup.sh staging|production
 #
 # Reads STRIPE_SECRET_KEY from .env.<env> (or the shell). Production refuses a
 # test key and staging refuses a live key. A restricted key needs write access
-# to Products, Prices and Webhook Endpoints. Requires curl and jq.
+# to Products, Prices, Webhook Endpoints and Customer Portal. Requires curl and jq.
 
 set -eu
 
@@ -21,12 +24,12 @@ ENVIRONMENT="${1:-}"
 case "$ENVIRONMENT" in
   production)
     PRODUCT_NAME="Bellvel Plus"
-    WEBHOOK_URL="https://bellvel.com/api/v1/billing/webhook"
+    APP_URL="https://bellvel.com"
     KEY_MODE="live"
     ;;
   staging)
     PRODUCT_NAME="ClassPrints Plus"
-    WEBHOOK_URL="https://classprints-web.icianojn.workers.dev/api/v1/billing/webhook"
+    APP_URL="https://classprints-web.icianojn.workers.dev"
     KEY_MODE="test"
     ;;
   *)
@@ -34,6 +37,7 @@ case "$ENVIRONMENT" in
     exit 1
     ;;
 esac
+WEBHOOK_URL="$APP_URL/api/v1/billing/webhook"
 
 REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ENV_FILE="${ENV_FILE:-$REPO_ROOT/.env.$ENVIRONMENT}"
@@ -111,7 +115,8 @@ PRICE_ANNUAL=$(ensure_price plus_annual 2100 year 1)
 echo
 
 # ---------------------------------------------------------------------------
-# Webhook. Events must match handleWebhookEvent() in billing-service.ts.
+# Webhook. Events must match handleWebhookEvent() in billing-service.ts, and
+# api_version must match the apiVersion BillingService pins in its Stripe client.
 # Stripe only reveals the signing secret at creation, so it is written straight
 # into the env file and never printed.
 # ---------------------------------------------------------------------------
@@ -124,6 +129,7 @@ if [ -n "$existing_webhook" ]; then
 else
   secret=$(stripe POST /webhook_endpoints \
     -d url="$WEBHOOK_URL" \
+    -d api_version=2023-10-16 \
     -d "enabled_events[]=checkout.session.completed" \
     -d "enabled_events[]=customer.subscription.created" \
     -d "enabled_events[]=customer.subscription.updated" \
@@ -143,6 +149,37 @@ else
   fi
 fi
 
+# ---------------------------------------------------------------------------
+# Customer portal. API-created configurations are never the account default,
+# so the backend passes this ID (STRIPE_PORTAL_CONFIGURATION_ID) per session.
+# Found again by metadata; an existing one is left as is, so edit it in the
+# dashboard (Settings > Billing > Customer portal) or archive it to recreate.
+# ---------------------------------------------------------------------------
+PORTAL_CONFIG=$(stripe GET "/billing_portal/configurations?active=true&limit=100" -G \
+  | jq -r '.data[] | select(.metadata.managed_by == "stripe-setup") | .id' | head -n 1)
+if [ -n "$PORTAL_CONFIG" ]; then
+  echo "portal      : $PORTAL_CONFIG (exists, skipped)"
+else
+  PORTAL_CONFIG=$(stripe POST /billing_portal/configurations \
+    -d name="$PRODUCT_NAME" \
+    -d "metadata[managed_by]=stripe-setup" \
+    -d default_return_url="$APP_URL/settings" \
+    -d "business_profile[privacy_policy_url]=$APP_URL/privacy-policy" \
+    -d "business_profile[terms_of_service_url]=$APP_URL/terms-of-service" \
+    -d "features[payment_method_update][enabled]=true" \
+    -d "features[invoice_history][enabled]=true" \
+    -d "features[subscription_cancel][enabled]=true" \
+    -d "features[subscription_cancel][mode]=at_period_end" \
+    -d "features[subscription_update][enabled]=true" \
+    -d "features[subscription_update][default_allowed_updates][]=price" \
+    -d "features[subscription_update][proration_behavior]=create_prorations" \
+    -d "features[subscription_update][products][0][product]=$PRODUCT_ID" \
+    -d "features[subscription_update][products][0][prices][]=$PRICE_MONTHLY" \
+    -d "features[subscription_update][products][0][prices][]=$PRICE_QUARTERLY" \
+    -d "features[subscription_update][products][0][prices][]=$PRICE_ANNUAL" | jq -r '.id')
+  echo "portal      : $PORTAL_CONFIG (created)"
+fi
+
 if [ "$ENVIRONMENT" = "production" ]; then
   section="env.production.vars"
 else
@@ -154,6 +191,7 @@ cat <<EOF
       "STRIPE_PRICE_PLUS_MONTHLY": "$PRICE_MONTHLY",
       "STRIPE_PRICE_PLUS_QUARTERLY": "$PRICE_QUARTERLY",
       "STRIPE_PRICE_PLUS_ANNUAL": "$PRICE_ANNUAL",
+      "STRIPE_PORTAL_CONFIGURATION_ID": "$PORTAL_CONFIG",
 
 Then push the secrets:
       scripts/set-env-secrets.sh $ENVIRONMENT

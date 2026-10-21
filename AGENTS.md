@@ -13,20 +13,20 @@ pnpm monorepo of Cloudflare Workers. `apps/` holds the deployables (`seating-fro
 
 Use the `Makefile` for anything that touches an environment's infrastructure, data or secrets. `<env>` is `staging` or `production`; each target loads `.env.<env>` (override with `FILE=path`) and is idempotent.
 
-| Command                   | Does                                                                                                             | Needs first                                                              |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `make bootstrap-<env>`    | Creates queues, R2 bucket, Email Sending + support forwarding, Hyperdrive; prints IDs                            | `npx wrangler login` into that env's account                             |
-| `make migrate-<env>`      | Applies pending `database/migrations/*.sql` to `DATABASE_URL`                                                    | `DATABASE_URL` in `.env.<env>`                                           |
-| `make stripe-<env>`       | Creates the Plus product, prices and webhook; writes `STRIPE_WEBHOOK_SECRET` into `.env.<env>`; prints price IDs | `STRIPE_SECRET_KEY` (`sk_`/`rk_`, live for production, test for staging) |
-| `make secrets-<env>`      | Pushes `.env.<env>` to the GitHub Environment and the Worker secrets                                             | Filled `.env.<env>`                                                      |
-| `make secrets-list-<env>` | Lists the GitHub Environment's secrets                                                                           | `gh` auth                                                                |
-| `make setup-<env>`        | bootstrap → migrate → stripe → secrets                                                                           | All of the above                                                         |
+| Command                   | Does                                                                                                                                                       | Needs first                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `make bootstrap-<env>`    | Creates queues, R2 bucket, Email Sending + support forwarding, Hyperdrive; prints IDs                                                                      | `npx wrangler login` into that env's account                             |
+| `make migrate-<env>`      | Applies pending `database/migrations/*.sql` to `DATABASE_URL`                                                                                              | `DATABASE_URL` in `.env.<env>`                                           |
+| `make stripe-<env>`       | Creates the Plus product, prices, webhook and customer portal config; writes `STRIPE_WEBHOOK_SECRET` into `.env.<env>`; prints price and portal config IDs | `STRIPE_SECRET_KEY` (`sk_`/`rk_`, live for production, test for staging) |
+| `make secrets-<env>`      | Pushes `.env.<env>` to the GitHub Environment and the Worker secrets                                                                                       | Filled `.env.<env>`                                                      |
+| `make secrets-list-<env>` | Lists the GitHub Environment's secrets                                                                                                                     | `gh` auth                                                                |
+| `make setup-<env>`        | bootstrap → migrate → stripe → secrets                                                                                                                     | All of the above                                                         |
 
 Rules for running them:
 
 - Run against **staging** freely. For **production**, hand the exact `make` command to the user to run (as `! make …`); production changes are theirs to execute.
 - Dry-run secrets with `make secrets-<env> FILE=.env.<env>.example`, which pushes nothing.
-- Pin every ID a target prints (Hyperdrive, Stripe prices) into the matching `wrangler.jsonc` section by hand, then confirm with `npx wrangler deploy --dry-run [--env production]` in that app's directory.
+- Pin every ID a target prints (Hyperdrive, Stripe prices, portal config) into the matching `wrangler.jsonc` section by hand, then confirm with `npx wrangler deploy --dry-run [--env production]` in that app's directory.
 - Create Hyperdrive configs only through `make bootstrap-<env>`. A bare `wrangler hyperdrive create` inside an app directory rewrites that app's `wrangler.jsonc` and appends the binding to the staging section.
 - After adding a binding or var, run `npx wrangler types` in `apps/seating-backend` to refresh `worker-configuration.d.ts`.
 

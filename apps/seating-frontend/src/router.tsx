@@ -242,6 +242,12 @@ const documentWorkspaceRoute = createRoute({
   validateSearch: validateDocumentWorkspaceSearch,
 });
 
+const billingSuccessRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/billing/success',
+  component: lazyRouteComponent(() => import('./pages/billing-success'), 'BillingSuccessPage'),
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/settings',
@@ -287,6 +293,7 @@ const routeTree = rootRoute.addChildren([
     documentProcessingRoute,
     documentWorkspaceRoute,
     settingsRoute,
+    billingSuccessRoute,
   ]),
   signOutRoute,
 ]);

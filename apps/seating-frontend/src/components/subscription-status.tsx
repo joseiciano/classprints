@@ -3,7 +3,8 @@ import { useSubscription } from '../hooks/use-subscription';
 import { Button } from './ui/button';
 
 export function SubscriptionStatus() {
-  const { isPlus, openPortal, isOpeningPortal, isLoading } = useSubscription();
+  const { subscription, isPlus, openPortal, isOpeningPortal, isLoading } = useSubscription();
+  const isPastDue = subscription?.status === 'past_due';
 
   if (isLoading) {
     return (
@@ -17,7 +18,7 @@ export function SubscriptionStatus() {
     );
   }
 
-  if (!isPlus) {
+  if (!isPlus && !isPastDue) {
     return null;
   }
 
@@ -28,7 +29,7 @@ export function SubscriptionStatus() {
       onClick={() => openPortal(undefined)}
       disabled={isOpeningPortal}
       aria-busy={isOpeningPortal}
-      aria-label="Manage Plus subscription billing"
+      aria-label={isPastDue ? 'Update payment method' : 'Manage Plus subscription billing'}
       className="min-h-10 rounded-full px-3 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground hover:text-foreground"
     >
       {isOpeningPortal ? (
@@ -36,7 +37,11 @@ export function SubscriptionStatus() {
       ) : (
         <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
       )}
-      {isOpeningPortal ? 'Opening billing' : 'Plus · Manage billing'}
+      {isOpeningPortal
+        ? 'Opening billing'
+        : isPastDue
+          ? 'Payment due · Update billing'
+          : 'Plus · Manage billing'}
     </Button>
   );
 }

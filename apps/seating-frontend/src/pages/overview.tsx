@@ -48,21 +48,19 @@ const sampleSeats = [
 const features = [
   {
     index: '01',
-    title: 'Classroom dynamics, accounted for',
-    description:
-      'Separate students who distract one another, place supportive peers together, and factor in individual seating needs.',
+    title: 'Class rosters',
+    description: 'Keep every class and student in one place, and see at a glance who needs what.',
   },
   {
     index: '02',
-    title: 'Multiple ways to build',
+    title: 'Seating charts',
     description:
-      'Choose the arrangement method that fits your classroom while accounting for every relationship, preference, and constraint that matters.',
+      "Build customizable seating charts that account for who works well together, who doesn't, and who needs a particular seat.",
   },
   {
     index: '03',
-    title: 'Compare, choose, export',
-    description:
-      'Generate up to five candidate layouts, compare their scores, and export the best fit as CSV.',
+    title: 'Assignment reader',
+    description: `Photograph student work page by page. ${APPLICATION_NAME} reads it and lays out each question so you can mark it with your own judgment.`,
   },
 ];
 
@@ -81,14 +79,14 @@ export function OverviewPage() {
       <section className="mx-auto grid w-full max-w-[1120px] items-center gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 lg:py-24">
         <div>
           <p className="font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-primary">
-            Smarter classroom seating
+            Simple Classroom Management
           </p>
           <h1 className="mt-4 max-w-[700px] font-display text-[clamp(2.625rem,5.4vw,4rem)] font-medium leading-[1.04] tracking-[-0.02em]">
-            Every student, in the <em className="text-primary">right</em> seat.
+            Better classrooms, made <em className="text-primary">easy</em>
           </h1>
           <p className="mt-6 max-w-[48ch] text-lg leading-8 text-muted-foreground">
-            {APPLICATION_NAME} turns your class roster, classroom dynamics, and room layout into an
-            optimized seating chart—algorithmic or AI-assisted—in seconds.
+            Spend less time handling the messy parts of classes, and more time focusing on the
+            class.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button
@@ -198,24 +196,70 @@ export function OverviewPage() {
       </section>
 
       <section className="border-y border-border" aria-labelledby="landing-features">
-        <div className="mx-auto grid w-full max-w-[1120px] px-4 py-8 sm:px-6 sm:py-12 md:grid-cols-3">
-          <h2 id="landing-features" className="sr-only">
-            Why teachers use {APPLICATION_NAME}
+        <div className="mx-auto w-full max-w-[1120px] px-4 py-12 sm:px-6 sm:py-16">
+          <h2
+            id="landing-features"
+            className="font-display text-[2rem] font-medium tracking-[-0.01em]"
+          >
+            What {APPLICATION_NAME} does
           </h2>
-          {features.map((feature, index) => (
-            <article
-              key={feature.index}
-              className={`py-7 md:px-8 md:py-4 ${
-                index > 0 ? 'border-t border-border md:border-l md:border-t-0' : ''
-              } ${index === 0 ? 'md:pl-0' : ''}`}
+          <div className="mt-6 grid md:grid-cols-3">
+            {features.map((feature, index) => (
+              <article
+                key={feature.index}
+                className={`py-7 md:px-8 md:py-4 ${
+                  index > 0 ? 'border-t border-border md:border-l md:border-t-0' : ''
+                } ${index === 0 ? 'md:pl-0' : ''}`}
+              >
+                <p className="font-mono text-[11px] tracking-[0.1em] text-primary">
+                  {feature.index}
+                </p>
+                <h3 className="mt-4 font-display text-xl font-medium">{feature.title}</h3>
+                <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
+                  {feature.description}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="mx-auto flex w-full max-w-[1120px] flex-wrap items-center justify-between gap-6 px-4 py-16 sm:px-6 sm:py-20"
+        aria-labelledby="landing-cta"
+      >
+        <div>
+          <h2 id="landing-cta" className="font-display text-[2rem] font-medium tracking-[-0.01em]">
+            Ready to try it?
+          </h2>
+          <p className="mt-2 text-muted-foreground">
+            Start free today. Questions first?{' '}
+            <Link
+              to="/customer-service"
+              className="text-primary underline decoration-border underline-offset-4 hover:decoration-primary"
             >
-              <p className="font-mono text-[11px] tracking-[0.1em] text-primary">{feature.index}</p>
-              <h3 className="mt-4 font-display text-xl font-medium">{feature.title}</h3>
-              <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
-                {feature.description}
-              </p>
-            </article>
-          ))}
+              Get in touch
+            </Link>
+            .
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button
+            size="md"
+            className="min-h-11 justify-center rounded-full px-5"
+            onClick={() => navigate({ to: isSignedIn ? '/create-arrangement' : '/sign-up' })}
+          >
+            {isSignedIn ? 'Create a new chart' : 'Create your first chart'}
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <Button
+            variant="outline"
+            size="md"
+            className="min-h-11 justify-center rounded-full px-5"
+            onClick={() => navigate({ to: '/pricing' })}
+          >
+            See pricing
+          </Button>
         </div>
       </section>
     </div>

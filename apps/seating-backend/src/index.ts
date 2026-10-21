@@ -185,6 +185,7 @@ export const buildApp = (options: AppOptions = {}) => {
         checkoutSuccessUrl: env.STRIPE_CHECKOUT_SUCCESS_URL,
         checkoutCancelUrl: env.STRIPE_CHECKOUT_CANCEL_URL,
         portalReturnUrl: env.STRIPE_PORTAL_RETURN_URL,
+        portalConfigurationId: env.STRIPE_PORTAL_CONFIGURATION_ID,
         priceIds: {
           plusMonthly: env.STRIPE_PRICE_PLUS_MONTHLY,
           plusQuarterly: env.STRIPE_PRICE_PLUS_QUARTERLY,

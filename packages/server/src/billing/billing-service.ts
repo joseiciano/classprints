@@ -4,6 +4,26 @@ import { HttpError } from '../http';
 import { BillingRepository } from './billing-repository';
 import type { BillingPlan, BillingSubscriptionResponse, BillingSubscriptionStatus } from './types';
 
+// Stripe statuses where the subscription still exists and bills the customer.
+const LIVE_STRIPE_STATUSES: ReadonlySet<string> = new Set([
+  'active',
+  'trialing',
+  'past_due',
+  'unpaid',
+  'paused',
+]);
+
+// API versions from 2025-03-31 moved invoice.subscription to
+// invoice.parent.subscription_details.subscription; read whichever the webhook delivered.
+const invoiceSubscription = (invoice: Stripe.Invoice): string | Stripe.Subscription | null => {
+  const parent = (
+    invoice as {
+      parent?: { subscription_details?: { subscription?: string | Stripe.Subscription } | null };
+    }
+  ).parent;
+  return invoice.subscription ?? parent?.subscription_details?.subscription ?? null;
+};
+
 export interface StripePriceConfig {
   plusMonthly: string;
   plusQuarterly: string;
@@ -16,6 +36,8 @@ export interface BillingServiceConfig {
   checkoutSuccessUrl: string;
   checkoutCancelUrl: string;
   portalReturnUrl: string;
+  /** Portal configuration (bpc_...) from stripe-setup.sh; empty uses the account's default. */
+  portalConfigurationId?: string;
   priceIds: StripePriceConfig;
   logger?: Pick<typeof console, 'info' | 'warn' | 'error'>;
 }
@@ -46,10 +68,16 @@ export class BillingService {
     successUrl: string,
     cancelUrl: string,
   ): Promise<string> {
-    // Check if user already has an active subscription
-    const subscriptionStatus = await this.getSubscriptionStatus(userId);
-    if (subscriptionStatus === 'active') {
-      throw new HttpError(409, 'User already has an active subscription');
+    // A past_due or unpaid subscription is still live in Stripe and keeps billing, so a
+    // second checkout would leave the user paying for two. Those users fix payment in the portal.
+    const existing = await this.repository.getSubscriptionByUserId(userId);
+    if (existing && LIVE_STRIPE_STATUSES.has(existing.status)) {
+      throw new HttpError(
+        409,
+        existing.status === 'active' || existing.status === 'trialing'
+          ? 'User already has an active subscription'
+          : 'User has an unpaid subscription; update the payment method in the billing portal',
+      );
     }
 
     const priceId = this.resolvePriceId(plan);
@@ -81,6 +109,9 @@ export class BillingService {
     const session = await this.stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
       return_url: returnUrl,
+      ...(this.config.portalConfigurationId
+        ? { configuration: this.config.portalConfigurationId }
+        : {}),
     });
 
     if (!session.url) {
@@ -236,26 +267,25 @@ export class BillingService {
 
     const subscriptionId = this.ensureStripeSubscriptionId(session.subscription);
     const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
-    await this.repository.upsertSubscriptionFromStripe(userId, subscription);
+    await this.upsertUnlessSuperseded(userId, subscription);
   }
 
+  // The event payload is ignored beyond its id: Stripe delivers events out of order, and in the
+  // webhook endpoint's API version rather than the SDK's pinned one. Retrieving through the SDK
+  // gives the current state in the shape this code reads (e.g. top-level current_period_end).
   private async handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
-    const stripeCustomerId = this.ensureStripeCustomerId(subscription.customer);
-    const userId = await this.resolveUserId(
-      subscription.metadata?.user_id,
-      undefined,
-      stripeCustomerId,
-    );
-    await this.repository.upsertCustomer(userId, stripeCustomerId);
-    await this.repository.upsertSubscriptionFromStripe(userId, subscription);
+    await this.syncSubscription(subscription.id);
   }
 
   private async handleInvoiceEvent(invoice: Stripe.Invoice): Promise<void> {
-    if (!invoice.subscription) {
+    const subscription = invoiceSubscription(invoice);
+    if (!subscription) {
       return;
     }
+    await this.syncSubscription(this.ensureStripeSubscriptionId(subscription));
+  }
 
-    const subscriptionId = this.ensureStripeSubscriptionId(invoice.subscription);
+  private async syncSubscription(subscriptionId: string): Promise<void> {
     const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
     const stripeCustomerId = this.ensureStripeCustomerId(subscription.customer);
     const userId = await this.resolveUserId(
@@ -265,6 +295,26 @@ export class BillingService {
     );
 
     await this.repository.upsertCustomer(userId, stripeCustomerId);
+    await this.upsertUnlessSuperseded(userId, subscription);
+  }
+
+  // One row per user: a late event for an ended subscription must not overwrite a newer live one.
+  private async upsertUnlessSuperseded(
+    userId: string,
+    subscription: Stripe.Subscription,
+  ): Promise<void> {
+    const stored = await this.repository.getSubscriptionByUserId(userId);
+    if (
+      stored &&
+      stored.stripe_subscription_id !== subscription.id &&
+      LIVE_STRIPE_STATUSES.has(stored.status) &&
+      !LIVE_STRIPE_STATUSES.has(subscription.status)
+    ) {
+      this.config.logger?.info?.(
+        `Ignoring ${subscription.status} subscription ${subscription.id}; user ${userId} has live ${stored.stripe_subscription_id}`,
+      );
+      return;
+    }
     await this.repository.upsertSubscriptionFromStripe(userId, subscription);
   }
 

@@ -82,7 +82,9 @@ function PricingSkeleton() {
 export function PricingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { subscription, checkout, isCheckingOut, isPlus } = useSubscription();
+  const { subscription, checkout, isCheckingOut, isPlus, openPortal, isOpeningPortal } =
+    useSubscription();
+  const isPastDue = subscription?.status === 'past_due';
   const isSignedIn = Boolean(user);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [plans, setPlans] = useState<BillingPlan[]>([]);
@@ -119,6 +121,12 @@ export function PricingPage() {
 
     if (planId === 'free' || isPlus) {
       void navigate({ to: '/create-arrangement' });
+      return;
+    }
+
+    // The unpaid subscription is still live in Stripe; a new checkout would bill twice.
+    if (isPastDue) {
+      openPortal(undefined);
       return;
     }
 
@@ -264,7 +272,7 @@ export function PricingPage() {
                 variant="outline"
                 size="md"
                 className="mt-auto min-h-11 w-full justify-center rounded-full border-primary-foreground/40 bg-card text-foreground hover:bg-secondary"
-                disabled={isCurrentPlan(currentPlan.id) || isCheckingOut}
+                disabled={isCurrentPlan(currentPlan.id) || isCheckingOut || isOpeningPortal}
                 onClick={() => handleAction(currentPlan.id)}
               >
                 {isCheckingOut ? (
@@ -272,6 +280,13 @@ export function PricingPage() {
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                     Opening checkout…
                   </>
+                ) : isOpeningPortal ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    Opening billing…
+                  </>
+                ) : isPastDue ? (
+                  'Update payment method'
                 ) : isCurrentPlan(currentPlan.id) ? (
                   'Current plan'
                 ) : isPlus ? (
