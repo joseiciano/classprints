@@ -111,7 +111,8 @@ PRICE_ANNUAL=$(ensure_price plus_annual 2100 year 1)
 echo
 
 # ---------------------------------------------------------------------------
-# Webhook. Events must match handleWebhookEvent() in billing-service.ts.
+# Webhook. Events must match handleWebhookEvent() in billing-service.ts, and
+# api_version must match the apiVersion BillingService pins in its Stripe client.
 # Stripe only reveals the signing secret at creation, so it is written straight
 # into the env file and never printed.
 # ---------------------------------------------------------------------------
@@ -124,6 +125,7 @@ if [ -n "$existing_webhook" ]; then
 else
   secret=$(stripe POST /webhook_endpoints \
     -d url="$WEBHOOK_URL" \
+    -d api_version=2023-10-16 \
     -d "enabled_events[]=checkout.session.completed" \
     -d "enabled_events[]=customer.subscription.created" \
     -d "enabled_events[]=customer.subscription.updated" \
