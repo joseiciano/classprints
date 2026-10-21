@@ -2,6 +2,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { csrfHeaders } from '@classprints/shared';
 import { useAuth } from '../providers/auth-provider';
 import { APPLICATION_NAME } from '../lib/constants';
+import { formatDate } from '../lib/assignment-reader-format';
 import { useSubscription } from '../hooks/use-subscription';
 import { useEmailNotifications } from '../hooks/use-email-notifications';
 import { useDeleteAccount } from '../hooks/use-delete-account';
@@ -26,7 +27,12 @@ export function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isPlus, openPortal, isOpeningPortal, isLoading } = useSubscription();
+  const { subscription, isPlus, openPortal, isOpeningPortal, isLoading } = useSubscription();
+  // Cancelling in the portal keeps Plus until the period ends; say when it stops.
+  const plusEndsAt =
+    isPlus && subscription?.subscription?.cancel_at_period_end
+      ? subscription.subscription.current_period_end
+      : null;
   const {
     isEnabled,
     isLoading: notificationsLoading,
@@ -420,6 +426,12 @@ export function SettingsPage() {
                   ? 'Your plan includes increased arrangement limits, reusable class profiles, and CSV exports.'
                   : 'Upgrade for more arrangements, reusable class profiles, and CSV exports.'}
               </p>
+              {plusEndsAt ? (
+                <p className="mt-3 rounded-[10px] border border-border bg-muted px-3 py-2 text-sm leading-6 text-foreground">
+                  Your plan ends on {formatDate(plusEndsAt)}. To keep Plus, undo the cancellation
+                  in Manage billing.
+                </p>
+              ) : null}
 
               {isPlus ? (
                 <Button
