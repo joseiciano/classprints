@@ -67,6 +67,7 @@ export class BillingService {
     plan: 'plus_monthly' | 'plus_quarterly' | 'plus_annual',
     successUrl: string,
     cancelUrl: string,
+    email?: string | null,
   ): Promise<string> {
     // A past_due or unpaid subscription is still live in Stripe and keeps billing, so a
     // second checkout would leave the user paying for two. Those users fix payment in the portal.
@@ -81,7 +82,7 @@ export class BillingService {
     }
 
     const priceId = this.resolvePriceId(plan);
-    const stripeCustomerId = await this.ensureStripeCustomer(userId);
+    const stripeCustomerId = await this.ensureStripeCustomer(userId, email);
 
     const session = await this.stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -323,13 +324,14 @@ export class BillingService {
     await this.repository.upsertSubscriptionFromStripe(userId, subscription);
   }
 
-  private async ensureStripeCustomer(userId: string): Promise<string> {
+  private async ensureStripeCustomer(userId: string, email?: string | null): Promise<string> {
     const existing = await this.repository.getCustomerByUserId(userId);
     if (existing?.stripe_customer_id) {
       return existing.stripe_customer_id;
     }
 
     const customer = await this.stripe.customers.create({
+      email: email ?? undefined,
       metadata: { user_id: userId },
     });
 
